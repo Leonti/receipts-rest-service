@@ -35,13 +35,16 @@ class RestSpec extends FlatSpec with Matchers with ScalatestRouteTest with Mocki
   override def config = testConfig
   override val logger = NoLogging
 
-  override val bearerTokenSecret: Array[Byte] = "secret-no-one-knows".getBytes
-  override val bearerTokenLifetime: FiniteDuration = 60.minutes
+  val userService = mock[UserService]
 
-  override val receiptService = mock[ReceiptService]
-  override val userService = mock[UserService]
-  override val fileService = mock[FileService]
-  override val authenticator = mock[Authenticator[User]]
+  override val userRouting = new UserRouting(userService)
+
+  val receiptService = mock[ReceiptService]
+  val fileService = mock[FileService]
+  val authenticator = mock[Authenticator[User]]
+
+  override val receiptRouting = new ReceiptRouting(receiptService, fileService, authenticator)
+  override val authenticationRouting = new AuthenticationRouting(authenticator)
 
   it should "create a user" in {
 
