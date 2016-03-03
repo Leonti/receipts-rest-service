@@ -14,7 +14,7 @@ import scala.util.Right
 
 class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with ScalaFutures {
 
-  "ReceiptService" should "create receipt" in {
+  it should "create receipt" in {
 
     val receipt = ReceiptEntity(userId = "123")
     val receiptRepository = mock[ReceiptRepository]

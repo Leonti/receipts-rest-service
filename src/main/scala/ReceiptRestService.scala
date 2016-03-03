@@ -82,7 +82,7 @@ object ReceiptRestService extends App with Service {
 
   override val config = ConfigFactory.load()
   override val logger = Logging(system, getClass)
-  override val receiptRouting = new ReceiptRouting(new ReceiptService(new ReceiptRepository()), new FileService(config, materializer), authenticator)
+  override val receiptRouting = new ReceiptRouting(new ReceiptService(new ReceiptRepository()), new FileService(config, materializer), authenticator.bearerToken(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)
 
   Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))

@@ -11,7 +11,7 @@ import scala.util.Right
 
 class UserServiceSpec extends FlatSpec with Matchers with MockitoSugar with ScalaFutures {
 
-  "UserService" should "return existing user" in {
+  it should "return existing user" in {
 
     val repository = mock[UserRepository]
     val user = Future(Some(User("id", "userName", "hash")))
