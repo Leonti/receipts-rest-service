@@ -1,5 +1,6 @@
+package model
+
 import de.choffmeister.auth.common.OAuth2AccessTokenResponseFormat
-import model._
 import spray.json.DefaultJsonProtocol
 
 trait JsonProtocols extends DefaultJsonProtocol {

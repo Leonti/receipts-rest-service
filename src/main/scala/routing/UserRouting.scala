@@ -1,6 +1,9 @@
+package routing
+
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
-import model.{CreateUserRequest, ErrorResponse, User, UserInfo}
+import model._
+import service.UserService
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}

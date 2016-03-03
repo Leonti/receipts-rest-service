@@ -8,6 +8,8 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 
 import org.mockito.Matchers.any
+import repository.ReceiptRepository
+import service.ReceiptService
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Right

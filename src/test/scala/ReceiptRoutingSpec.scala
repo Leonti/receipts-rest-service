@@ -7,7 +7,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import de.choffmeister.auth.akkahttp.Authenticator
-import model.{ErrorResponse, ReceiptEntity, User}
+import model.{JsonProtocols, ErrorResponse, ReceiptEntity, User}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
@@ -15,6 +15,8 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, FlatSpec}
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import routing.ReceiptRouting
+import service.{FileService, ReceiptService}
 
 import scala.concurrent.Future
 

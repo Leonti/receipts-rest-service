@@ -1,13 +1,14 @@
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
+package routing
+
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatchers.Segment
-import akka.http.scaladsl.server.{AuthenticationFailedRejection, MissingFormFieldRejection, AuthorizationFailedRejection, RejectionHandler}
 import akka.http.scaladsl.server.directives.{AuthenticationDirective, FileInfo}
+import akka.http.scaladsl.server.{AuthorizationFailedRejection, MissingFormFieldRejection, RejectionHandler}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import de.choffmeister.auth.akkahttp.Authenticator
-import model.{User, ErrorResponse, ReceiptEntity}
+import model.{JsonProtocols, ErrorResponse, ReceiptEntity, User}
+import service.{FileService, ReceiptService}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}

@@ -1,11 +1,10 @@
-import model.{User, ReceiptEntity}
-import model.ReceiptEntity._
-import reactivemongo.api.ReadPreference
+package repository
+
+import model.ReceiptEntity
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.api.commands.WriteResult
-import reactivemongo.bson.{BSONDocument, BSONObjectID}
+import reactivemongo.bson.BSONDocument
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class ReceiptRepository extends MongoDao[ReceiptEntity] {

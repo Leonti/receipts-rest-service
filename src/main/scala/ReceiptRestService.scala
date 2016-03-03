@@ -16,6 +16,9 @@ import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import model.ReceiptEntity
 import model._
+import repository.{UserRepository, ReceiptRepository}
+import routing.{AuthenticationRouting, UserRouting, ReceiptRouting}
+import service.{FileService, ReceiptService, UserService}
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import spray.json._
 

@@ -1,9 +1,11 @@
-import de.choffmeister.auth.common.{Plain, PBKDF2, PasswordHasher}
+package service
 
-import scala.concurrent.{Future, ExecutionContext}
+import de.choffmeister.auth.common.{PBKDF2, PasswordHasher, Plain}
 import model.{CreateUserRequest, User}
+import repository.UserRepository
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Right
 
 class UserService (userRepository: UserRepository) {

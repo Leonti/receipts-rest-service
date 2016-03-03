@@ -1,4 +1,7 @@
-import model.{User, ReceiptEntity}
+package service
+
+import model.ReceiptEntity
+import repository.ReceiptRepository
 
 import scala.concurrent.{ExecutionContext, Future}
 

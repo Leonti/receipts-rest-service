@@ -1,8 +1,8 @@
+package service
+
 import akka.stream.Materializer
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Source, _}
 import akka.util.ByteString
-import akka.stream.scaladsl._
-import akka.http.scaladsl.model.ContentTypes._
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.model.CompleteMultipartUploadResult
 import com.mfglabs.commons.aws.s3.{AmazonS3AsyncClient, S3StreamBuilder}

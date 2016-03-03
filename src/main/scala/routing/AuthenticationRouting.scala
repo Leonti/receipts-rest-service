@@ -1,11 +1,13 @@
+package routing
+
 import java.util.Date
 
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
-import de.choffmeister.auth.common.{OAuth2AccessTokenResponse, JsonWebToken}
 import de.choffmeister.auth.akkahttp.Authenticator
-import model.{ErrorResponse, User}
+import de.choffmeister.auth.common.{JsonWebToken, OAuth2AccessTokenResponse}
+import model.{JsonProtocols, ErrorResponse, User}
 import spray.json.JsString
 
 import scala.concurrent.duration._

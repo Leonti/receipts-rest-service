@@ -5,11 +5,19 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 
 import org.mockito.Matchers.any
+import repository.UserRepository
+import service.UserService
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Right
 
+import org.scalatest.time.{Millis, Seconds, Span}
+
+
 class UserServiceSpec extends FlatSpec with Matchers with MockitoSugar with ScalaFutures {
+
+  implicit val defaultPatience =
+    PatienceConfig(timeout = Span(5, Seconds), interval = Span(500, Millis))
 
   it should "return existing user" in {
 

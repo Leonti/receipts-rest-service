@@ -3,7 +3,7 @@ import akka.http.scaladsl.server.directives.{SecurityDirectives, AuthenticationD
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import de.choffmeister.auth.akkahttp.Authenticator
 import de.choffmeister.auth.common.OAuth2AccessTokenResponse
-import model.{ErrorResponse, User}
+import model.{JsonProtocols, ErrorResponse, User}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
@@ -14,6 +14,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.StatusCodes._
+import routing.AuthenticationRouting
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration

@@ -1,3 +1,4 @@
+package repository
 
 import com.typesafe.config.ConfigFactory
 import model.{ReceiptEntity, User, WithId}

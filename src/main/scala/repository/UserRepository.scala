@@ -1,10 +1,10 @@
+package repository
+
 import model.User
-import reactivemongo.api.ReadPreference
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.bson.{BSONObjectID, BSONDocument}
+import reactivemongo.bson.BSONDocument
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class UserRepository extends MongoDao[User] {
   val collection: BSONCollection = db[BSONCollection]("users")
