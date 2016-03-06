@@ -58,11 +58,13 @@ trait Service extends JsonProtocols {
       .result()
 
   val routes = {
-    logRequestResult("akka-http-microservice") {
-      handleRejections(myRejectionHandler) {
-        userRouting.routes ~ // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
-        receiptRouting.routes ~
-        authenticationRouting.routes
+    logRequest("receipt-rest-service") {
+      logRequestResult("receipt-rest-service") {
+        handleRejections(myRejectionHandler) {
+          userRouting.routes ~ // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
+            receiptRouting.routes ~
+            authenticationRouting.routes
+        }
       }
     }
   }
@@ -84,6 +86,10 @@ object ReceiptRestService extends App with Service {
     validateUserPassword = userService.validatePassword)
 
   override val config = ConfigFactory.load()
+
+  println("Mongodb")
+  println(config.getString("mongodb.user"))
+
   override val logger = Logging(system, getClass)
   override val receiptRouting = new ReceiptRouting(new ReceiptService(new ReceiptRepository()), new FileService(config, materializer), authenticator.bearerToken(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)

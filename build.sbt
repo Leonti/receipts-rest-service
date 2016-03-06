@@ -1,7 +1,7 @@
 enablePlugins(JavaAppPackaging)
 
-name         := "akka-http-microservice"
-organization := "com.theiterators"
+name         := "receipts-rest-service"
+organization := "rocks.leonti"
 version      := "1.0"
 scalaVersion := "2.11.7"
 
@@ -46,5 +46,7 @@ resolvers ++= Seq(
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
 
+val userHome = System.getProperty("user.home")
+javaOptions +=  s"-Dconfig.file=${userHome}/.receipts-rest-service/service.conf"
 
 Revolver.settings

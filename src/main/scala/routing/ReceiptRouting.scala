@@ -10,6 +10,9 @@ import akka.util.ByteString
 import model.{JsonProtocols, ErrorResponse, ReceiptEntity, User}
 import service.{FileService, ReceiptService}
 
+import akka.actor.ActorSystem
+import akka.event.{LoggingAdapter, Logging}
+
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
