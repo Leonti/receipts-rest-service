@@ -14,6 +14,14 @@ val logging = Seq (
   "com.typesafe.akka" %% "akka-slf4j" % "2.4.1"
 )
 
+val EndToEndTest = config("e2e") extend(Test)
+val e2eSettings =
+  inConfig(EndToEndTest)(Defaults.testSettings) ++
+    Seq(
+      fork in EndToEndTest := false,
+      parallelExecution in EndToEndTest := false,
+      scalaSource in EndToEndTest := baseDirectory.value / "src/e2e/scala")
+
 libraryDependencies ++= {
   val akkaV       = "2.4.1"
   val akkaStreamV = "2.0.1"
@@ -31,7 +39,7 @@ libraryDependencies ++= {
     "org.reactivemongo" %% "reactivemongo"                        % reactiveMongoV,
     "de.choffmeister"   %% "auth-common"                          % "0.1.0",
     "de.choffmeister"   %% "auth-akka-http"                       % "0.1.0",
-    "org.scalatest"     %% "scalatest"                            % scalaTestV % "test",
+    "org.scalatest"     %% "scalatest"                            % scalaTestV % "it,test",
     "org.mockito"       %  "mockito-all"                          % "1.8.4" % "test"
   )
 }
@@ -44,9 +52,25 @@ resolvers ++= Seq(
 )
 
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
 
 val userHome = System.getProperty("user.home")
 javaOptions +=  s"-Dconfig.file=${userHome}/.receipts-rest-service/service.conf"
 
 Revolver.settings
+
+lazy val integrate = taskKey[Unit]("Starts REST API server and runs integration tests")
+
+lazy val preIntegrationTests = taskKey[Unit]("Starts REST API server and runs integration tests")
+
+preIntegrationTests := {
+  val cp: Seq[File] = (fullClasspath in IntegrationTest).value.files
+  AppRunnerRemoteControl.setClassPath(cp)
+  AppRunnerRemoteControl.setLog(streams.value.log)
+}
+
+integrate := {
+  preIntegrationTests.value
+  (test in IntegrationTest).value
+}
