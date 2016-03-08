@@ -19,6 +19,7 @@ import model._
 import repository.{UserRepository, ReceiptRepository}
 import routing.{AuthenticationRouting, UserRouting, ReceiptRouting}
 import service.{FileService, ReceiptService, UserService}
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import spray.json._
 
@@ -87,8 +88,10 @@ object ReceiptRestService extends App with Service {
 
   override val config = ConfigFactory.load()
 
+  import scala.collection.JavaConverters._
   println("Mongodb")
   println(config.getString("mongodb.user"))
+  println(config.getStringList("mongodb.servers").asScala)
 
   override val logger = Logging(system, getClass)
   override val receiptRouting = new ReceiptRouting(new ReceiptService(new ReceiptRepository()), new FileService(config, materializer), authenticator.bearerToken(acceptExpired = true))

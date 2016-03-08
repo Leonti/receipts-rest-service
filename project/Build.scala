@@ -33,9 +33,15 @@ object AppRunnerRemoteControl {
     val options = ForkOptions(outputStrategy = Some(StdoutOutput))
     //build classpath string
     val cpStr = cp.map(_.getAbsolutePath).mkString(":")
-    val userHome = System.getProperty("user.home")
-    val property =  s"-Dconfig.file=${userHome}/.receipts-rest-service/service.conf"
-    val arguments: Seq[String] = List("-classpath", cpStr, property)
+
+    val arguments: Seq[String] = List("-classpath", cpStr,
+      "-Dmongodb.db=" + System.getenv("MONGODB_DB"),
+      "-Dmongodb.user=" + System.getenv("MONGODB_USER"),
+      "-Dmongodb.password=" + System.getenv("MONGODB_PASSWORD"),
+      "-Dmongodb.servers.0=" + System.getenv("MONGODB_SERVER"),
+      "-Ds3.bucket=" + System.getenv("S3_BUCKET"),
+      "-Ds3.accessKey=" + System.getenv("S3_ACCESS_KEY"),
+      "-Ds3.secretAccessKey=" + System.getenv("S3_SECRET_ACCESS_KEY"))
     //Here goes the name of the class which would be launched
     val mainClass: String = "ReceiptRestService"
     //Launch it. Pay attention that class name comes last in the list of arguments

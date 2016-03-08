@@ -3,3 +3,5 @@ jdk: oraclejdk8
 sudo: false
 scala:
    - 2.11.7
+
+script: sbt test && sbt integrate
