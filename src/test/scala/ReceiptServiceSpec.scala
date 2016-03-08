@@ -1,6 +1,7 @@
 import model.ReceiptEntity
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Matchers, FlatSpec}
 import org.scalatest._
 import org.mockito.Mockito._
@@ -15,6 +16,9 @@ import scala.concurrent.Future
 import scala.util.Right
 
 class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with ScalaFutures {
+
+  implicit val defaultPatience =
+    PatienceConfig(timeout = Span(5, Seconds), interval = Span(500, Millis))
 
   it should "create receipt" in {
 

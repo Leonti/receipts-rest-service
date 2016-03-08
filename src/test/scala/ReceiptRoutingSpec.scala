@@ -20,7 +20,7 @@ import service.{FileService, ReceiptService}
 
 import scala.concurrent.Future
 
-class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with MockitoSugar with ScalaFutures with JsonProtocols  {
+class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with MockitoSugar with JsonProtocols  {
 
   val receiptService = mock[ReceiptService]
   val fileService = mock[FileService]

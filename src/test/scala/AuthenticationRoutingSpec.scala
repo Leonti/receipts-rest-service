@@ -19,7 +19,7 @@ import routing.AuthenticationRouting
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
-class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with MockitoSugar with ScalaFutures with JsonProtocols {
+class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with MockitoSugar with JsonProtocols {
 
   val authenticator = mock[Authenticator[User]]
 
