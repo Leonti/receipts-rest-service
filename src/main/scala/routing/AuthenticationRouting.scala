@@ -3,6 +3,7 @@ package routing
 import java.util.Date
 
 import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.server.AuthenticationFailedRejection.Cause
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import de.choffmeister.auth.akkahttp.Authenticator
@@ -22,7 +23,7 @@ class AuthenticationRouting(authenticator: Authenticator[User]) extends JsonProt
   def myRejectionHandler =
     RejectionHandler.newBuilder()
       .handle { case AuthenticationFailedRejection(cause, challenge) =>
-        complete((Unauthorized -> ErrorResponse("The supplied authentication is invalid")))
+        complete((Unauthorized -> ErrorResponse(s"The supplied authentication is invalid ${cause.toString}")))
       }
       .result()
 

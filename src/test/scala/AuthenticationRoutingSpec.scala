@@ -60,7 +60,7 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
 
       status shouldEqual Unauthorized
       contentType shouldBe `application/json`
-      responseAs[ErrorResponse] shouldEqual ErrorResponse("The supplied authentication is invalid")
+      responseAs[ErrorResponse] shouldEqual ErrorResponse("The supplied authentication is invalid CredentialsRejected")
     }
   }
 
@@ -76,7 +76,8 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
 
     val authenticationRouting = new AuthenticationRouting(authenticator)
 
-    Get("/token/renew", OAuth2AccessTokenResponse("bearer", "token_str", 1000)) ~> authenticationRouting.routes ~> check {
+    // OAuth2AccessTokenResponse("bearer", "token_str", 1000)
+    Get("/token/renew") ~> authenticationRouting.routes ~> check {
       status shouldBe OK
       contentType shouldBe `application/json`
       responseAs[String] should include ("access_token")
@@ -95,10 +96,11 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
 
     val authenticationRouting = new AuthenticationRouting(authenticator)
 
-    Get("/token/renew", OAuth2AccessTokenResponse("bearer", "token_str", 1000)) ~> authenticationRouting.routes ~> check {
+    // OAuth2AccessTokenResponse("bearer", "token_str", 1000)
+    Get("/token/renew") ~> authenticationRouting.routes ~> check {
       status shouldEqual Unauthorized
       contentType shouldBe `application/json`
-      responseAs[ErrorResponse] shouldEqual ErrorResponse("The supplied authentication is invalid")
+      responseAs[ErrorResponse] shouldEqual ErrorResponse("The supplied authentication is invalid CredentialsMissing")
     }
   }
 }
