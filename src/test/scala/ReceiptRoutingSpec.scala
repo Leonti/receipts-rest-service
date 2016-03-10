@@ -7,7 +7,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import de.choffmeister.auth.akkahttp.Authenticator
-import model.{JsonProtocols, ErrorResponse, ReceiptEntity, User}
+import model._
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
@@ -34,8 +34,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    when(fileService.save(any[String], any[Source[ByteString, Any]])).thenReturn(Future("1234"))
-    when(receiptService.createReceipt("123-user", "1234")).thenReturn(Future(receipt))
+    val fileEntity = FileEntity(ext = "png")
+    when(fileService.save(any[String], any[Source[ByteString, Any]], any[String])).thenReturn(Future(fileEntity))
+    when(receiptService.createReceipt("123-user", fileEntity)).thenReturn(Future(receipt))
 
     val content = "file content".getBytes
     val multipartForm =
@@ -60,8 +61,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    when(fileService.save(any[String], any[Source[ByteString, Any]])).thenReturn(Future("1234"))
-    when(receiptService.createReceipt("123-user", "1234")).thenReturn(Future(receipt))
+    val fileEntity = FileEntity(ext = "png")
+    when(fileService.save(any[String], any[Source[ByteString, Any]], any[String])).thenReturn(Future(fileEntity))
+    when(receiptService.createReceipt("123-user", fileEntity)).thenReturn(Future(receipt))
 
     val content = "file content".getBytes
     val multipartForm =
@@ -86,9 +88,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    when(fileService.save(any[String], any[Source[ByteString, Any]])).thenReturn(Future("1234"))
-    when(receiptService.addFileToReceipt(receipt.id, "1234")).thenReturn(Future(Some(receipt)))
-   // when(receiptService.createReceipt("123-user", "1234")).thenReturn(Future(receipt))
+    val fileEntity = FileEntity(ext = "png")
+    when(fileService.save(any[String], any[Source[ByteString, Any]], any[String])).thenReturn(Future(fileEntity))
+    when(receiptService.addFileToReceipt(receipt.id, fileEntity)).thenReturn(Future(Some(receipt)))
 
     val content = "file content".getBytes
     val multipartForm =

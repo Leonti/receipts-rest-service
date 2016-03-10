@@ -1,4 +1,4 @@
-import model.ReceiptEntity
+import model.{FileEntity, ReceiptEntity}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -28,7 +28,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository)
 
-    whenReady(receiptService.createReceipt("user id", "file id")) { result =>
+    whenReady(receiptService.createReceipt("user id", FileEntity(ext = "png"))) { result =>
       result shouldBe receipt
     }
   }
@@ -69,7 +69,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository)
 
-    whenReady(receiptService.addFileToReceipt("1", "fileId")) { savedReceipt =>
+    whenReady(receiptService.addFileToReceipt("1", FileEntity(ext = "png"))) { savedReceipt =>
       savedReceipt shouldBe Some(receipt)
     }
   }
@@ -83,7 +83,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository)
 
-    whenReady(receiptService.addFileToReceipt("1", "fileId")) { result =>
+    whenReady(receiptService.addFileToReceipt("1", FileEntity(ext = "png"))) { result =>
       result shouldBe None
     }
   }

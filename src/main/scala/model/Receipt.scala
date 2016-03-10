@@ -5,13 +5,11 @@ import reactivemongo.bson.{BSONDocumentWriter, BSONDocument, BSONDocumentReader}
 case class ReceiptEntity(
                           id: String = java.util.UUID.randomUUID.toString,
                           userId: String,
-                          files: List[String] = List.empty,
+                          files: List[FileEntity] = List.empty,
                           description: String = "",
                           total: Option[BigDecimal] = None,
                           timestamp: Long = System.currentTimeMillis
                         ) extends WithId
-
-case class FileEntry(id: String)
 
 object ReceiptEntity {
 
@@ -20,7 +18,7 @@ object ReceiptEntity {
     def read(doc: BSONDocument): ReceiptEntity = Serialization.deserialize(doc, ReceiptEntity(
       id = doc.getAs[String]("_id").get,
       userId = doc.getAs[String]("userId").get,
-      files = doc.getAs[List[String]]("files").get,
+      files = doc.getAs[List[FileEntity]]("files").get,
       description = doc.getAs[String]("description").get,
       total = doc.getAs[String]("total") match {
         case Some(value) => if (value != "None") Some(BigDecimal(value)) else None

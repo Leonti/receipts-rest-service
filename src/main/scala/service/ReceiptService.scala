@@ -1,6 +1,6 @@
 package service
 
-import model.ReceiptEntity
+import model.{FileEntity, ReceiptEntity}
 import repository.ReceiptRepository
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -9,8 +9,8 @@ class ReceiptService (receiptRepository: ReceiptRepository) {
 
   def findForUserId(userId: String): Future[List[ReceiptEntity]] = receiptRepository.findForUserId(userId)
 
-  def createReceipt(userId: String, fileId: String): Future[ReceiptEntity] = {
-      val receiptEntity = ReceiptEntity(userId = userId, files = List(fileId))
+  def createReceipt(userId: String, file: FileEntity): Future[ReceiptEntity] = {
+      val receiptEntity = ReceiptEntity(userId = userId, files = List(file))
       receiptRepository.save(receiptEntity)
   }
 
@@ -19,13 +19,12 @@ class ReceiptService (receiptRepository: ReceiptRepository) {
 
   def save(receiptEntity: ReceiptEntity): Future[ReceiptEntity] = receiptRepository.save(receiptEntity)
 
-  def addFileToReceipt(receiptId: String, fileId: String)(implicit ec: ExecutionContext) : Future[Option[ReceiptEntity]] = {
+  def addFileToReceipt(receiptId: String, file: FileEntity)(implicit ec: ExecutionContext) : Future[Option[ReceiptEntity]] = {
 
     receiptRepository.findById(receiptId).flatMap((receiptEntity: Option[ReceiptEntity]) => receiptEntity match {
-      case Some(receipt: ReceiptEntity) => save(receipt.copy(files = receipt.files :+ fileId)).map(result => Some(result))
+      case Some(receipt: ReceiptEntity) => save(receipt.copy(files = receipt.files :+ file)).map(result => Some(result))
       case None => Future(None)
     })
-
 
   }
 }
