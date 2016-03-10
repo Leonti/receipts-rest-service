@@ -47,26 +47,11 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                   }
                 }
               } ~
-                post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
-                  fileUpload("receipt") {
-                    case (metadata: FileInfo, byteSource: Source[ByteString, Any]) =>
-                      val fileUploadFuture: Future[String] = fileService.save(byteSource)
-
-                      val receiptIdFuture: Future[ReceiptEntity] = fileUploadFuture.flatMap((fileId: String) => receiptService.createReceipt(
-                        userId = userId, fileId = fileId
-                      ))
-
-                      onComplete(receiptIdFuture) { receipt =>
-                        complete(Created -> receipt)
-                      }
-                  }
-                } ~
                 path(Segment / "file") { receiptId: String =>
                   post {
-                    println("adding file to receipt")
                     fileUpload("receipt") {
                       case (metadata: FileInfo, byteSource: Source[ByteString, Any]) =>
-                        val fileUploadFuture: Future[String] = fileService.save(byteSource)
+                        val fileUploadFuture: Future[String] = fileService.save(userId, byteSource)
 
                         val receiptFuture: Future[Option[ReceiptEntity]] = fileUploadFuture.flatMap((fileId: String) => receiptService.addFileToReceipt(receiptId, fileId))
 
@@ -81,6 +66,20 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                           }
                         }
                     }
+                  }
+                } ~
+                post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
+                  fileUpload("receipt") {
+                    case (metadata: FileInfo, byteSource: Source[ByteString, Any]) =>
+                      val fileUploadFuture: Future[String] = fileService.save(userId, byteSource)
+
+                      val receiptIdFuture: Future[ReceiptEntity] = fileUploadFuture.flatMap((fileId: String) => receiptService.createReceipt(
+                        userId = userId, fileId = fileId
+                      ))
+
+                      onComplete(receiptIdFuture) { receipt =>
+                        complete(Created -> receipt)
+                      }
                   }
                 }
             }

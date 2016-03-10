@@ -19,7 +19,7 @@ object ReceiptEntity {
 
     def read(doc: BSONDocument): ReceiptEntity = Serialization.deserialize(doc, ReceiptEntity(
       id = doc.getAs[String]("_id").get,
-      userId = doc.getAs[String]("userId"). get,
+      userId = doc.getAs[String]("userId").get,
       files = doc.getAs[List[String]]("files").get,
       description = doc.getAs[String]("description").get,
       total = doc.getAs[String]("total") match {
@@ -36,7 +36,7 @@ object ReceiptEntity {
       BSONDocument(
         "_id" -> receiptEntity.id,
         "userId" -> receiptEntity.userId,
-        "fileId" -> receiptEntity.files,
+        "files" -> receiptEntity.files,
         "description" -> receiptEntity.description,
         "total" -> receiptEntity.total.toString,
         "timestamp" -> receiptEntity.timestamp

@@ -9,6 +9,7 @@ import com.mfglabs.commons.aws.s3.{AmazonS3AsyncClient, S3StreamBuilder}
 import com.typesafe.config.Config
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 // https://github.com/minio/minio-java
 class FileService(config: Config, materializer: Materializer) {
@@ -18,16 +19,16 @@ class FileService(config: Config, materializer: Materializer) {
   lazy val s3StreamBuilder = S3StreamBuilder(new AmazonS3AsyncClient(
     new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))))
 
-  def save(source: Source[ByteString, Any]): Future[String] = {
+  def save(userId: String, source: Source[ByteString, Any]): Future[String] = {
     val fileId = java.util.UUID.randomUUID.toString
 
     val s3FileFlow: Flow[ByteString, CompleteMultipartUploadResult, Unit] = s3StreamBuilder
-      .uploadStreamAsFile(config.getString("s3.bucket"), s"user/${fileId}", chunkUploadConcurrency = 2)
+      .uploadStreamAsFile(config.getString("s3.bucket"), s"user/${userId}/${fileId}", chunkUploadConcurrency = 2)
     val resultSink: Sink[CompleteMultipartUploadResult, Future[String]] = Sink.fold[String, CompleteMultipartUploadResult]("")(_ + _.getLocation())
 
     val runnable: RunnableGraph[Future[String]] = source.via(s3FileFlow).toMat(resultSink)(Keep.right)
 
-    runnable.run()
+    runnable.run().map(_ => fileId)
   }
 
 }

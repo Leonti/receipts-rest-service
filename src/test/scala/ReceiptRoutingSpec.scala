@@ -34,7 +34,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    when(fileService.save(any[Source[ByteString, Any]])).thenReturn(Future("1234"))
+    when(fileService.save(any[String], any[Source[ByteString, Any]])).thenReturn(Future("1234"))
     when(receiptService.createReceipt("123-user", "1234")).thenReturn(Future(receipt))
 
     val content = "file content".getBytes
@@ -60,7 +60,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    when(fileService.save(any[Source[ByteString, Any]])).thenReturn(Future("1234"))
+    when(fileService.save(any[String], any[Source[ByteString, Any]])).thenReturn(Future("1234"))
     when(receiptService.createReceipt("123-user", "1234")).thenReturn(Future(receipt))
 
     val content = "file content".getBytes
@@ -86,8 +86,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    when(fileService.save(any[Source[ByteString, Any]])).thenReturn(Future("1234"))
-    when(receiptService.createReceipt("123-user", "1234")).thenReturn(Future(receipt))
+    when(fileService.save(any[String], any[Source[ByteString, Any]])).thenReturn(Future("1234"))
+    when(receiptService.addFileToReceipt(receipt.id, "1234")).thenReturn(Future(Some(receipt)))
+   // when(receiptService.createReceipt("123-user", "1234")).thenReturn(Future(receipt))
 
     val content = "file content".getBytes
     val multipartForm =
@@ -96,7 +97,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
         HttpEntity(`application/octet-stream`, content),
         Map("filename" -> "receipt.png")))
 
-    Post("/user/123-user/receipt/1234/file", multipartForm) ~> receiptRouting.routes ~> check {
+    Post(s"/user/123-user/receipt/${receipt.id}/file", multipartForm) ~> receiptRouting.routes ~> check {
       status shouldBe Created
       contentType shouldBe `application/json`
       responseAs[ReceiptEntity].id shouldBe receipt.id
