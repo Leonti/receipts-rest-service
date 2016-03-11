@@ -106,4 +106,29 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     }
   }
 
+  it should "return a file content" in {
+
+    def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
+      Future(AuthenticationResult.success(User("123-user", "name", "hash")))
+    }
+    val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
+    val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
+
+    val fileEntity = FileEntity(ext = "txt")
+    val receipt = ReceiptEntity(userId = "123-user", files = List(fileEntity))
+
+    val bb = ByteString.newBuilder
+    bb.putBytes("some text".getBytes)
+    val source: Source[ByteString, Unit] = Source[ByteString](List(bb.result()))
+
+    when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
+    when(fileService.fetch("123-user", fileEntity.id)).thenReturn(source)
+
+    Get(s"/user/123-user/receipt/${receipt.id}/file/${fileEntity.id}") ~> receiptRouting.routes ~> check {
+      status shouldBe OK
+      contentType shouldBe `text/plain(UTF-8)`
+      responseAs[String] should include("some text")
+    }
+  }
+
 }

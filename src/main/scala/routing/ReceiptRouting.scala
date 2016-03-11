@@ -1,7 +1,6 @@
 package routing
 
-import akka.http.scaladsl.model.{MediaTypes, HttpEntity}
-import akka.http.scaladsl.model.HttpResponse
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatchers.Segment
@@ -41,16 +40,6 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
         authenticaton { user =>
           authorize(user.id == userId) {
             pathPrefix("receipt") {
-              get {
-                extractRequest { request =>
-
-                  val userReceiptsFuture = receiptService.findForUserId(userId)
-
-                  onComplete(userReceiptsFuture) { userReceipts =>
-                    complete(userReceipts)
-                  }
-                }
-              } ~
                 path(Segment / "file") { receiptId: String =>
                   post {
                     fileUpload("receipt") {
@@ -73,6 +62,41 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                     }
                   }
                 } ~
+                path(Segment / "file" / Segment) { (receiptId, fileId) =>
+                  get {
+                    val extFuture: Future[Option[String]] = receiptService.findById(receiptId)
+                      .map(receiptEntity => receiptEntity
+                        .flatMap(_.files.find(_.id == fileId).map(_.ext)))
+
+                    onComplete(extFuture) { (extResult: Try[Option[String]]) =>
+
+                      extResult match {
+                        case Success(extOption: Option[String]) => extOption match {
+                          case Some(ext) =>
+                            val fileSource: Source[ByteString, Unit] = fileService.fetch(userId, fileId)
+                            val contentType: ContentType = ext match {
+                              case "txt" => ContentTypes.`text/plain(UTF-8)`
+                              case "png" => ContentType(MediaTypes.`image/png`)
+                              case _ => ContentType(MediaTypes.`application/octet-stream`)
+                            }
+
+                            complete(HttpResponse(entity = HttpEntity.Chunked.fromData(
+                              contentType, fileSource)))
+                          case None => complete(BadRequest -> ErrorResponse(s"File ${fileId} was not found in receipt ${receiptId}"))
+                        }
+                        case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: ${t}"))
+                      }
+                    }
+
+                  }
+                } ~
+                get {
+                  val userReceiptsFuture = receiptService.findForUserId(userId)
+
+                  onComplete(userReceiptsFuture) { userReceipts =>
+                    complete(userReceipts)
+                  }
+                } ~
                 post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
                   fileUpload("receipt") {
                     case (metadata: FileInfo, byteSource: Source[ByteString, Any]) =>
@@ -87,12 +111,6 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                       }
                   }
                 }
-            } ~
-            pathPrefix("file"/ Segment) { fileId =>
-              get {
-                val fileSource: Source[ByteString, Unit] = fileService.fetch(userId, fileId)
-                complete(HttpResponse(entity = HttpEntity.Chunked.fromData(MediaTypes.`application/octet-stream`, fileSource)))
-              }
             }
           }
         }
