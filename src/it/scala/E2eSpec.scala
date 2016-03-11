@@ -161,4 +161,28 @@ class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtoco
       receiptEntity.files.length shouldBe 2
     }
   }
+
+  it should "serve a file for a receipt" in {
+    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val createUserRequest = CreateUserRequest(username, "password")
+
+    val fileFuture = for {
+      userInfo <- createUser(createUserRequest)
+      accessToken <- authenticateUser(userInfo)
+      requestEntity <- createTextFileContent("receipt content")
+      response <- Http().singleRequest(HttpRequest(method = HttpMethods.POST,
+        uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+        entity = requestEntity,
+        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      receiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
+      fileResponse <- Http().singleRequest(HttpRequest(method = HttpMethods.GET,
+        uri = s"http://localhost:9000/user/${userInfo.id}/receipt/${receiptEntity.id}/file/${receiptEntity.files(0).id}",
+        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      file <-  Unmarshal(fileResponse.entity).to[String]
+    } yield file
+
+    whenReady(fileFuture) { file =>
+      file should include("receipt content")
+    }
+  }
 }
