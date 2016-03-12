@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 version=$(date +"%y.%m.%d.%H.%M")
 

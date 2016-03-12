@@ -4,4 +4,7 @@ sudo: false
 scala:
    - 2.11.7
 
+services:
+  - docker
+
 script: sbt test && sbt integrate && sbt assembly && bash publish.sh
