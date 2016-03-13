@@ -63,8 +63,13 @@ trait Service extends JsonProtocols {
       logRequestResult("receipt-rest-service") {
         handleRejections(myRejectionHandler) {
           userRouting.routes ~ // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
-            receiptRouting.routes ~
-            authenticationRouting.routes
+          receiptRouting.routes ~
+          authenticationRouting.routes ~
+          path("version") {
+            get{
+              complete(Created -> System.getenv("VERSION"))
+            }
+          }
         }
       }
     }
@@ -87,6 +92,9 @@ object ReceiptRestService extends App with Service {
     validateUserPassword = userService.validatePassword)
 
   override val config = ConfigFactory.load()
+
+  println("Mongo:")
+  println(config.getString("mongodb.db"))
 
   override val logger = Logging(system, getClass)
   override val receiptRouting = new ReceiptRouting(new ReceiptService(new ReceiptRepository()), new FileService(config, materializer), authenticator.bearerToken(acceptExpired = true))

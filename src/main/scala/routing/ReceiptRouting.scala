@@ -4,7 +4,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatchers.Segment
-import akka.http.scaladsl.server.directives.{AuthenticationDirective, FileInfo}
+import akka.http.scaladsl.server.directives.{ContentTypeResolver, AuthenticationDirective, FileInfo}
 import akka.http.scaladsl.server.{AuthorizationFailedRejection, MissingFormFieldRejection, RejectionHandler}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
@@ -74,11 +74,8 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                         case Success(extOption: Option[String]) => extOption match {
                           case Some(ext) =>
                             val fileSource: Source[ByteString, Unit] = fileService.fetch(userId, fileId)
-                            val contentType: ContentType = ext match {
-                              case "txt" => ContentTypes.`text/plain(UTF-8)`
-                              case "png" => ContentType(MediaTypes.`image/png`)
-                              case _ => ContentType(MediaTypes.`application/octet-stream`)
-                            }
+
+                            val contentType = ContentTypeResolver.Default("file." + ext)
 
                             complete(HttpResponse(entity = HttpEntity.Chunked.fromData(
                               contentType, fileSource)))

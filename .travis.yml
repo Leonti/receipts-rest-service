@@ -7,4 +7,8 @@ scala:
 services:
   - docker
 
+branches:
+  only:
+    - master
+
 script: sbt test && sbt integrate && sbt assembly && bash publish.sh
