@@ -1,16 +1,16 @@
-import model.{FileEntity, ReceiptEntity}
+import model.{FileEntity, GenericMetadata, ImageMetadata, ReceiptEntity}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest._
 import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
-
 import org.mockito.Matchers.any
 import repository.ReceiptRepository
 import service.ReceiptService
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Right
@@ -28,7 +28,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository)
 
-    whenReady(receiptService.createReceipt("user id", FileEntity(ext = "png"))) { result =>
+    whenReady(receiptService.createReceipt("user id", FileEntity(ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { result =>
       result shouldBe receipt
     }
   }
@@ -69,7 +69,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository)
 
-    whenReady(receiptService.addFileToReceipt("1", FileEntity(ext = "png"))) { savedReceipt =>
+    whenReady(receiptService.addFileToReceipt("1", FileEntity(ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { savedReceipt =>
       savedReceipt shouldBe Some(receipt)
     }
   }
@@ -83,7 +83,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository)
 
-    whenReady(receiptService.addFileToReceipt("1", FileEntity(ext = "png"))) { result =>
+    whenReady(receiptService.addFileToReceipt("1", FileEntity(ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { result =>
       result shouldBe None
     }
   }

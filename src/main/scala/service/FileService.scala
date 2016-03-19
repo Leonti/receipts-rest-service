@@ -7,7 +7,7 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.model.CompleteMultipartUploadResult
 import com.mfglabs.commons.aws.s3.{AmazonS3AsyncClient, S3StreamBuilder}
 import com.typesafe.config.Config
-import model.FileEntity
+import model.{FileEntity, GenericMetadata}
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -21,7 +21,10 @@ class FileService(config: Config, materializer: Materializer) {
     new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))))
 
   def save(userId: String, source: Source[ByteString, Any], ext: String): Future[FileEntity] = {
-    val file = FileEntity(ext = ext)
+
+
+    // FIXME - just fo testing
+    val file = FileEntity(ext = ext, metaData = GenericMetadata(fileType = "TXT", length = 11))
 
     val s3FileFlow: Flow[ByteString, CompleteMultipartUploadResult, Unit] = s3StreamBuilder
       .uploadStreamAsFile(config.getString("s3.bucket"), s"user/${userId}/${file.id}", chunkUploadConcurrency = 2)
