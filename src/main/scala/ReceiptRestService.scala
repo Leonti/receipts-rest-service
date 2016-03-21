@@ -97,7 +97,7 @@ object ReceiptRestService extends App with Service {
   println(config.getString("mongodb.db"))
 
   override val logger = Logging(system, getClass)
-  override val receiptRouting = new ReceiptRouting(new ReceiptService(new ReceiptRepository()), new FileService(config, materializer), authenticator.bearerToken(acceptExpired = true))
+  override val receiptRouting = new ReceiptRouting(new ReceiptService(new ReceiptRepository()), FileService.s3(config, materializer), authenticator.bearerToken(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)
 
   Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))

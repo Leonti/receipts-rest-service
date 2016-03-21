@@ -34,7 +34,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    val fileEntity = FileEntity(ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
+    val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
     when(fileService.save(any[String], any[Source[ByteString, Any]], any[String])).thenReturn(Future(fileEntity))
     when(receiptService.createReceipt("123-user", fileEntity)).thenReturn(Future(receipt))
 
@@ -61,7 +61,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    val fileEntity = FileEntity(ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
+    val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
     when(fileService.save(any[String], any[Source[ByteString, Any]], any[String])).thenReturn(Future(fileEntity))
     when(receiptService.createReceipt("123-user", fileEntity)).thenReturn(Future(receipt))
 
@@ -88,7 +88,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    val fileEntity = FileEntity(ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
+    val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
     when(fileService.save(any[String], any[Source[ByteString, Any]], any[String])).thenReturn(Future(fileEntity))
     when(receiptService.addFileToReceipt(receipt.id, fileEntity)).thenReturn(Future(Some(receipt)))
 
@@ -114,7 +114,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
-    val fileEntity = FileEntity(ext = "txt", metaData = GenericMetadata(fileType = "TXT", length = 11))
+    val fileEntity = FileEntity(id = "1", ext = "txt", metaData = GenericMetadata(fileType = "TXT", length = 11))
     val receipt = ReceiptEntity(userId = "123-user", files = List(fileEntity))
 
     val bb = ByteString.newBuilder

@@ -39,6 +39,7 @@ libraryDependencies ++= {
     "org.reactivemongo" %% "reactivemongo"                        % reactiveMongoV,
     "de.choffmeister"   %% "auth-common"                          % "0.1.0",
     "de.choffmeister"   %% "auth-akka-http"                       % "0.1.0",
+    "com.sksamuel.scrimage" %% "scrimage-core"                    % "2.1.0",
     "org.scalatest"     %% "scalatest"                            % scalaTestV % "it,test",
     "org.mockito"       %  "mockito-all"                          % "1.8.4" % "test"
   )

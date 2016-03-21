@@ -76,8 +76,8 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                             val fileSource: Source[ByteString, Unit] = fileService.fetch(userId, fileId)
 
                             val contentType = ContentTypeResolver.Default("file." + ext)
-
-                            complete(HttpResponse(entity = HttpEntity.Chunked.fromData(
+                            
+                            complete(HttpResponse(entity = HttpEntity(
                               contentType, fileSource)))
                           case None => complete(BadRequest -> ErrorResponse(s"File ${fileId} was not found in receipt ${receiptId}"))
                         }

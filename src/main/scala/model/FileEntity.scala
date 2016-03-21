@@ -5,7 +5,7 @@ import model.FileMetadata.FileMetadataBSONReader.FileMetadataBSONWriter
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 import spray.json.{DeserializationException, JsNumber, JsObject, JsString, JsValue, RootJsonFormat}
 
-case class FileEntity(id: String = java.util.UUID.randomUUID.toString, ext: String, metaData: FileMetadata, timestamp: Long = System.currentTimeMillis)
+case class FileEntity(id: String, ext: String, metaData: FileMetadata, timestamp: Long = System.currentTimeMillis)
 
 trait FileMetadata {
   def fileType: String
@@ -13,7 +13,7 @@ trait FileMetadata {
 }
 
 case class ImageMetadata(fileType: String = "IMAGE", length: Long, width: Int, height: Int) extends FileMetadata
-case class GenericMetadata(fileType: String, length: Long) extends FileMetadata
+case class GenericMetadata(fileType: String = "UNKNOWN", length: Long) extends FileMetadata
 
 object FileMetadataFormat extends RootJsonFormat[FileMetadata] {
   def write(fileMetadata: FileMetadata) = {

@@ -1,25 +1,25 @@
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.Multipart.FormData.Strict
-import akka.http.scaladsl.model.headers.{OAuth2BearerToken, BasicHttpCredentials, Authorization}
+import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, OAuth2BearerToken}
 import de.choffmeister.auth.common.OAuth2AccessTokenResponse
-import model.{ReceiptEntity, CreateUserRequest, UserInfo, JsonProtocols}
+import model._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FlatSpec, Matchers}
-
 import akka.http.scaladsl.unmarshalling.Unmarshal
-
 import akka.http.scaladsl.marshalling.Marshal
-
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
 
 import scala.concurrent.Future
-
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.io.BufferedSource
 
 class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtocols {
 
@@ -92,14 +92,25 @@ class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtoco
     Marshal(multipartForm).to[RequestEntity]
   }
 
-  it should "create a receipt from a file" in {
+  def createImageFileContent(): Future[RequestEntity] = {
+    val receiptImage: BufferedSource = scala.io.Source.fromURL(getClass.getResource("/receipt.png"), "ISO-8859-1")
+    val content = receiptImage.map(_.toByte).toArray
+    val multipartForm =
+      Multipart.FormData(Multipart.FormData.BodyPart.Strict(
+        "receipt",
+        HttpEntity(`application/octet-stream`, content),
+        Map("filename" -> "receipt.png")))
+    Marshal(multipartForm).to[RequestEntity]
+  }
+
+  it should "create a receipt from an image" in {
     val username = "ci_user_" + java.util.UUID.randomUUID()
     val createUserRequest = CreateUserRequest(username, "password")
 
     val receiptEntityFuture = for {
       userInfo <- createUser(createUserRequest)
       accessToken <- authenticateUser(userInfo)
-      requestEntity <- createTextFileContent("receipt content")
+      requestEntity <- createImageFileContent()
       response <- Http().singleRequest(HttpRequest(method = HttpMethods.POST,
         uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
         entity = requestEntity,
@@ -109,6 +120,13 @@ class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtoco
 
     whenReady(receiptEntityFuture) { receiptEntity =>
       receiptEntity.files.length shouldBe 1
+      receiptEntity.files(0).metaData match {
+        case ImageMetadata(fileType, length, width, height) =>
+          width shouldBe 50
+          height shouldBe 67
+          length shouldBe 5874
+        case _ => fail("Metadata should be of an IMAGE type!")
+      }
     }
   }
 

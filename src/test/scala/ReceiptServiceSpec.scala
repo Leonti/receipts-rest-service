@@ -28,7 +28,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository)
 
-    whenReady(receiptService.createReceipt("user id", FileEntity(ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { result =>
+    whenReady(receiptService.createReceipt("user id", FileEntity(id = "1", ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { result =>
       result shouldBe receipt
     }
   }
@@ -69,7 +69,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository)
 
-    whenReady(receiptService.addFileToReceipt("1", FileEntity(ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { savedReceipt =>
+    whenReady(receiptService.addFileToReceipt("1", FileEntity(id = "1", ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { savedReceipt =>
       savedReceipt shouldBe Some(receipt)
     }
   }
@@ -83,7 +83,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository)
 
-    whenReady(receiptService.addFileToReceipt("1", FileEntity(ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { result =>
+    whenReady(receiptService.addFileToReceipt("1", FileEntity(id = "1", ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { result =>
       result shouldBe None
     }
   }
