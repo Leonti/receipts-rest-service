@@ -82,7 +82,6 @@ object ReceiptRestService extends App with Service {
   override implicit val materializer = ActorMaterializer()
 
   val userService = new UserService(new UserRepository())
-  override val userRouting = new UserRouting(userService)
 
   val authenticator = new Authenticator[User](
     realm = "Example realm",
@@ -98,6 +97,7 @@ object ReceiptRestService extends App with Service {
 
   override val logger = Logging(system, getClass)
   override val receiptRouting = new ReceiptRouting(new ReceiptService(new ReceiptRepository()), FileService.s3(config, materializer), authenticator.bearerToken(acceptExpired = true))
+  override val userRouting = new UserRouting(userService, authenticator.bearerToken(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)
 
   Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))

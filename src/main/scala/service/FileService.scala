@@ -1,5 +1,7 @@
 package service
 
+import java.io.File
+
 import akka.stream.{ClosedShape, Materializer, SourceShape}
 import akka.stream.scaladsl.{Flow, Source, _}
 import akka.util.ByteString
@@ -14,44 +16,30 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
-// https://github.com/minio/minio-java
 trait FileService {
 
-  def save(userId: String, source: Source[ByteString, Any], ext: String): Future[FileEntity]
+  def save(userId: String, file: File, ext: String): Future[FileEntity]
 
   def fetch(userId: String, fileId: String): Source[ByteString, Unit]
 
-  protected def save(userId: String, fileId: String, source: Source[ByteString, Any],
+
+  protected def save(userId: String, fileId: String, file: File,
                      uploadFlow: Flow[ByteString, String, Unit], ext: String)(implicit materializer: Materializer): Future[FileEntity] = {
 
-    val fileEntityFlow: Flow[ByteString, FileEntity, Unit] = Flow[ByteString].map(byteString => {
-
+    def toFileEntity(): FileEntity = {
       val image: Option[Image] = Try {
-        Some(Image(byteString.toArray))
+        Some(Image.fromFile(file))
       } getOrElse(None)
 
       image match {
-        case Some(i) => FileEntity(id = fileId, ext = ext, metaData = ImageMetadata(length = byteString.length, width = i.width, height = i.height))
-        case _ => FileEntity(id = fileId, ext = ext, metaData = GenericMetadata(length = byteString.length))
+        case Some(i) =>
+          FileEntity(id = fileId, ext = ext, metaData = ImageMetadata(length = file.length, width = i.width, height = i.height))
+        case _ => FileEntity(id = fileId, ext = ext, metaData = GenericMetadata(length = file.length))
       }
-    })
+    }
 
-    val resultSink: Sink[FileEntity, Future[FileEntity]] = Sink.last
-    val graph: RunnableGraph[Future[FileEntity]] = RunnableGraph.fromGraph(GraphDSL.create(resultSink) { implicit builder =>
-      sink =>
-        import GraphDSL.Implicits._
-
-        val bcast = builder.add(Broadcast[ByteString](2))
-        val zip = builder.add(ZipWith[String, FileEntity, FileEntity]((left, right) => right))
-
-        source ~> bcast ~> uploadFlow ~> zip.in0
-        bcast ~> fileEntityFlow ~> zip.in1
-        zip.out ~> sink.in
-
-        ClosedShape
-    })
-
-    graph.run()
+    val fileUploadSink: Sink[String, Future[String]] = Sink.last
+    FileIO.fromFile(file).via(uploadFlow).runWith(fileUploadSink).map(_ => toFileEntity())
   }
 
 }
@@ -63,14 +51,16 @@ class S3FileService(config: Config, materializer: Materializer) extends FileServ
   new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))))
 
 
-  def save(userId: String, source: Source[ByteString, Any], ext: String): Future[FileEntity] = {
+  def save(userId: String, file: File, ext: String): Future[FileEntity] = {
     val fileId = java.util.UUID.randomUUID.toString;
 
     val s3FileFlow: Flow[ByteString, String, Unit] = s3StreamBuilder
     .uploadStreamAsFile(config.getString("s3.bucket"), s"user/${userId}/${fileId}", chunkUploadConcurrency = 2)
-    .map(uploadResult => uploadResult.getKey)
+    .map(uploadResult => {
+      println("S3 UPLOAD FINISHED")
+      uploadResult.getKey})
 
-    save(userId, fileId, source, s3FileFlow, ext)
+    save(userId, fileId, file, s3FileFlow, ext)
   }
 
   def fetch(userId: String, fileId: String): Source[ByteString, Unit] = {

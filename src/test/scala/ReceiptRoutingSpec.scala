@@ -13,6 +13,7 @@ import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, FlatSpec}
+import java.io.File
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import routing.ReceiptRouting
@@ -35,7 +36,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
     val receipt = ReceiptEntity(userId = "123-user")
     val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
-    when(fileService.save(any[String], any[Source[ByteString, Any]], any[String])).thenReturn(Future(fileEntity))
+    when(fileService.save(any[String], any[File], any[String])).thenReturn(Future(fileEntity))
     when(receiptService.createReceipt("123-user", fileEntity)).thenReturn(Future(receipt))
 
     val content = "file content".getBytes
@@ -62,7 +63,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
     val receipt = ReceiptEntity(userId = "123-user")
     val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
-    when(fileService.save(any[String], any[Source[ByteString, Any]], any[String])).thenReturn(Future(fileEntity))
+    when(fileService.save(any[String], any[File], any[String])).thenReturn(Future(fileEntity))
     when(receiptService.createReceipt("123-user", fileEntity)).thenReturn(Future(receipt))
 
     val content = "file content".getBytes
@@ -89,7 +90,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
     val receipt = ReceiptEntity(userId = "123-user")
     val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
-    when(fileService.save(any[String], any[Source[ByteString, Any]], any[String])).thenReturn(Future(fileEntity))
+    when(fileService.save(any[String], any[File], any[String])).thenReturn(Future(fileEntity))
     when(receiptService.addFileToReceipt(receipt.id, fileEntity)).thenReturn(Future(Some(receipt)))
 
     val content = "file content".getBytes

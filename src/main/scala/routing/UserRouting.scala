@@ -7,10 +7,10 @@ import service.UserService
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
-
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.server.directives.AuthenticationDirective
 
-class UserRouting(userService: UserService) extends JsonProtocols {
+class UserRouting(userService: UserService, authenticaton: AuthenticationDirective[User]) extends JsonProtocols {
 
   val routes = pathPrefix("user" / "create") {
     // curl -H "Content-Type: application/json" -i -X POST -d '{"userName": "leonti3", "password": "pass1"}' http://localhost:9000/user/create
@@ -27,5 +27,11 @@ class UserRouting(userService: UserService) extends JsonProtocols {
         }
       }
     }
+  } ~ path("user" / "info") {
+      get {
+        authenticaton { (user: User) =>
+          complete(OK -> UserInfo(id = user.id, userName = user.userName))
+        }
+      }
   }
 }

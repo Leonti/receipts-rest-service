@@ -82,6 +82,23 @@ class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtoco
     }
   }
 
+  it should "display user info" in {
+    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val createUserRequest = CreateUserRequest(username, "password")
+
+    val userInfoFuture = for {
+      userInfo <- createUser(createUserRequest)
+      accessToken <- authenticateUser(userInfo)
+      response <- Http().singleRequest(HttpRequest(uri = s"http://localhost:9000/user/info",
+        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      userInfo <- Unmarshal(response.entity).to[UserInfo]
+    } yield userInfo
+
+    whenReady(userInfoFuture) { userInfo =>
+      userInfo.userName shouldBe username
+    }
+  }
+
   def createTextFileContent(text: String): Future[RequestEntity] = {
     val content = text.getBytes
     val multipartForm =
