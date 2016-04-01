@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatchers.Segment
 import akka.http.scaladsl.server.directives.{AuthenticationDirective, ContentTypeResolver, FileInfo}
-import akka.http.scaladsl.server.{AuthorizationFailedRejection, MissingFormFieldRejection, RejectionHandler}
+import akka.http.scaladsl.server.{AuthorizationFailedRejection, MissingFormFieldRejection, RejectionHandler, Route}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import model._
@@ -18,6 +18,8 @@ import akka.event.{Logging, LoggingAdapter}
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import spray.json._
+import gnieh.diffson._
 
 class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, authenticaton: AuthenticationDirective[User]
                     )(implicit val executor: ExecutionContextExecutor) extends JsonProtocols {
@@ -34,11 +36,52 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
 
   def ext(fileName: String): String = fileName.split("\\.")(1)
 
+  val respondWithReceipt: (Future[Option[ReceiptEntity]]) => Route = (receiptFuture) => {
+
+    onComplete(receiptFuture) { result: Try[Option[ReceiptEntity]] =>
+      result match {
+        case Success(receiptResult: Option[ReceiptEntity]) => receiptResult match {
+          case Some(receipt) => complete(OK -> receipt)
+          case None => complete(BadRequest -> ErrorResponse(s"Failed to get or update receipt"))
+        }
+        case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: ${t}"))
+      }
+    }
+
+  }
+
+  val patchAndSaveReceipt: (String, String) => Future[Option[ReceiptEntity]] = (receiptId, jsonPatch) => {
+    val patchedReceipt: Future[Option[ReceiptEntity]] = receiptService.findById(receiptId)
+      .map(_.map(patchReceipt(_, jsonPatch)))
+
+    patchedReceipt.flatMap(_ match {
+      case Some(receipt) => receiptService.save(receipt).map(Some(_))
+      case None => Future.successful(None)
+    })
+  }
+
+  val patchReceipt: (ReceiptEntity, String) => ReceiptEntity = (receiptEntity, jsonPatch) => {
+
+    val asJson: String = receiptEntity.toJson.compactPrint
+    val patched: String = JsonPatch.parse(jsonPatch).apply(asJson)
+    patched.parseJson.convertTo[ReceiptEntity]
+  }
+
   val routes =
     handleRejections(myRejectionHandler) {
       pathPrefix("user" / Segment / "receipt") { userId: String =>
         authenticaton { user =>
           authorize(user.id == userId) {
+            path(Segment) { receiptId: String =>
+              get {
+                respondWithReceipt(receiptService.findById(receiptId))
+              } ~
+              patch {
+                entity(as[String]) { receiptPatch =>
+                  respondWithReceipt(patchAndSaveReceipt(receiptId, receiptPatch))
+                }
+              }
+            } ~
             path(Segment / "file") { receiptId: String =>
               post {
                 uploadedFile("receipt") {

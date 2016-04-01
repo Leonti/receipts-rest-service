@@ -197,6 +197,45 @@ class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtoco
     }
   }
 
+  it should "patch a receipt" in {
+    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val createUserRequest = CreateUserRequest(username, "password")
+
+    val receiptEntityFuture = for {
+      userInfo <- createUser(createUserRequest)
+      accessToken <- authenticateUser(userInfo)
+      firstFileEntity <- createTextFileContent("first file")
+      response <- Http().singleRequest(HttpRequest(method = HttpMethods.POST,
+        uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+        entity = firstFileEntity,
+        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      receiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
+
+      _ <- {
+        val patch = """[
+                      |  {
+                      |    "op": "replace",
+                      |    "path": "/description",
+                      |    "value": "some new description"
+                      |  }
+                      |]""".stripMargin
+        Http().singleRequest(HttpRequest(method = HttpMethods.PATCH,
+          uri = s"http://localhost:9000/user/${userInfo.id}/receipt/${receiptEntity.id}",
+          entity = HttpEntity(`application/json`, patch),
+          headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      }
+
+      secondResponse <- Http().singleRequest(HttpRequest(method = HttpMethods.GET,
+        uri = s"http://localhost:9000/user/${userInfo.id}/receipt/${receiptEntity.id}",
+        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      updatedReceipt <- Unmarshal(secondResponse.entity).to[ReceiptEntity]
+    } yield updatedReceipt
+
+    whenReady(receiptEntityFuture) { receiptEntity =>
+      receiptEntity.description shouldBe "some new description"
+    }
+  }
+
   it should "serve a file for a receipt" in {
     val username = "ci_user_" + java.util.UUID.randomUUID()
     val createUserRequest = CreateUserRequest(username, "password")
