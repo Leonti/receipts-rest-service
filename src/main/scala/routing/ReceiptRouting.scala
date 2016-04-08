@@ -138,22 +138,27 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
               }
             } ~
             post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
-              uploadedFile("receipt") {
-                case (metadata: FileInfo, file: File) =>
+              formFields('total, 'description) { (total, description) =>
+                uploadedFile("receipt") {
+                  case (metadata: FileInfo, file: File) =>
 
-                  import akka.stream.scaladsl.FileIO
-                  val byteSource = FileIO.fromFile(file)
-                 // byteSource: Source[ByteString, Any]
-                  val fileUploadFuture: Future[FileEntity] = fileService.save(userId, file, ext(metadata.fileName))
+                    import akka.stream.scaladsl.FileIO
+                    val byteSource = FileIO.fromFile(file)
+                    // byteSource: Source[ByteString, Any]
+                    val fileUploadFuture: Future[FileEntity] = fileService.save(userId, file, ext(metadata.fileName))
 
-                  val receiptIdFuture: Future[ReceiptEntity] = fileUploadFuture.flatMap((file: FileEntity) => receiptService.createReceipt(
-                    userId = userId, file = file
-                  ))
+                    val receiptIdFuture: Future[ReceiptEntity] = fileUploadFuture.flatMap((file: FileEntity) => receiptService.createReceipt(
+                      userId = userId,
+                      file = file,
+                      total = Try(BigDecimal(total)).map(Some(_)).getOrElse(None),
+                      description = description
+                    ))
 
-                  onComplete(receiptIdFuture) { receipt =>
-                    file.delete()
-                    complete(Created -> receipt)
-                  }
+                    onComplete(receiptIdFuture) { receipt =>
+                      file.delete()
+                      complete(Created -> receipt)
+                    }
+                }
               }
             }
           }

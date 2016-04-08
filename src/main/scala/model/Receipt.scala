@@ -21,7 +21,7 @@ object ReceiptEntity {
       files = doc.getAs[List[FileEntity]]("files").get,
       description = doc.getAs[String]("description").get,
       total = doc.getAs[String]("total") match {
-        case Some(value) => if (value != "None") Some(BigDecimal(value)) else None
+        case Some(value) => if (value != "None") Some(BigDecimal(value.replace("Some(", "").replace(")", ""))) else None
         case None => None
       },
       timestamp = doc.getAs[Long]("timestamp").get

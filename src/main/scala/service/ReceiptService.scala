@@ -9,8 +9,13 @@ class ReceiptService (receiptRepository: ReceiptRepository) {
 
   def findForUserId(userId: String): Future[List[ReceiptEntity]] = receiptRepository.findForUserId(userId)
 
-  def createReceipt(userId: String, file: FileEntity): Future[ReceiptEntity] = {
-      val receiptEntity = ReceiptEntity(userId = userId, files = List(file))
+  def createReceipt(userId: String, file: FileEntity, total: Option[BigDecimal], description: String):
+    Future[ReceiptEntity] = {
+      val receiptEntity = ReceiptEntity(
+        userId = userId,
+        total = total,
+        description = description,
+        files = List(file))
       receiptRepository.save(receiptEntity)
   }
 

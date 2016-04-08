@@ -15,6 +15,7 @@ import akka.stream.ActorMaterializer
 
 import scala.concurrent.Future
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.model.HttpEntity.Default
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 
@@ -105,7 +106,10 @@ class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtoco
       Multipart.FormData(Multipart.FormData.BodyPart.Strict(
         "receipt",
         HttpEntity(`application/octet-stream`, content),
-        Map("filename" -> "receipt.txt")))
+        Map("filename" -> "receipt.txt")),
+        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity("12.38")),
+        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description"))
+      )
     Marshal(multipartForm).to[RequestEntity]
   }
 
@@ -116,7 +120,10 @@ class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtoco
       Multipart.FormData(Multipart.FormData.BodyPart.Strict(
         "receipt",
         HttpEntity(`application/octet-stream`, content),
-        Map("filename" -> "receipt.png")))
+        Map("filename" -> "receipt.png")),
+        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity("12.38")),
+        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description"))
+      )
     Marshal(multipartForm).to[RequestEntity]
   }
 
@@ -258,5 +265,11 @@ class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtoco
     whenReady(fileFuture) { file =>
       file should include("receipt content")
     }
+  }
+
+  def utf8TextEntity(content: String) = {
+    val bytes = ByteString(content)
+    HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, bytes)
+    //HttpEntity.Default(ContentTypes.`text/plain(UTF-8)`, bytes.length, Source.single(bytes))
   }
 }

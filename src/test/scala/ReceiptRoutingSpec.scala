@@ -1,8 +1,8 @@
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.{HttpEntity, Multipart}
+import akka.http.scaladsl.model.{ContentTypes, FormData, HttpEntity, Multipart}
 import akka.http.scaladsl.model.headers.{HttpChallenge, HttpCredentials}
-import akka.http.scaladsl.server.directives.{AuthenticationDirective, SecurityDirectives, AuthenticationResult}
+import akka.http.scaladsl.server.directives.{AuthenticationDirective, AuthenticationResult, SecurityDirectives}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
@@ -12,7 +12,7 @@ import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 import java.io.File
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
@@ -26,6 +26,11 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
   val receiptService = mock[ReceiptService]
   val fileService = mock[FileService]
 
+  def utf8TextEntity(content: String) = {
+    val bytes = ByteString(content)
+    HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, bytes)
+  }
+
   it should "create receipt from file upload" in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
@@ -37,14 +42,18 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receipt = ReceiptEntity(userId = "123-user")
     val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
     when(fileService.save(any[String], any[File], any[String])).thenReturn(Future(fileEntity))
-    when(receiptService.createReceipt("123-user", fileEntity)).thenReturn(Future(receipt))
+    when(receiptService.createReceipt("123-user", fileEntity, Some(BigDecimal("12.38")), "some description"))
+      .thenReturn(Future(receipt))
 
     val content = "file content".getBytes
     val multipartForm =
       Multipart.FormData(Multipart.FormData.BodyPart.Strict(
         "receipt",
         HttpEntity(`application/octet-stream`, content),
-        Map("filename" -> "receipt.png")))
+        Map("filename" -> "receipt.png")),
+        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity("12.38")),
+        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description"))
+      )
 
     Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes ~> check {
       status shouldBe Created
@@ -64,14 +73,17 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receipt = ReceiptEntity(userId = "123-user")
     val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
     when(fileService.save(any[String], any[File], any[String])).thenReturn(Future(fileEntity))
-    when(receiptService.createReceipt("123-user", fileEntity)).thenReturn(Future(receipt))
+    when(receiptService.createReceipt("123-user", fileEntity, Some(BigDecimal("12.38")), "some description")).thenReturn(Future(receipt))
 
     val content = "file content".getBytes
     val multipartForm =
       Multipart.FormData(Multipart.FormData.BodyPart.Strict(
         "random_field",
         HttpEntity(`application/octet-stream`, content),
-        Map("filename" -> "receipt.png")))
+        Map("filename" -> "receipt.png")),
+        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity("12.38")),
+        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description"))
+      )
 
     Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes ~> check {
       status shouldBe BadRequest

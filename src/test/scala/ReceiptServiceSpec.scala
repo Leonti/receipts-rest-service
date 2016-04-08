@@ -28,7 +28,12 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository)
 
-    whenReady(receiptService.createReceipt("user id", FileEntity(id = "1", ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { result =>
+    whenReady(receiptService.createReceipt(
+      userId = "user id",
+      file = FileEntity(id = "1", ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)),
+      total = Some(BigDecimal("12.38")),
+      description = "some description"
+    )) { result =>
       result shouldBe receipt
     }
   }
