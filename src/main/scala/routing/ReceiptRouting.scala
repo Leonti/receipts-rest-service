@@ -5,6 +5,7 @@ import java.io.File
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{Directive, RequestContext, Route, RouteResult}
 import akka.http.scaladsl.server.PathMatchers.Segment
 import akka.http.scaladsl.server.directives.{AuthenticationDirective, ContentTypeResolver, FileInfo}
 import akka.http.scaladsl.server.{AuthorizationFailedRejection, MissingFormFieldRejection, RejectionHandler, Route}
@@ -15,14 +16,20 @@ import service.{FileService, ReceiptService}
 import akka.actor.ActorSystem
 import akka.event.{Logging, LoggingAdapter}
 
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.stream.ActorMaterializer
 import spray.json._
 import gnieh.diffson._
 
 class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, authenticaton: AuthenticationDirective[User]
                     )(implicit val executor: ExecutionContextExecutor) extends JsonProtocols {
+
+
+  implicit val system = ActorSystem()
+  implicit val materializer = ActorMaterializer()
 
   def myRejectionHandler =
     RejectionHandler.newBuilder()
@@ -48,6 +55,23 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
       }
     }
 
+  }
+
+  // https://groups.google.com/forum/#!topic/akka-user/ZbeV4h2XYLo
+  def toStrict(timeout: FiniteDuration): Directive[Unit] = {
+    def toStrict0(inner: Unit ⇒ Route): Route = {
+      val result: RequestContext ⇒ Future[RouteResult] = c ⇒ {
+        // call entity.toStrict (returns a future)
+        c.request.entity.toStrict(timeout).flatMap { strict ⇒
+          // modify the context with the strictified entity
+          val c1 = c.withRequest(c.request.withEntity(strict))
+          // call the inner route with the modified context
+          inner()(c1)
+        }
+      }
+      result
+    }
+    Directive[Unit](toStrict0)
   }
 
   val patchAndSaveReceipt: (String, String) => Future[Option[ReceiptEntity]] = (receiptId, jsonPatch) => {
@@ -138,26 +162,28 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
               }
             } ~
             post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
-              formFields('total, 'description) { (total, description) =>
-                uploadedFile("receipt") {
-                  case (metadata: FileInfo, file: File) =>
+              toStrict(1.second) {
+                formFields('total, 'description) { (total, description) =>
+                  uploadedFile("receipt") {
+                    case (metadata: FileInfo, file: File) =>
 
-                    import akka.stream.scaladsl.FileIO
-                    val byteSource = FileIO.fromFile(file)
-                    // byteSource: Source[ByteString, Any]
-                    val fileUploadFuture: Future[FileEntity] = fileService.save(userId, file, ext(metadata.fileName))
+                      import akka.stream.scaladsl.FileIO
+                      val byteSource = FileIO.fromFile(file)
+                      // byteSource: Source[ByteString, Any]
+                      val fileUploadFuture: Future[FileEntity] = fileService.save(userId, file, ext(metadata.fileName))
 
-                    val receiptIdFuture: Future[ReceiptEntity] = fileUploadFuture.flatMap((file: FileEntity) => receiptService.createReceipt(
-                      userId = userId,
-                      file = file,
-                      total = Try(BigDecimal(total)).map(Some(_)).getOrElse(None),
-                      description = description
-                    ))
+                      val receiptIdFuture: Future[ReceiptEntity] = fileUploadFuture.flatMap((file: FileEntity) => receiptService.createReceipt(
+                        userId = userId,
+                        file = file,
+                        total = Try(BigDecimal(total)).map(Some(_)).getOrElse(None),
+                        description = description
+                      ))
 
-                    onComplete(receiptIdFuture) { receipt =>
-                      file.delete()
-                      complete(Created -> receipt)
-                    }
+                      onComplete(receiptIdFuture) { receipt =>
+                        file.delete()
+                        complete(Created -> receipt)
+                      }
+                  }
                 }
               }
             }
