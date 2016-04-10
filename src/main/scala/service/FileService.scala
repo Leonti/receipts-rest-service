@@ -8,9 +8,9 @@ import akka.util.ByteString
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.model.CompleteMultipartUploadResult
 import com.mfglabs.commons.aws.s3.{AmazonS3AsyncClient, S3StreamBuilder}
-import com.sksamuel.scrimage.{Image, ImageParseException}
 import com.typesafe.config.Config
 import model.{FileEntity, GenericMetadata, ImageMetadata}
+import util.SimpleImageInfo
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -27,13 +27,16 @@ trait FileService {
                      uploadFlow: Flow[ByteString, String, Unit], ext: String)(implicit materializer: Materializer): Future[FileEntity] = {
 
     def toFileEntity(): FileEntity = {
-      val image: Option[Image] = Try {
-        Some(Image.fromFile(file))
+      val image: Option[SimpleImageInfo] = Try {
+        Some(new SimpleImageInfo(file))
       } getOrElse(None)
 
       image match {
         case Some(i) =>
-          FileEntity(id = fileId, ext = ext, metaData = ImageMetadata(length = file.length, width = i.width, height = i.height))
+          FileEntity(
+            id = fileId,
+            ext = ext,
+            metaData = ImageMetadata(length = file.length, width = i.getWidth(), height = i.getHeight()))
         case _ => FileEntity(id = fileId, ext = ext, metaData = GenericMetadata(length = file.length))
       }
     }
