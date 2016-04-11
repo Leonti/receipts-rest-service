@@ -140,8 +140,7 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                   extResult match {
                     case Success(extOption: Option[String]) => extOption match {
                       case Some(ext) =>
-                        val fileSource: Source[ByteString, Unit] = fileService.fetch(userId, fileId)
-
+                        val fileSource = fileService.fetch(userId, fileId)
                         val contentType = ContentTypeResolver.Default("file." + ext)
 
                         complete(HttpResponse(entity = HttpEntity(

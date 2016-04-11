@@ -23,19 +23,18 @@ val e2eSettings =
       scalaSource in EndToEndTest := baseDirectory.value / "src/e2e/scala")
 
 libraryDependencies ++= {
-  val akkaV       = "2.4.1"
-  val akkaStreamV = "2.0.1"
+  val akkaV       = "2.4.3"
+  val amazonS3V   = "1.10.68"
   val scalaTestV  = "2.2.5"
-  val commonsAwsV = "0.9.0"
   val reactiveMongoV = "0.11.9"
   Seq(
     "com.typesafe.akka" %% "akka-actor"                           % akkaV,
-    "com.typesafe.akka" %% "akka-stream-experimental"             % akkaStreamV,
-    "com.typesafe.akka" %% "akka-http-core-experimental"          % akkaStreamV,
-    "com.typesafe.akka" %% "akka-http-experimental"               % akkaStreamV,
-    "com.typesafe.akka" %% "akka-http-spray-json-experimental"    % akkaStreamV,
-    "com.typesafe.akka" %% "akka-http-testkit-experimental"       % akkaStreamV,
-    "com.mfglabs"       %% "commons-aws"                          % commonsAwsV,
+    "com.typesafe.akka" %% "akka-stream"                          % akkaV,
+    "com.typesafe.akka" %% "akka-http-core"                       % akkaV,
+    "com.typesafe.akka" %% "akka-http-experimental"               % akkaV,
+    "com.typesafe.akka" %% "akka-http-spray-json-experimental"    % akkaV,
+    "com.typesafe.akka" %% "akka-http-testkit"                    % akkaV,
+    "com.amazonaws"     %   "aws-java-sdk-s3"                     % amazonS3V,
     "org.reactivemongo" %% "reactivemongo"                        % reactiveMongoV,
     "de.choffmeister"   %% "auth-common"                          % "0.1.0",
     "de.choffmeister"   %% "auth-akka-http"                       % "0.1.0",

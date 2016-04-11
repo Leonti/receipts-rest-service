@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.{ContentTypes, FormData, HttpEntity, Multipart}
 import akka.http.scaladsl.model.headers.{HttpChallenge, HttpCredentials}
 import akka.http.scaladsl.server.directives.{AuthenticationDirective, AuthenticationResult, SecurityDirectives}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import de.choffmeister.auth.akkahttp.Authenticator
 import model._
@@ -13,7 +13,7 @@ import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
-import java.io.File
+import java.io.{ByteArrayInputStream, File}
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import routing.ReceiptRouting
@@ -130,9 +130,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val fileEntity = FileEntity(id = "1", ext = "txt", metaData = GenericMetadata(fileType = "TXT", length = 11))
     val receipt = ReceiptEntity(userId = "123-user", files = List(fileEntity))
 
-    val bb = ByteString.newBuilder
-    bb.putBytes("some text".getBytes)
-    val source: Source[ByteString, Unit] = Source[ByteString](List(bb.result()))
+    val source = StreamConverters.fromInputStream(() => new ByteArrayInputStream("some text".getBytes))
 
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
     when(fileService.fetch("123-user", fileEntity.id)).thenReturn(source)

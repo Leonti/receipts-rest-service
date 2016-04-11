@@ -1,10 +1,11 @@
 
-import java.io.File
+import java.io.{ByteArrayInputStream, File}
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
+import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.{ActorMaterializer, IOResult, Materializer}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import model.{FileEntity, GenericMetadata, ImageMetadata}
@@ -32,17 +33,17 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
 
     override def save(userId: String, file: File, ext: String): Future[FileEntity] = {
       val fileId = "1"
-      val uploadFlow: Flow[ByteString, String, Unit] = Flow[ByteString].map(byteString => s"${byteString.length}")
-      save(userId, fileId, file, uploadFlow, ext)
+      save(userId, fileId, file, ext)
     }
 
-    override def fetch(userId: String, fileId: String): Source[ByteString, Unit] = Source.empty
+    override def fetch(userId: String, fileId: String) =
+      StreamConverters.fromInputStream(() => new ByteArrayInputStream("some text".getBytes))
   }
 
   it should "parse width and length of an image" in {
     val receiptImage: BufferedSource = scala.io.Source.fromURL(getClass.getResource("/receipt.png"), "ISO-8859-1")
     val byteString = ByteString(receiptImage.map(_.toByte).toArray)
-    val source: Source[ByteString, Unit] = Source[ByteString](List(byteString))
+    val source = Source[ByteString](List(byteString))
     val fileService = new MockFileService()
 
     val file = new File(UUID.randomUUID().toString)
@@ -67,7 +68,7 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
 
   it should "set unknown upload to GenericMetadata" in {
     val byteString = ByteString("some text".getBytes(StandardCharsets.UTF_8))
-    val source: Source[ByteString, Unit] = Source[ByteString](List(byteString))
+    val source = Source[ByteString](List(byteString))
     val fileService = new MockFileService()
 
     val file = new File(UUID.randomUUID().toString)
