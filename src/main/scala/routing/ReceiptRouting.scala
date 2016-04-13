@@ -54,24 +54,6 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
         case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: ${t}"))
       }
     }
-
-  }
-
-  // https://groups.google.com/forum/#!topic/akka-user/ZbeV4h2XYLo
-  def toStrict(timeout: FiniteDuration): Directive[Unit] = {
-    def toStrict0(inner: Unit ⇒ Route): Route = {
-      val result: RequestContext ⇒ Future[RouteResult] = c ⇒ {
-        // call entity.toStrict (returns a future)
-        c.request.entity.toStrict(timeout).flatMap { strict ⇒
-          // modify the context with the strictified entity
-          val c1 = c.withRequest(c.request.withEntity(strict))
-          // call the inner route with the modified context
-          inner()(c1)
-        }
-      }
-      result
-    }
-    Directive[Unit](toStrict0)
   }
 
   val patchAndSaveReceipt: (String, String) => Future[Option[ReceiptEntity]] = (receiptId, jsonPatch) => {
@@ -161,30 +143,27 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
               }
             } ~
             post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
-              toStrict(1.second) {
-                formFields('total, 'description) { (total, description) =>
-                  uploadedFile("receipt") {
-                    case (metadata: FileInfo, file: File) =>
+              FileUploadDirective.uploadedFileWithFields("receipt", "total", "description") {
+                (parsedForm: ParsedForm) =>
 
-                      import akka.stream.scaladsl.FileIO
-                      val byteSource = FileIO.fromFile(file)
-                      // byteSource: Source[ByteString, Any]
-                      val fileUploadFuture: Future[FileEntity] = fileService.save(userId, file, ext(metadata.fileName))
+                    import akka.stream.scaladsl.FileIO
+                    val uploadedFile = parsedForm.files("receipt")
+                    val byteSource = FileIO.fromFile(uploadedFile.file)
+                    // byteSource: Source[ByteString, Any]
+                    val fileUploadFuture: Future[FileEntity] = fileService.save(userId, uploadedFile.file, ext(uploadedFile.fileInfo.fileName))
 
-                      val receiptIdFuture: Future[ReceiptEntity] = fileUploadFuture.flatMap((file: FileEntity) => receiptService.createReceipt(
-                        userId = userId,
-                        file = file,
-                        total = Try(BigDecimal(total)).map(Some(_)).getOrElse(None),
-                        description = description
-                      ))
+                    val receiptIdFuture: Future[ReceiptEntity] = fileUploadFuture.flatMap((file: FileEntity) => receiptService.createReceipt(
+                      userId = userId,
+                      file = file,
+                      total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
+                      description = parsedForm.fields("description")
+                    ))
 
-                      onComplete(receiptIdFuture) { receipt =>
-                        file.delete()
-                        complete(Created -> receipt)
-                      }
-                  }
+                    onComplete(receiptIdFuture) { receipt =>
+                      uploadedFile.file.delete()
+                      complete(Created -> receipt)
+                    }
                 }
-              }
             }
           }
         }

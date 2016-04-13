@@ -5,6 +5,7 @@ import java.util.UUID
 
 import akka.NotUsed
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.Multipart
 import akka.stream.{ActorMaterializer, IOResult, Materializer}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
@@ -41,6 +42,7 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
   }
 
   it should "parse width and length of an image" in {
+
     val receiptImage: BufferedSource = scala.io.Source.fromURL(getClass.getResource("/receipt.png"), "ISO-8859-1")
     val byteString = ByteString(receiptImage.map(_.toByte).toArray)
     val source = Source[ByteString](List(byteString))
