@@ -36,6 +36,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http-testkit"                    % akkaV,
     "com.amazonaws"     %   "aws-java-sdk-s3"                     % amazonS3V,
     "org.reactivemongo" %% "reactivemongo"                        % reactiveMongoV,
+    "com.drewnoakes"    %  "metadata-extractor"                   % "2.9.0",
     "de.choffmeister"   %% "auth-common"                          % "0.1.0",
     "de.choffmeister"   %% "auth-akka-http"                       % "0.1.0",
     "org.gnieh" %% "diffson"                                      % "1.1.0",
@@ -47,7 +48,6 @@ libraryDependencies ++= {
 libraryDependencies ++= logging
 
 resolvers ++= Seq(
-  Resolver.bintrayRepo("mfglabs", "maven"),
   Resolver.bintrayRepo("dwhjames", "maven")
 )
 

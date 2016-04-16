@@ -111,8 +111,10 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                 }
               }
             } ~
-            path(Segment / "file" / Segment) { (receiptId, fileId) =>
+            path(Segment / "file" / Segment) { (receiptId, fileIdWithExt) =>
               get {
+                val fileId = fileIdWithExt.split('.')(0)
+
                 val extFuture: Future[Option[String]] = receiptService.findById(receiptId)
                   .map(receiptEntity => receiptEntity
                     .flatMap(_.files.find(_.id == fileId).map(_.ext)))

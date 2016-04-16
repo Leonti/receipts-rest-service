@@ -135,7 +135,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
     when(fileService.fetch("123-user", fileEntity.id)).thenReturn(source)
 
-    Get(s"/user/123-user/receipt/${receipt.id}/file/${fileEntity.id}") ~> receiptRouting.routes ~> check {
+    Get(s"/user/123-user/receipt/${receipt.id}/file/${fileEntity.id}.txt") ~> receiptRouting.routes ~> check {
       status shouldBe OK
       contentType shouldBe `text/plain(UTF-8)`
       responseAs[String] should include("some text")

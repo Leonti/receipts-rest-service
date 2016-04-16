@@ -24,3 +24,4 @@ project/plugins/project/
 .ensime_cache
 
 curl
+run.sh
