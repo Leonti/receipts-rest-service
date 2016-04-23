@@ -4,6 +4,7 @@ import model.{FileEntity, ReceiptEntity}
 import repository.ReceiptRepository
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class ReceiptService (receiptRepository: ReceiptRepository) {
 
@@ -30,6 +31,7 @@ class ReceiptService (receiptRepository: ReceiptRepository) {
       case Some(receipt: ReceiptEntity) => save(receipt.copy(files = receipt.files :+ file)).map(result => Some(result))
       case None => Future(None)
     })
-
   }
+
+  def delete(receiptId: String): Future[Unit] = receiptRepository.deleteById(receiptId).map(r => ())
 }

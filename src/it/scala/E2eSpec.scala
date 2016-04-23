@@ -267,6 +267,43 @@ class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtoco
     }
   }
 
+  it should "delete a receipt" in {
+    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val createUserRequest = CreateUserRequest(username, "password")
+
+    val receiptsFuture = for {
+      userInfo <- createUser(createUserRequest)
+      accessToken <- authenticateUser(userInfo)
+      requestEntity <- createTextFileContent("receipt content")
+      response <- Http().singleRequest(HttpRequest(method = HttpMethods.POST,
+        uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+        entity = requestEntity,
+        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      receiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
+      receiptsBeforeDeleteResponse <- Http().singleRequest(HttpRequest(
+        uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      receiptsBeforeDelete <- Unmarshal(receiptsBeforeDeleteResponse.entity).to[List[ReceiptEntity]]
+      _ <- Http().singleRequest(HttpRequest(method = HttpMethods.DELETE,
+        uri = s"http://localhost:9000/user/${userInfo.id}/receipt/${receiptEntity.id}",
+        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      receiptsResponse <- Http().singleRequest(HttpRequest(
+        uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      receipts <- Unmarshal(receiptsResponse.entity).to[List[ReceiptEntity]]
+    } yield (receiptsBeforeDelete, receipts)
+
+    whenReady(receiptsFuture) { receipts =>
+      receipts match {
+        case (receiptsBeforeDelete, receipts) => {
+          receiptsBeforeDelete.length shouldBe 1
+          receipts.length shouldBe 0
+        }
+      }
+
+    }
+  }
+
   def utf8TextEntity(content: String) = {
     val bytes = ByteString(content)
     HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, bytes)

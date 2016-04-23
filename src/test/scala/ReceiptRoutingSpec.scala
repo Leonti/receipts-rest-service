@@ -3,7 +3,7 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model.{ContentTypes, FormData, HttpEntity, Multipart}
 import akka.http.scaladsl.model.headers.{HttpChallenge, HttpCredentials}
 import akka.http.scaladsl.server.directives.{AuthenticationDirective, AuthenticationResult, SecurityDirectives}
-import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import de.choffmeister.auth.akkahttp.Authenticator
@@ -15,13 +15,20 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import java.io.{ByteArrayInputStream, File}
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import org.scalatest.time.{Millis, Seconds, Span}
 import routing.ReceiptRouting
 import service.{FileService, ReceiptService}
 
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
+
+import akka.testkit._
 
 class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with MockitoSugar with JsonProtocols  {
+
+  implicit def default(implicit system: ActorSystem) = RouteTestTimeout(new DurationInt(5).second.dilated(system))
 
   val receiptService = mock[ReceiptService]
   val fileService = mock[FileService]
@@ -247,6 +254,27 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       status shouldBe OK
       contentType shouldBe `application/json`
       responseAs[ReceiptEntity].total shouldBe None
+    }
+  }
+
+  it should "delete a receipt " in {
+
+    def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
+      Future(AuthenticationResult.success(User("123-user", "name", "hash")))
+    }
+    val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
+    val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
+
+    val fileEntity = FileEntity(id = "1", ext = "txt", metaData = GenericMetadata(fileType = "TXT", length = 11))
+    val receipt = ReceiptEntity(userId = "123-user", files = List(fileEntity))
+
+    when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
+    when(fileService.delete("123-user", fileEntity.id)).thenReturn(Future {})
+    when(receiptService.delete(receipt.id)).thenReturn(Future {})
+
+    Delete(s"/user/123-user/receipt/${receipt.id}") ~> receiptRouting.routes ~> check {
+      println(responseAs[String])
+      status shouldBe OK
     }
   }
 

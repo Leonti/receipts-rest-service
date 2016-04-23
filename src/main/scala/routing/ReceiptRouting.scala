@@ -74,6 +74,33 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
     patched.parseJson.convertTo[ReceiptEntity]
   }
 
+  val deleteReceipt: (String) => Route = (receiptId) => {
+
+    val deletion: Future[Option[Future[Unit]]] = receiptService.findById(receiptId).map(_.map({ receipt =>
+      val fileFutures = receipt.files.map({ fileEntity =>
+        println(s"Calling fileService with ${receipt.userId} ${fileEntity.id}")
+        fileService.delete(receipt.userId, fileEntity.id)
+      })
+
+      Future.sequence(fileFutures).flatMap(_ => receiptService.delete(receiptId))
+    }))
+
+    onComplete(deletion) { (deletionOptionTry: Try[Option[Future[Unit]]]) =>
+      deletionOptionTry match {
+        case Success(deletionOption: Option[Future[Unit]]) => deletionOption match {
+          case Some(deletionFuture: Future[Unit]) => onComplete(deletionFuture) { (deletionResult: Try[Unit]) =>
+            deletionResult match {
+              case Success(_) => complete(OK)
+              case Failure(t) => complete(InternalServerError -> ErrorResponse(s"server failure: ${t}"))
+            }
+          }
+          case None => complete(NotFound -> ErrorResponse(s"Receipt $receiptId was not found"))
+        }
+        case Failure(t) => complete(InternalServerError -> ErrorResponse(s"server failure: ${t}"))
+      }
+    }
+  }
+
   val routes =
     handleRejections(myRejectionHandler) {
       pathPrefix("user" / Segment / "receipt") { userId: String =>
@@ -87,6 +114,9 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                 entity(as[String]) { receiptPatch =>
                   respondWithReceipt(patchAndSaveReceipt(receiptId, receiptPatch))
                 }
+              } ~
+              delete {
+                deleteReceipt(receiptId)
               }
             } ~
             path(Segment / "file") { receiptId: String =>

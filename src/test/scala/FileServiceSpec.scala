@@ -39,6 +39,8 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
 
     override def fetch(userId: String, fileId: String) =
       StreamConverters.fromInputStream(() => new ByteArrayInputStream("some text".getBytes))
+
+    override def delete(userId: String, fileId: String): Future[Unit] = Future.successful(Unit)
   }
 
   it should "parse width and length of an image" in {

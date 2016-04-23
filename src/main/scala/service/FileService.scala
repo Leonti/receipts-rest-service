@@ -23,6 +23,7 @@ trait FileService {
 
   def fetch(userId: String, fileId: String): Source[ByteString, Future[IOResult]]
 
+  def delete(userId: String, fileId: String): Future[Unit]
 
   protected def save(userId: String, fileId: String, file: File, ext: String)(implicit materializer: Materializer): Future[FileEntity] = {
 
@@ -51,7 +52,7 @@ class S3FileService(config: Config, materializer: Materializer) extends FileServ
   val credentials = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
   val amazonS3Client = new AmazonS3Client(credentials)
 
-  def save(userId: String, file: File, ext: String): Future[FileEntity] = {
+  override def save(userId: String, file: File, ext: String): Future[FileEntity] = {
     val fileId = java.util.UUID.randomUUID.toString;
 
     val putObjectRequest = new PutObjectRequest(
@@ -64,11 +65,15 @@ class S3FileService(config: Config, materializer: Materializer) extends FileServ
     save(userId, fileId, file, ext)
   }
 
-  def fetch(userId: String, fileId: String): Source[ByteString, Future[IOResult]] = {
+  override def fetch(userId: String, fileId: String): Source[ByteString, Future[IOResult]] = {
     val fileStream = () => amazonS3Client.getObject(config.getString("s3.bucket"), s"user/${userId}/${fileId}")
       .getObjectContent()
 
     StreamConverters.fromInputStream(fileStream)
+  }
+
+  override def delete(userId: String, fileId: String): Future[Unit] = {
+    Future.successful(amazonS3Client.deleteObject(config.getString("s3.bucket"), s"user/${userId}/${fileId}"))
   }
 }
 
