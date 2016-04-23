@@ -169,7 +169,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description="some description")
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
 
-    val patchedReceipt = receipt.copy(description = "some new description")
+    val patchedReceipt = receipt.copy(description = "some new description", total = Some(BigDecimal("12.38")))
     when(receiptService.save(patchedReceipt)).thenReturn(Future(patchedReceipt))
 
     val patch = """[
@@ -177,6 +177,11 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
                 |    "op": "replace",
                 |    "path": "/description",
                 |    "value": "some new description"
+                |  },
+                |  {
+                |    "op": "replace",
+                |    "path": "/total",
+                |    "value": 12.38
                 |  }
                 |]""".stripMargin
 
@@ -184,6 +189,64 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       status shouldBe OK
       contentType shouldBe `application/json`
       responseAs[ReceiptEntity].description shouldBe "some new description"
+      responseAs[ReceiptEntity].total shouldBe Some(BigDecimal("12.38"))
+    }
+  }
+
+  it should "unset total after patch with null" in {
+    def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
+      Future(AuthenticationResult.success(User("123-user", "name", "hash")))
+    }
+    val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
+    val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
+
+    val receipt = ReceiptEntity(userId = "123-user", files = List(), description="some description",
+      total=Some(BigDecimal("12.38")))
+    when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
+
+    val patchedReceipt = receipt.copy(total = None)
+    when(receiptService.save(patchedReceipt)).thenReturn(Future(patchedReceipt))
+
+    val patch = """[
+                  |  {
+                  |    "op": "replace",
+                  |    "path": "/total",
+                  |    "value": null
+                  |  }
+                  |]""".stripMargin
+
+    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes ~> check {
+      status shouldBe OK
+      contentType shouldBe `application/json`
+      responseAs[ReceiptEntity].total shouldBe None
+    }
+  }
+
+  it should "unset total after patch with remove" in {
+    def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
+      Future(AuthenticationResult.success(User("123-user", "name", "hash")))
+    }
+    val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
+    val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
+
+    val receipt = ReceiptEntity(userId = "123-user", files = List(), description="some description",
+      total=Some(BigDecimal("12.38")))
+    when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
+
+    val patchedReceipt = receipt.copy(total = None)
+    when(receiptService.save(patchedReceipt)).thenReturn(Future(patchedReceipt))
+
+    val patch = """[
+                  |  {
+                  |    "op": "remove",
+                  |    "path": "/total"
+                  |  }
+                  |]""".stripMargin
+
+    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes ~> check {
+      status shouldBe OK
+      contentType shouldBe `application/json`
+      responseAs[ReceiptEntity].total shouldBe None
     }
   }
 

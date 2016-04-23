@@ -67,8 +67,9 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
   }
 
   val patchReceipt: (ReceiptEntity, String) => ReceiptEntity = (receiptEntity, jsonPatch) => {
-
-    val asJson: String = receiptEntity.toJson.compactPrint
+    val asJson: String = receiptEntity.copy(total =
+      if (receiptEntity.total.isDefined) receiptEntity.total else Some(BigDecimal("0")))
+      .toJson.compactPrint
     val patched: String = JsonPatch.parse(jsonPatch).apply(asJson)
     patched.parseJson.convertTo[ReceiptEntity]
   }
