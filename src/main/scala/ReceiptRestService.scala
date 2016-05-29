@@ -41,7 +41,17 @@ trait Service extends JsonProtocols with CorsSupport {
   implicit val materializer: Materializer
 
   override val corsAllowOrigins: List[String] = List("*")
-  override val corsAllowedHeaders: List[String] = List("Origin", "X-Requested-With", "Content-Type", "Accept", "Accept-Encoding", "Accept-Language", "Host", "Referer", "User-Agent")
+  override val corsAllowedHeaders: List[String] = List(
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Accept-Encoding",
+    "Accept-Language",
+    "Host",
+    "Referer",
+    "User-Agent",
+    "Authorization")
   override val corsAllowCredentials: Boolean = true
   override val optionsCorsHeaders: List[HttpHeader] = List[HttpHeader](
     `Access-Control-Allow-Headers`(corsAllowedHeaders.mkString(", ")),
