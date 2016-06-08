@@ -7,10 +7,8 @@ import akka.http.scaladsl.model.headers.`Access-Control-Allow-Credentials`
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Methods`
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Origin`
 import akka.http.scaladsl.model.headers.Origin
-import akka.http.scaladsl.server.Directive0
+import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.MethodRejection
-import akka.http.scaladsl.server.RejectionHandler
 
 trait CorsSupport {
 
@@ -27,6 +25,11 @@ trait CorsSupport {
     case MethodRejection(supported) =>
       complete(HttpResponse().withHeaders(
         `Access-Control-Allow-Methods`(OPTIONS, supported) ::
+          allowOrigin ::
+          optionsCorsHeaders
+      ))
+    case AuthenticationFailedRejection(cause, challenge) =>
+      complete(HttpResponse().withHeaders(
           allowOrigin ::
           optionsCorsHeaders
       ))

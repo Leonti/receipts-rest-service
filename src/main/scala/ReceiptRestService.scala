@@ -85,13 +85,13 @@ trait Service extends JsonProtocols with CorsSupport {
         handleRejections(myRejectionHandler) {
           cors {
             userRouting.routes ~ // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
-              receiptRouting.routes ~
-              authenticationRouting.routes ~
-              path("version") {
-                get {
-                  complete(Created -> System.getenv("VERSION"))
-                }
+            receiptRouting.routes ~
+            authenticationRouting.routes ~
+            path("version") {
+              get {
+                complete(Created -> System.getenv("VERSION"))
               }
+            }
           }
         }
       }

@@ -1,9 +1,9 @@
 package model
 
 import de.choffmeister.auth.common.OAuth2AccessTokenResponseFormat
-import spray.json.DefaultJsonProtocol
+import spray.json.{DefaultJsonProtocol, NullOptions}
 
-trait JsonProtocols extends DefaultJsonProtocol {
+trait JsonProtocols extends DefaultJsonProtocol with NullOptions {
   implicit val fileMetadataFormat = FileMetadataFormat
   implicit val fileEntityFormat = jsonFormat4(FileEntity.apply)
   implicit val receiptEntityFormat = jsonFormat6(ReceiptEntity.apply)
