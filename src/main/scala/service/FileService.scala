@@ -46,30 +46,36 @@ trait FileService {
   }
 }
 
-class S3FileService(config: Config, materializer: Materializer) extends FileService {
+class S3FileService(config: Config, materializer: Materializer, fileCachingService: FileCachingService) extends FileService {
   implicit val mat: Materializer = materializer
 
   val credentials = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
   val amazonS3Client = new AmazonS3Client(credentials)
 
   override def save(userId: String, file: File, ext: String): Future[FileEntity] = {
-    val fileId = java.util.UUID.randomUUID.toString;
+    val fileId = java.util.UUID.randomUUID.toString
 
     val putObjectRequest = new PutObjectRequest(
       config.getString("s3.bucket"),
-      s"user/${userId}/${fileId}", file);
+      s"user/${userId}/${fileId}", file)
 
     val uploadResult: PutObjectResult = amazonS3Client.putObject(putObjectRequest)
 
-    println(s"File uploaded to S3 with $uploadResult");
+    println(s"File uploaded to S3 with $uploadResult")
     save(userId, fileId, file, ext)
   }
 
-  override def fetch(userId: String, fileId: String): Source[ByteString, Future[IOResult]] = {
+  val fetchFromS3 : (String, String) => Source[ByteString, Future[IOResult]] = (userId, fileId) => {
     val fileStream = () => amazonS3Client.getObject(config.getString("s3.bucket"), s"user/${userId}/${fileId}")
       .getObjectContent()
 
     StreamConverters.fromInputStream(fileStream)
+  }
+
+  override def fetch(userId: String, fileId: String): Source[ByteString, Future[IOResult]] = {
+    fileCachingService
+      .get(userId, fileId)
+      .getOrElse(fetchFromS3(userId, fileId).via(fileCachingService.cacheFlow(userId, fileId)))
   }
 
   override def delete(userId: String, fileId: String): Future[Unit] = {
@@ -79,6 +85,7 @@ class S3FileService(config: Config, materializer: Materializer) extends FileServ
 
 object FileService {
 
-  def s3(config: Config, materializer: Materializer) = new S3FileService(config, materializer)
+  def s3(config: Config, materializer: Materializer, fileCachingService: FileCachingService) =
+    new S3FileService(config, materializer, fileCachingService)
 
 }

@@ -20,7 +20,7 @@ import model.ReceiptEntity
 import model._
 import repository.{ReceiptRepository, UserRepository}
 import routing.{AuthenticationRouting, CorsSupport, ReceiptRouting, UserRouting}
-import service.{FileService, ReceiptService, UserService}
+import service.{FileCachingService, FileService, ReceiptService, UserService}
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -118,8 +118,11 @@ object ReceiptRestService extends App with Service {
   println("Mongo:")
   println(config.getString("mongodb.db"))
 
+  val fileCachingService : FileCachingService = new FileCachingService()
+
   override val logger = Logging(system, getClass)
-  override val receiptRouting = new ReceiptRouting(new ReceiptService(new ReceiptRepository()), FileService.s3(config, materializer), authenticator.bearerToken(acceptExpired = true))
+  override val receiptRouting = new ReceiptRouting(new ReceiptService(new ReceiptRepository()),
+    FileService.s3(config, materializer, fileCachingService), authenticator.bearerToken(acceptExpired = true))
   override val userRouting = new UserRouting(userService, authenticator.bearerToken(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)
 
