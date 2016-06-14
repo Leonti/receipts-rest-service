@@ -23,7 +23,6 @@ import service.{FileService, ReceiptService}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-
 import akka.testkit._
 
 class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with MockitoSugar with JsonProtocols  {
@@ -47,8 +46,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
-    when(fileService.save(any[String], any[File], any[String])).thenReturn(Future(fileEntity))
+    val fileEntity = FileEntity(id = "1", parentId = None, ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
+    when(fileService.save(any[String], any[File], any[String])).thenReturn(Seq(Future(fileEntity)))
     when(receiptService.createReceipt("123-user", fileEntity, Some(BigDecimal("12.38")), "some description"))
       .thenReturn(Future(receipt))
 
@@ -78,8 +77,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
-    when(fileService.save(any[String], any[File], any[String])).thenReturn(Future(fileEntity))
+    val fileEntity = FileEntity(id = "1", parentId = None, ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
+    when(fileService.save(any[String], any[File], any[String])).thenReturn(Seq(Future(fileEntity)))
     when(receiptService.createReceipt("123-user", fileEntity, Some(BigDecimal("12.38")), "some description")).thenReturn(Future(receipt))
 
     val content = "file content".getBytes
@@ -108,8 +107,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
-    val fileEntity = FileEntity(id = "1", ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
-    when(fileService.save(any[String], any[File], any[String])).thenReturn(Future(fileEntity))
+    val fileEntity = FileEntity(id = "1", parentId = None, ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
+    when(fileService.save(any[String], any[File], any[String])).thenReturn(Seq(Future(fileEntity)))
     when(receiptService.addFileToReceipt(receipt.id, fileEntity)).thenReturn(Future(Some(receipt)))
 
     val content = "file content".getBytes
@@ -134,7 +133,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
-    val fileEntity = FileEntity(id = "1", ext = "txt", metaData = GenericMetadata(fileType = "TXT", length = 11))
+    val fileEntity = FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetadata(fileType = "TXT", length = 11))
     val receipt = ReceiptEntity(userId = "123-user", files = List(fileEntity))
 
     val source = StreamConverters.fromInputStream(() => new ByteArrayInputStream("some text".getBytes))
@@ -265,7 +264,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
     val receiptRouting = new ReceiptRouting(receiptService, fileService, authentication)
 
-    val fileEntity = FileEntity(id = "1", ext = "txt", metaData = GenericMetadata(fileType = "TXT", length = 11))
+    val fileEntity = FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetadata(fileType = "TXT", length = 11))
     val receipt = ReceiptEntity(userId = "123-user", files = List(fileEntity))
 
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))

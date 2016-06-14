@@ -1,13 +1,21 @@
 package model
 
+import java.util.Optional
+
 import de.choffmeister.auth.common.OAuth2AccessTokenResponse
 import model.FileMetadata.FileMetadataBSONReader.FileMetadataBSONWriter
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 import spray.json.{DeserializationException, JsNumber, JsObject, JsString, JsValue, RootJsonFormat}
 
-case class FileEntity(id: String, ext: String, metaData: FileMetadata, timestamp: Long = System.currentTimeMillis)
+case class FileEntity(
+                       id: String,
+                       parentId: Option[String],
+                       ext: String,
+                       metaData: FileMetadata,
+                       timestamp: Long = System.currentTimeMillis
+                     )
 
-trait FileMetadata {
+sealed trait FileMetadata {
   def fileType: String
   def length: Long
 }
@@ -18,7 +26,7 @@ case class GenericMetadata(fileType: String = "UNKNOWN", length: Long) extends F
 object FileMetadataFormat extends RootJsonFormat[FileMetadata] {
   def write(fileMetadata: FileMetadata) = {
     fileMetadata match {
-      case imageMetadata:ImageMetadata =>
+      case imageMetadata: ImageMetadata =>
         JsObject(
           "fileType" -> JsString(imageMetadata.fileType),
           "length" -> JsNumber(imageMetadata.length),
@@ -99,6 +107,7 @@ object FileEntity {
 
     def read(doc: BSONDocument): FileEntity = Serialization.deserialize(doc, FileEntity(
       id = doc.getAs[String]("_id").get,
+      parentId = doc.getAs[String]("parentId"),
       ext = doc.getAs[String]("ext").get,
       metaData = doc.getAs[FileMetadata]("metaData").get,
       timestamp = doc.getAs[Long]("timestamp").get
@@ -110,6 +119,7 @@ object FileEntity {
     def write(fileEntity: FileEntity): BSONDocument = {
       BSONDocument(
         "_id" -> fileEntity.id,
+        "parentId" -> fileEntity.parentId,
         "ext" -> fileEntity.ext,
         "metaData" -> FileMetadataBSONWriter.write(fileEntity.metaData),
         "timestamp" -> fileEntity.timestamp

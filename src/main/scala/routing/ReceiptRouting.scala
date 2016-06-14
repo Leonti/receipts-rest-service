@@ -5,16 +5,12 @@ import java.io.File
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Directive, RequestContext, Route, RouteResult}
 import akka.http.scaladsl.server.PathMatchers.Segment
 import akka.http.scaladsl.server.directives.{AuthenticationDirective, ContentTypeResolver, FileInfo}
 import akka.http.scaladsl.server.{AuthorizationFailedRejection, MissingFormFieldRejection, RejectionHandler, Route}
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
 import model._
 import service.{FileService, ReceiptService}
 import akka.actor.ActorSystem
-import akka.event.{Logging, LoggingAdapter}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -27,7 +23,6 @@ import gnieh.diffson._
 class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, authenticaton: AuthenticationDirective[User]
                     )(implicit val executor: ExecutionContextExecutor) extends JsonProtocols {
 
-
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
@@ -37,7 +32,7 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
         complete(BadRequest -> ErrorResponse(s"Request is missing required form field '${field}'"))
       }
       .handle { case AuthorizationFailedRejection =>
-        complete((Forbidden -> ErrorResponse("Access forbidden")))
+        complete(Forbidden -> ErrorResponse("Access forbidden"))
       }
       .result()
 
@@ -123,20 +118,26 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
               post {
                 uploadedFile("receipt") {
                   case (metadata: FileInfo, file: File) =>
-                    val fileUploadFuture: Future[FileEntity] = fileService.save(userId, file, ext(metadata.fileName))
+                    val fileUploadFutures: Seq[Future[FileEntity]] = fileService.save(userId, file, ext(metadata.fileName))
 
-                    val receiptFuture: Future[Option[ReceiptEntity]] = fileUploadFuture.flatMap((file: FileEntity) =>
-                      receiptService.addFileToReceipt(receiptId, file))
+                    val receiptFuture: Future[Option[ReceiptEntity]] = fileUploadFutures.head.flatMap((fileEntity: FileEntity) =>
+                      receiptService.addFileToReceipt(receiptId, fileEntity))
 
                     onComplete(receiptFuture) { (result: Try[Option[ReceiptEntity]]) =>
 
-                      file.delete()
+                      Future.sequence(fileUploadFutures.tail).flatMap(fileEntities => {
+                        Future.sequence(fileEntities.map(fileEntity => receiptService.addFileToReceipt(receiptId, fileEntity)))
+                      }).onComplete { result =>
+                        file.delete()
+                        println("Added derived files")
+                      }
+
                       result match {
                         case Success(receiptResult: Option[ReceiptEntity]) => receiptResult match {
                           case Some(receipt) => complete(Created -> receipt)
-                          case None => complete(BadRequest -> ErrorResponse(s"Receipt ${receiptId} doesn't exist"))
+                          case None => complete(BadRequest -> ErrorResponse(s"Receipt $receiptId doesn't exist"))
                         }
-                        case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: ${t}"))
+                        case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
                       }
                     }
                 }
@@ -160,9 +161,9 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
 
                         complete(HttpResponse(entity = HttpEntity(
                           contentType, fileSource)))
-                      case None => complete(BadRequest -> ErrorResponse(s"File ${fileId} was not found in receipt ${receiptId}"))
+                      case None => complete(BadRequest -> ErrorResponse(s"File $fileId was not found in receipt $receiptId"))
                     }
-                    case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: ${t}"))
+                    case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
                   }
                 }
 
@@ -183,18 +184,30 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                     val uploadedFile = parsedForm.files("receipt")
                     val byteSource = FileIO.fromFile(uploadedFile.file)
                     // byteSource: Source[ByteString, Any]
-                    val fileUploadFuture: Future[FileEntity] = fileService.save(userId, uploadedFile.file, ext(uploadedFile.fileInfo.fileName))
+                    val fileUploadFutures: Seq[Future[FileEntity]] =
+                      fileService.save(userId, uploadedFile.file, ext(uploadedFile.fileInfo.fileName))
 
-                    val receiptIdFuture: Future[ReceiptEntity] = fileUploadFuture.flatMap((file: FileEntity) => receiptService.createReceipt(
-                      userId = userId,
-                      file = file,
-                      total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
-                      description = parsedForm.fields("description")
+                    val receiptFuture: Future[ReceiptEntity] = fileUploadFutures.head.flatMap((fileEntity: FileEntity) =>
+                      receiptService.createReceipt(
+                        userId = userId,
+                        file = fileEntity,
+                        total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
+                        description = parsedForm.fields("description")
                     ))
 
-                    onComplete(receiptIdFuture) { receipt =>
-                      uploadedFile.file.delete()
-                      complete(Created -> receipt)
+                    onComplete(receiptFuture) { receiptTry =>
+                      receiptTry match {
+                        case Success(receipt: ReceiptEntity) => {
+                          Future.sequence(fileUploadFutures.tail).flatMap(fileEntities => {
+                            Future.sequence(fileEntities.map(fileEntity => receiptService.addFileToReceipt(receipt.id, fileEntity)))
+                          }).onComplete { result =>
+                            uploadedFile.file.delete()
+                            println("Derived files uploaded")
+                          }
+                          complete(Created -> receipt)
+                        }
+                        case Failure(error) => complete(BadRequest -> ErrorResponse(s"Couldnot create a receipt"))
+                      }
                     }
                 }
             }

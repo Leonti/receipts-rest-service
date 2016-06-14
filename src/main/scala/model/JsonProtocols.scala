@@ -5,7 +5,7 @@ import spray.json.{DefaultJsonProtocol, NullOptions}
 
 trait JsonProtocols extends DefaultJsonProtocol with NullOptions {
   implicit val fileMetadataFormat = FileMetadataFormat
-  implicit val fileEntityFormat = jsonFormat4(FileEntity.apply)
+  implicit val fileEntityFormat = jsonFormat5(FileEntity.apply)
   implicit val receiptEntityFormat = jsonFormat6(ReceiptEntity.apply)
   implicit val createUserFormat = jsonFormat2(CreateUserRequest.apply)
   implicit val userInfoFormat = jsonFormat2(UserInfo.apply)

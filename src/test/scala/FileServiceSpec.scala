@@ -3,18 +3,15 @@ import java.io.{ByteArrayInputStream, File}
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
-import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.Multipart
-import akka.stream.{ActorMaterializer, IOResult, Materializer}
-import akka.stream.scaladsl.Source
+import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.ByteString
 import model.{FileEntity, GenericMetadata, ImageMetadata}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FlatSpec, Matchers}
-import service.FileService
+import service.{FileService, ImageResizingService}
 
 import scala.concurrent.Future
 import scala.io.BufferedSource
@@ -28,13 +25,14 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
   implicit val system = ActorSystem()
   implicit val executor = system.dispatcher
   implicit val materializer = ActorMaterializer()
+  implicit val irs = new ImageResizingService()
 
   class MockFileService extends FileService {
     implicit val mat: Materializer = materializer
 
-    override def save(userId: String, file: File, ext: String): Future[FileEntity] = {
+    override def save(userId: String, file: File, ext: String): Seq[Future[FileEntity]] = {
       val fileId = "1"
-      save(userId, fileId, file, ext)
+      Seq(Future.successful(toFileEntity(userId, None, fileId, file, ext)))
     }
 
     override def fetch(userId: String, fileId: String) =
@@ -54,7 +52,7 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
 
     val fileEntityFuture = for {
       f <- source.runWith(FileIO.toFile(file))
-      fileEntity <- fileService.save("userId", file, "png")
+      fileEntity <- fileService.save("userId", file, "png").head
     } yield fileEntity
 
       whenReady(fileEntityFuture) { fileEntity =>
@@ -79,7 +77,7 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
 
     val fileEntityFuture = for {
       f <- source.runWith(FileIO.toFile(file))
-      fileEntity <- fileService.save("userId", file, "txt")
+      fileEntity <- fileService.save("userId", file, "txt").head
     } yield fileEntity
 
     whenReady(fileEntityFuture) { fileEntity =>
