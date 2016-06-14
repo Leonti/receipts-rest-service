@@ -1,5 +1,7 @@
 FROM java:8
 
+RUN apt-get update && apt-get install -yq imagemagick
+
 COPY receipts-rest-service-assembly-1.0.jar /root/receipts-rest-service-assembly.jar
 
 WORKDIR /root
