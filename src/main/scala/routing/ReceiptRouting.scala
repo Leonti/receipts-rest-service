@@ -206,7 +206,7 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                           }
                           complete(Created -> receipt)
                         }
-                        case Failure(error) => complete(BadRequest -> ErrorResponse(s"Couldnot create a receipt"))
+                        case Failure(error) => complete(BadRequest -> ErrorResponse(s"Could not create a receipt"))
                       }
                     }
                 }

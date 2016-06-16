@@ -15,11 +15,12 @@ class ImageResizingService {
 
   val resize : (File, ImageSize) => Future[File] = (originalFile, imageSize: ImageSize) => {
     val resized = new File(originalFile.getAbsolutePath + s"_resized_${imageSize.pixels}")
-    val cmd = s"convert $originalFile -resize ${imageSize.pixels}@\\> ${resized.getAbsolutePath}"
+    val cmd = s"convert ${originalFile.getAbsolutePath} -resize ${imageSize.pixels}@> ${resized.getAbsolutePath}"
 
     Future {
 
       if (cmd.! != 0) {
+        println("Could not resize image!!!")
         throw new RuntimeException(s"Could not resize the image ${originalFile.getAbsolutePath}")
       }
 
