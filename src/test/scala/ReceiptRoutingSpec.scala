@@ -50,6 +50,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     when(fileService.save(any[String], any[File], any[String])).thenReturn(Seq(Future(fileEntity)))
     when(receiptService.createReceipt("123-user", fileEntity, Some(BigDecimal("12.38")), "some description"))
       .thenReturn(Future(receipt))
+    when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
 
     val content = "file content".getBytes
     val multipartForm =
@@ -62,6 +63,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       )
 
     Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes ~> check {
+      println("RESPONSE" + responseAs[String])
       status shouldBe Created
       contentType shouldBe `application/json`
       responseAs[ReceiptEntity] shouldBe receipt
@@ -110,6 +112,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val fileEntity = FileEntity(id = "1", parentId = None, ext = "png", metaData = GenericMetadata(fileType = "TXT", length = 11))
     when(fileService.save(any[String], any[File], any[String])).thenReturn(Seq(Future(fileEntity)))
     when(receiptService.addFileToReceipt(receipt.id, fileEntity)).thenReturn(Future(Some(receipt)))
+    when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
 
     val content = "file content".getBytes
     val multipartForm =

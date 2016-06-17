@@ -1,6 +1,6 @@
 package routing
 
-import java.io.File
+import java.io.{File, PrintWriter, StringWriter}
 
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.StatusCodes._
@@ -118,20 +118,15 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
               post {
                 uploadedFile("receipt") {
                   case (metadata: FileInfo, file: File) =>
-                    val fileUploadFutures: Seq[Future[FileEntity]] = fileService.save(userId, file, ext(metadata.fileName))
 
-                    val receiptFuture: Future[Option[ReceiptEntity]] = fileUploadFutures.head.flatMap((fileEntity: FileEntity) =>
-                      receiptService.addFileToReceipt(receiptId, fileEntity))
+                    val receiptFuture = for {
+                      fileEntities <- Future.sequence(fileService.save(userId, file, ext(metadata.fileName)))
+                      _ <- Future.sequence(fileEntities.map(fileEntity => receiptService.addFileToReceipt(receiptId, fileEntity)))
+                      updatedReceipt <- receiptService.findById(receiptId)
+                    } yield updatedReceipt
 
                     onComplete(receiptFuture) { (result: Try[Option[ReceiptEntity]]) =>
-
-                      Future.sequence(fileUploadFutures.tail).flatMap(fileEntities => {
-                        Future.sequence(fileEntities.map(fileEntity => receiptService.addFileToReceipt(receiptId, fileEntity)))
-                      }).onComplete { result =>
-                        file.delete()
-                        println("Added derived files")
-                      }
-
+                      file.delete()
                       result match {
                         case Success(receiptResult: Option[ReceiptEntity]) => receiptResult match {
                           case Some(receipt) => complete(Created -> receipt)
@@ -180,35 +175,37 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
               FileUploadDirective.uploadedFileWithFields("receipt", "total", "description") {
                 (parsedForm: ParsedForm) =>
 
-                    import akka.stream.scaladsl.FileIO
-                    val uploadedFile = parsedForm.files("receipt")
-                    val byteSource = FileIO.fromFile(uploadedFile.file)
-                    // byteSource: Source[ByteString, Any]
-                    val fileUploadFutures: Seq[Future[FileEntity]] =
-                      fileService.save(userId, uploadedFile.file, ext(uploadedFile.fileInfo.fileName))
+                  val uploadedFile = parsedForm.files("receipt")
 
-                    val receiptFuture: Future[ReceiptEntity] = fileUploadFutures.head.flatMap((fileEntity: FileEntity) =>
-                      receiptService.createReceipt(
-                        userId = userId,
-                        file = fileEntity,
-                        total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
-                        description = parsedForm.fields("description")
-                    ))
+                  val fileUploadsFuture: Future[Seq[FileEntity]] =
+                    Future.sequence(fileService.save(userId, uploadedFile.file, ext(uploadedFile.fileInfo.fileName)))
 
-                    onComplete(receiptFuture) { receiptTry =>
-                      receiptTry match {
-                        case Success(receipt: ReceiptEntity) => {
-                          Future.sequence(fileUploadFutures.tail).flatMap(fileEntities => {
-                            Future.sequence(fileEntities.map(fileEntity => receiptService.addFileToReceipt(receipt.id, fileEntity)))
-                          }).onComplete { result =>
-                            uploadedFile.file.delete()
-                            println("Derived files uploaded")
-                          }
-                          complete(Created -> receipt)
-                        }
-                        case Failure(error) => complete(BadRequest -> ErrorResponse(s"Could not create a receipt"))
-                      }
+                  val receiptFuture: Future[ReceiptEntity] = for {
+                    fileEntities <- fileUploadsFuture
+                    receipt <- receiptService.createReceipt(
+                      userId = userId,
+                      file = fileEntities.head,
+                      total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
+                      description = parsedForm.fields("description")
+                    )
+                    _ <- Future.sequence(fileEntities.tail.map(fileEntity => receiptService.addFileToReceipt(receipt.id, fileEntity)))
+                    updatedReceipt <- receiptService.findById(receipt.id)
+                  } yield updatedReceipt.get
+
+                  onComplete(receiptFuture) { receiptTry =>
+                    uploadedFile.file.delete()
+                    receiptTry match {
+                      case Success(receipt: ReceiptEntity) => complete(Created -> receipt)
+                      case Failure(error) => {
+
+                        // do proper logging here
+                        val sw = new StringWriter
+                        error.printStackTrace(new PrintWriter(sw))
+                        println(sw.toString)
+
+                        complete(BadRequest -> ErrorResponse(s"Could not create a receipt"))}
                     }
+                  }
                 }
             }
           }

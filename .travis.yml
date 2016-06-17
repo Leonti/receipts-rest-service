@@ -1,6 +1,12 @@
 language: scala
 jdk: oraclejdk8
 sudo: false
+
+addons:
+  apt:
+    packages:
+      - imagemagick
+
 scala:
    - 2.11.7
 

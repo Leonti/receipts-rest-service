@@ -8,9 +8,10 @@ scalaVersion := "2.11.7"
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 
 val logging = Seq (
-  "org.slf4j" % "slf4j-api" % "1.7.12",
-  "ch.qos.logback" % "logback-classic" % "1.1.3",
+  "ch.qos.logback" % "logback-classic" % "1.1.6",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+
+  "org.slf4j" % "slf4j-api" % "1.7.12",
   "com.typesafe.akka" %% "akka-slf4j" % "2.4.1"
 )
 

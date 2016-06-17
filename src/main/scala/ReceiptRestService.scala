@@ -1,5 +1,8 @@
 import java.util.Date
 
+import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.Logger
+
 import akka.actor.ActorSystem
 import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
@@ -60,7 +63,7 @@ trait Service extends JsonProtocols with CorsSupport {
   )
 
   def config: Config
-  val logger: LoggingAdapter
+  //val logger: LoggingAdapter
 
   val userRouting: UserRouting
   val receiptRouting: ReceiptRouting
@@ -100,6 +103,8 @@ trait Service extends JsonProtocols with CorsSupport {
 }
 
 object ReceiptRestService extends App with Service {
+  val logger = Logger(LoggerFactory.getLogger("ReceiptRestService"))
+
   override implicit val system = ActorSystem()
   override implicit val executor = system.dispatcher
   override implicit val materializer = ActorMaterializer()
@@ -115,13 +120,14 @@ object ReceiptRestService extends App with Service {
 
   override val config = ConfigFactory.load()
 
+  logger.info("Testing logging")
   println("Mongo:")
   println(config.getString("mongodb.db"))
 
   val fileCachingService = new FileCachingService()
   val imageResizingService = new ImageResizingService()
 
-  override val logger = Logging(system, getClass)
+  //override val logger = Logging(system, getClass)
   override val receiptRouting = new ReceiptRouting(
     new ReceiptService(new ReceiptRepository()),
     FileService.s3(config, materializer, fileCachingService, imageResizingService),
