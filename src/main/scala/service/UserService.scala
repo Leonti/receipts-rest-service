@@ -23,16 +23,31 @@ class UserService (userRepository: UserRepository) {
       case Some(user) => Future(Left("User already exists"))
       case None => {
         val hashedUser = User(userName = createUserRequest.userName, passwordHash = hasher.hash(createUserRequest.password))
-        userRepository.save(hashedUser).map(user => Right(user));
+        userRepository.save(hashedUser).map(user => Right(user))
       }
     })
     result
   }
 
+  def createGoogleUser(email: String): Future[User] = {
+    for {
+      existingUser <- findByUserName(email)
+      createdUser <- existingUser match {
+        case Some(user) => Future.failed(new RuntimeException("User already exists"))
+        case None => {
+          val hashedUser = User(userName = email)
+          userRepository.save(hashedUser)
+        }
+      }
+    } yield createdUser
+  }
+
   def findById(id: String)(implicit ec: ExecutionContext): Future[Option[User]] =
     userRepository.findUserById(id)
+
   def findByUserName(userName: String)(implicit ec: ExecutionContext): Future[Option[User]] =
     userRepository.findUserByUserName(userName)
+
   def validatePassword(user: User, password: String)(implicit ec: ExecutionContext): Future[Boolean] =
     Future(hasher.validate(user.passwordHash, password))
 }

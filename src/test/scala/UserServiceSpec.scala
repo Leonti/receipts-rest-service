@@ -22,7 +22,7 @@ class UserServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
   it should "return existing user" in {
 
     val repository = mock[UserRepository]
-    val user = Future(Some(User("id", "userName", "hash")))
+    val user = Future(Some(User(id = "id", userName = "name", passwordHash = "hash")))
 
     when(repository.findUserById("id")).thenReturn(user)
     when(repository.findUserByUserName("userName")).thenReturn(user)
@@ -37,7 +37,8 @@ class UserServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
 
     val repository = mock[UserRepository]
 
-    when(repository.findUserByUserName("userName")).thenReturn(Future(Some(User("id", "userName", "hash"))))
+    when(repository.findUserByUserName("userName"))
+      .thenReturn(Future(Some(User(id = "id", userName = "name", passwordHash = "hash"))))
 
     val userService = new UserService(repository)
 

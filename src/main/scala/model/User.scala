@@ -2,9 +2,16 @@ package model
 
 import reactivemongo.bson.{BSONDocumentWriter, BSONDocument, BSONDocumentReader}
 
-case class User(id: String = java.util.UUID.randomUUID.toString, userName: String, passwordHash: String) extends WithId
+case class User(
+                 id: String = java.util.UUID.randomUUID.toString,
+                 isGoogleUser: Boolean = false,
+                 userName: String,
+                 passwordHash: String = ""
+               ) extends WithId
 
 case class CreateUserRequest(userName: String, password: String)
+
+//case class CreateGoogleUserRequest(accessToken: Option[String], idToken: Option[String])
 
 case class UserInfo(id: String, userName: String)
 
@@ -18,6 +25,7 @@ object User {
 
     def read(doc: BSONDocument): User = Serialization.deserialize(doc, User(
       id = doc.getAs[String]("_id").get,
+      isGoogleUser = doc.getAs[Boolean]("isGoogleUser").getOrElse(false),
       userName = doc.getAs[String]("userName").get,
       passwordHash = doc.getAs[String]("passwordHash").get
     ))
@@ -29,6 +37,7 @@ object User {
       BSONDocument(
         "_id" -> user.id,
         "userName" -> user.userName,
+        "isGoogleUser" -> user.isGoogleUser,
         "passwordHash" -> user.passwordHash
       )
     }

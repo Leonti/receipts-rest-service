@@ -26,7 +26,7 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
   it should "authenticate a user" in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User("id", "name", "hash")))
+      Future(AuthenticationResult.success(User(id = "id", userName = "name", passwordHash = "hash")))
     }
 
     val authenticationDirective: AuthenticationDirective[User] = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
@@ -67,7 +67,7 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
   it should "renew token" in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User("id", "name", "hash")))
+      Future(AuthenticationResult.success(User(id = "id", userName = "name", passwordHash = "hash")))
     }
 
     val authenticationDirective: AuthenticationDirective[User] = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)

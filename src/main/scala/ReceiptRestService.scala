@@ -2,7 +2,6 @@ import java.util.Date
 
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.Logger
-
 import akka.actor.ActorSystem
 import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
@@ -22,7 +21,7 @@ import com.typesafe.config.ConfigFactory
 import model.ReceiptEntity
 import model._
 import repository.{ReceiptRepository, UserRepository}
-import routing.{AuthenticationRouting, CorsSupport, ReceiptRouting, UserRouting}
+import routing._
 import service._
 
 import scala.collection.mutable
@@ -68,6 +67,8 @@ trait Service extends JsonProtocols with CorsSupport {
   val userRouting: UserRouting
   val receiptRouting: ReceiptRouting
   val authenticationRouting: AuthenticationRouting
+  val appConfigRouting: AppConfigRouting
+  val oauthRouting: OauthRouting
 
   def myRejectionHandler =
     RejectionHandler.newBuilder()
@@ -90,6 +91,8 @@ trait Service extends JsonProtocols with CorsSupport {
             userRouting.routes ~ // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
             receiptRouting.routes ~
             authenticationRouting.routes ~
+            appConfigRouting.routes ~
+            oauthRouting.routes ~
             path("version") {
               get {
                 complete(Created -> System.getenv("VERSION"))
@@ -110,15 +113,16 @@ object ReceiptRestService extends App with Service {
   override implicit val materializer = ActorMaterializer()
 
   val userService = new UserService(new UserRepository())
+  val googleOauthService = new GoogleOauthService()
+  override val config = ConfigFactory.load()
 
   val authenticator = new Authenticator[User](
     realm = "Example realm",
-    bearerTokenSecret = "secret-no-one-knows".getBytes,
+    bearerTokenSecret = config.getString("tokenSecret").getBytes,
     findUserById = userService.findById,
     findUserByUserName = userService.findByUserName,
     validateUserPassword = userService.validatePassword)
 
-  override val config = ConfigFactory.load()
 
   logger.info("Testing logging")
   println("Mongo:")
@@ -134,6 +138,8 @@ object ReceiptRestService extends App with Service {
     authenticator.bearerToken(acceptExpired = true))
   override val userRouting = new UserRouting(userService, authenticator.bearerToken(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)
+  override val appConfigRouting = new AppConfigRouting()
+  override val oauthRouting = new OauthRouting(userService, googleOauthService)
 
   Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
 }

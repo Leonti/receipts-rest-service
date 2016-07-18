@@ -313,6 +313,6 @@ class E2eSpec extends FlatSpec with Matchers with ScalaFutures  with JsonProtoco
   def utf8TextEntity(content: String) = {
     val bytes = ByteString(content)
     HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, bytes)
-    //HttpEntity.Default(ContentTypes.`text/plain(UTF-8)`, bytes.length, Source.single(bytes))
   }
+  
 }

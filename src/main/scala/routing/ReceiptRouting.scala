@@ -21,10 +21,8 @@ import spray.json._
 import gnieh.diffson._
 
 class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, authenticaton: AuthenticationDirective[User]
-                    )(implicit val executor: ExecutionContextExecutor) extends JsonProtocols {
+                    )(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) extends JsonProtocols {
 
-  implicit val system = ActorSystem()
-  implicit val materializer = ActorMaterializer()
 
   def myRejectionHandler =
     RejectionHandler.newBuilder()

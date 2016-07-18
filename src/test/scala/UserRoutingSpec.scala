@@ -33,7 +33,7 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
     val userService = mock[UserService]
     when(userService.createUser(createUserRequest)).thenReturn(Future(Right(user)))
 
-    val userRouting = new UserRouting(userService, createAuthentication(User("123-user", "name", "hash")))
+    val userRouting = new UserRouting(userService, createAuthentication(User(id = "123-user", userName = "name", passwordHash = "hash")))
 
     Post("/user/create", createUserRequest) ~> userRouting.routes ~> check {
       status shouldBe Created
@@ -50,7 +50,7 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
     when(userService.createUser(CreateUserRequest(userName = "userName", password = "password")))
       .thenReturn(Future(Left("User already exist")))
 
-    val userRouting = new UserRouting(userService, createAuthentication(User("123-user", "name", "hash")))
+    val userRouting = new UserRouting(userService, createAuthentication(User(id = "123-user", userName = "name", passwordHash = "hash")))
 
     Post("/user/create", createUserRequest) ~> userRouting.routes ~> check {
       status shouldBe Conflict
@@ -65,7 +65,7 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
     val createUserRequest = CreateUserRequest(userName = "userName", password = "password")
     when(userService.createUser(createUserRequest)).thenReturn(Future.failed(new RuntimeException("test exception")))
 
-    val userRouting = new UserRouting(userService, createAuthentication(User("123-user", "name", "hash")))
+    val userRouting = new UserRouting(userService, createAuthentication(User(id = "123-user", userName = "name", passwordHash = "hash")))
     Post("/user/create", createUserRequest) ~> userRouting.routes ~> check {
       status shouldBe InternalServerError
       contentType shouldBe `application/json`
@@ -76,7 +76,7 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
   it should "should show user info" in {
 
     val userService = mock[UserService]
-    val user = User("123-user", "name", "hash")
+    val user = User(id = "123-user", userName = "name", passwordHash = "hash")
 
     val userRouting = new UserRouting(userService, createAuthentication(user))
     Get("/user/info") ~> userRouting.routes ~> check {
