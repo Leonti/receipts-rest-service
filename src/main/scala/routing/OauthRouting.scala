@@ -5,9 +5,10 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import de.choffmeister.auth.common.OAuth2AccessTokenResponse
 import model.{ErrorResponse, JsonProtocols, User}
-import service.{GoogleOauthService, JwtTokenGenerator, UserService}
+import service._
 import spray.json.DefaultJsonProtocol
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
 import spray.json._
 
@@ -21,27 +22,40 @@ class OauthRouting(userService: UserService, googleOauthService: GoogleOauthServ
 
   implicit val googleTokenFormat = jsonFormat1(GoogleToken)
 
+  private val validateTokenWithUserCreation: (GoogleToken, TokenType) => Route = (googleToken, tokenType) => {
+    val tokenFuture: Future[OAuth2AccessTokenResponse] = for {
+      tokenInfo <- googleOauthService.fetchAndValidateTokenInfo(googleToken.token, tokenType)
+      optionUser <- userService.findByUserName(tokenInfo.email)
+      user: User <- optionUser match {
+        case Some(user) => Future.successful(user)
+        case None => userService.createGoogleUser(tokenInfo.email)
+      }
+      token <- Future.successful(JwtTokenGenerator.generateToken(user))
+    } yield token
+
+    onComplete(tokenFuture) { (tokenResult: Try[OAuth2AccessTokenResponse]) =>
+      tokenResult match {
+        case Success(token) => complete(Created -> token)
+        case Failure(t: Throwable) => {
+          println(s"Authentication exception $t")
+          complete(BadRequest -> ErrorResponse("Failed to authenticate"))
+        }
+      }
+    }
+  }
+
   val routes = {
     path("oauth" / "google-access-token") {
       post {
         entity(as[GoogleToken]) { googleToken =>
-
-          val tokenFuture: Future[OAuth2AccessTokenResponse] = for {
-            tokenInfo <- googleOauthService.fetchTokenInfoWithAccessToken(googleToken.token)
-            optionUser <- userService.findByUserName(tokenInfo.email)
-            user: User <- optionUser match {
-              case Some(user) => Future.successful(user)
-              case None => userService.createGoogleUser(tokenInfo.email)
-            }
-            token <- Future.successful(JwtTokenGenerator.generateToken(user))
-          } yield token
-
-          onComplete(tokenFuture) { (tokenResult: Try[OAuth2AccessTokenResponse]) =>
-            tokenResult match {
-              case Success(token) => complete(Created -> token)
-              case Failure(t: Throwable) => complete(BadRequest -> ErrorResponse("Failed to authenticate"))
-            }
-          }
+          validateTokenWithUserCreation(googleToken, AccessToken)
+        }
+      }
+    } ~
+    path("oauth" / "google-id-token") {
+      post {
+        entity(as[GoogleToken]) { googleToken =>
+          validateTokenWithUserCreation(googleToken, IdToken)
         }
       }
     }
