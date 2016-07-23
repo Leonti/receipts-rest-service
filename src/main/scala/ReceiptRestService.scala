@@ -16,6 +16,7 @@ import akka.http.scaladsl.server.directives.FileInfo
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.stream.scaladsl._
 import akka.util.ByteString
+import authorization.PathAuthorization
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import model.ReceiptEntity
@@ -69,6 +70,7 @@ trait Service extends JsonProtocols with CorsSupport {
   val authenticationRouting: AuthenticationRouting
   val appConfigRouting: AppConfigRouting
   val oauthRouting: OauthRouting
+  val backupRouting: BackupRouting
 
   def myRejectionHandler =
     RejectionHandler.newBuilder()
@@ -93,6 +95,7 @@ trait Service extends JsonProtocols with CorsSupport {
             authenticationRouting.routes ~
             appConfigRouting.routes ~
             oauthRouting.routes ~
+            backupRouting.routes ~
             path("version") {
               get {
                 complete(Created -> System.getenv("VERSION"))
@@ -123,6 +126,7 @@ object ReceiptRestService extends App with Service {
     findUserByUserName = userService.findByUserName,
     validateUserPassword = userService.validatePassword)
 
+  val pathAuthorization = new PathAuthorization(bearerTokenSecret = config.getString("tokenSecret").getBytes)
 
   logger.info("Testing logging")
   println("Mongo:")
@@ -140,6 +144,9 @@ object ReceiptRestService extends App with Service {
   override val authenticationRouting = new AuthenticationRouting(authenticator)
   override val appConfigRouting = new AppConfigRouting()
   override val oauthRouting = new OauthRouting(userService, googleOauthService)
+  override val backupRouting = new BackupRouting(
+    authenticator.bearerToken(acceptExpired = true),
+    pathAuthorization.authorizePath)
 
   Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
 }
