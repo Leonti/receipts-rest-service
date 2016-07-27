@@ -122,9 +122,9 @@ object ReceiptRestService extends App with Service {
   val authenticator = new Authenticator[User](
     realm = "Example realm",
     bearerTokenSecret = config.getString("tokenSecret").getBytes,
-    findUserById = userService.findById,
-    findUserByUserName = userService.findByUserName,
-    validateUserPassword = userService.validatePassword)
+    fromBearerToken = token => userService.findById(token.claimAsString("sub").right.get),
+    fromUsernamePassword = userService.findByUserNameWithPassword
+  )
 
   val pathAuthorization = new PathAuthorization(bearerTokenSecret = config.getString("tokenSecret").getBytes)
 
@@ -134,19 +134,25 @@ object ReceiptRestService extends App with Service {
 
   val fileCachingService = new FileCachingService()
   val imageResizingService = new ImageResizingService()
+  val receiptService = new ReceiptService(new ReceiptRepository())
+  val fileService = FileService.s3(config, materializer, fileCachingService, imageResizingService)
 
   //override val logger = Logging(system, getClass)
   override val receiptRouting = new ReceiptRouting(
-    new ReceiptService(new ReceiptRepository()),
-    FileService.s3(config, materializer, fileCachingService, imageResizingService),
+    receiptService,
+    fileService,
     authenticator.bearerToken(acceptExpired = true))
   override val userRouting = new UserRouting(userService, authenticator.bearerToken(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)
   override val appConfigRouting = new AppConfigRouting()
   override val oauthRouting = new OauthRouting(userService, googleOauthService)
+
+  val backupService = new BackupService(receiptService, fileService)
+
   override val backupRouting = new BackupRouting(
     authenticator.bearerToken(acceptExpired = true),
-    pathAuthorization.authorizePath)
+    pathAuthorization.authorizePath,
+    backupService)
 
   Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
 }

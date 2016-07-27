@@ -22,7 +22,10 @@ class UserServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
   it should "return existing user" in {
 
     val repository = mock[UserRepository]
-    val user = Future(Some(User(id = "id", userName = "name", passwordHash = "hash")))
+    val user = Future(Some(User(
+      id = "id",
+      userName = "name",
+      passwordHash = "pbkdf2:hmac-sha1:10000:128:Z0+02KhCGr4xkEzZIVKfu9qfoYR+ZgrNUDF/C3JJTwk=:W7LYY7TanDr++ha3507kCg==")))
 
     when(repository.findUserById("id")).thenReturn(user)
     when(repository.findUserByUserName("userName")).thenReturn(user)
@@ -30,7 +33,7 @@ class UserServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
     val userService = new UserService(repository)
 
     userService.findById("id") shouldBe user
-    userService.findByUserName("userName") shouldBe user
+    userService.findByUserName("name")
   }
 
   it should "return error if user already exist" in {
@@ -59,21 +62,6 @@ class UserServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
 
     whenReady(userService.createUser(CreateUserRequest("userName", "password"))) { result =>
       result shouldBe Right(user)
-    }
-  }
-
-  it should "validate password" in {
-    // pass
-    val user = User(userName = "userName",
-      passwordHash = "pbkdf2:hmac-sha1:10000:128:Z0+02KhCGr4xkEzZIVKfu9qfoYR+ZgrNUDF/C3JJTwk=:W7LYY7TanDr++ha3507kCg==")
-
-    val userService = new UserService(mock[UserRepository])
-
-    whenReady(userService.validatePassword(user, "pass")) { result =>
-      result shouldBe true
-    }
-    whenReady(userService.validatePassword(user, "pass1")) { result =>
-      result shouldBe false
     }
   }
 

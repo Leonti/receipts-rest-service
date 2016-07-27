@@ -16,15 +16,16 @@ class Cache(file : File) extends GraphStage[FlowShape[ByteString, ByteString]] {
   val in = Inlet[ByteString]("Cache.in")
   val out = Outlet[ByteString]("Cache.out")
 
-  val partFile = new File(file.getAbsolutePath + ".part")
-  lazy val cacheFile = new FileOutputStream(partFile)
-
-  println("Caching file to " + partFile)
-
   override val shape = FlowShape.of(in, out)
 
   override def createLogic(attr: Attributes): GraphStageLogic =
     new GraphStageLogic(shape) {
+
+      val partFile = new File(file.getAbsolutePath + ".part")
+      lazy val cacheFile = new FileOutputStream(partFile)
+
+      println("Caching file to " + partFile)
+
       setHandler(in, new InHandler {
         override def onPush(): Unit = {
 

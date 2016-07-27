@@ -28,6 +28,7 @@ libraryDependencies ++= {
   val amazonS3V   = "1.10.68"
   val scalaTestV  = "2.2.5"
   val reactiveMongoV = "0.11.9"
+  val jwtAuthV    = "0.3.0"
   Seq(
     "com.typesafe.akka" %% "akka-actor"                           % akkaV,
     "com.typesafe.akka" %% "akka-stream"                          % akkaV,
@@ -38,8 +39,8 @@ libraryDependencies ++= {
     "com.amazonaws"     %   "aws-java-sdk-s3"                     % amazonS3V,
     "org.reactivemongo" %% "reactivemongo"                        % reactiveMongoV,
     "com.drewnoakes"    %  "metadata-extractor"                   % "2.9.0",
-    "de.choffmeister"   %% "auth-common"                          % "0.1.0",
-    "de.choffmeister"   %% "auth-akka-http"                       % "0.1.0",
+    "de.choffmeister"   %% "auth-common"                          % jwtAuthV,
+    "de.choffmeister"   %% "auth-akka-http"                       % jwtAuthV,
     "org.gnieh" %% "diffson"                                      % "1.1.0",
     "org.scalatest"     %% "scalatest"                            % scalaTestV % "it,test",
     "org.mockito"       %  "mockito-all"                          % "1.8.4" % "test"
@@ -51,6 +52,8 @@ libraryDependencies ++= logging
 resolvers ++= Seq(
   Resolver.bintrayRepo("dwhjames", "maven")
 )
+
+resolvers += Resolver.bintrayRepo("choffmeister", "maven")
 
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 

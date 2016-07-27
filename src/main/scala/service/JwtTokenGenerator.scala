@@ -1,5 +1,6 @@
 package service
 
+import java.time.Instant
 import java.util.Date
 
 import com.typesafe.config.ConfigFactory
@@ -20,10 +21,8 @@ object JwtTokenGenerator {
     val now = System.currentTimeMillis / 1000L * 1000L
 
     val token = JsonWebToken(
-      createdAt = new Date(now),
-      expiresAt = new Date(now + bearerTokenLifetime.toMillis * 1000L),
-      subject = user.id.toString,
-      claims = Map("name" -> JsString(user.userName))
+      expiresAt = Instant.ofEpochSecond(System.currentTimeMillis / 1000L + bearerTokenLifetime.toSeconds),
+      claims = Map("sub" -> JsString(user.id.toString()), "name" -> JsString(user.userName))
     )
     val tokenStr = JsonWebToken.write(token, bearerTokenSecret)
 
@@ -34,14 +33,12 @@ object JwtTokenGenerator {
     val now = System.currentTimeMillis / 1000L * 1000L
 
     val token = JsonWebToken(
-      createdAt = new Date(now),
-      expiresAt = new Date(now + bearerPathTokenLifetime.toMillis * 1000L),
-      subject = path,
-      claims = Map()
+      expiresAt = Instant.ofEpochSecond(System.currentTimeMillis / 1000L + bearerPathTokenLifetime.toSeconds),
+      claims = Map("sub" -> JsString(path))
     )
     val tokenStr = JsonWebToken.write(token, bearerTokenSecret)
 
-    OAuth2AccessTokenResponse("bearer", tokenStr, bearerPathTokenLifetime.toMillis)
+    OAuth2AccessTokenResponse("bearer", tokenStr, bearerPathTokenLifetime.toSeconds)
   }
 
 }

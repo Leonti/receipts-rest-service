@@ -48,6 +48,6 @@ class UserService (userRepository: UserRepository) {
   def findByUserName(userName: String)(implicit ec: ExecutionContext): Future[Option[User]] =
     userRepository.findUserByUserName(userName)
 
-  def validatePassword(user: User, password: String)(implicit ec: ExecutionContext): Future[Boolean] =
-    Future(hasher.validate(user.passwordHash, password))
+  def findByUserNameWithPassword(userName: String, password: String)(implicit ec: ExecutionContext): Future[Option[User]] =
+    userRepository.findUserByUserName(userName).map(_.filter(user => hasher.validate(user.passwordHash, password)))
 }
