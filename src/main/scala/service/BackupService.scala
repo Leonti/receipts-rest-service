@@ -1,71 +1,89 @@
 package service
 import java.io._
+import java.nio.charset.StandardCharsets
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
-import akka.Done
+import akka.{Done}
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, IOResult}
 import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
-import model.{FileEntity, ReceiptEntity}
+import model.{FileEntity, JsonProtocols, ReceiptEntity}
 
-import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContextExecutor, Future}
+import spray.json._
 
 case class ReceiptsBackup(source: Source[ByteString, Future[IOResult]], filename: String)
 
 class BackupService(receiptService: ReceiptService, fileService: FileService)
-                   (implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) {
+                   (implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
+  extends JsonProtocols {
 
-  case class SourceToZip(entity: FileEntity, source: Source[ByteString, Future[IOResult]])
-  case class ReceiptsToZip(receipts: List[ReceiptEntity], sources: List[SourceToZip])
+  case class FileToZip(path: String, source: Source[ByteString, Any])
 
-  def userReceipts(userId: String) = {
+  private val fetchFilesToZip: String => Future[List[FileToZip]] = userId => {
+    val receiptWithMainFiles: ReceiptEntity => ReceiptEntity =
+      receipt => receipt.copy(files = receipt.files.filter(_.parentId.isEmpty))
 
-    def isOriginal(fileEntity: FileEntity) = fileEntity.parentId.isEmpty
+    val fileToZip: FileEntity => FileToZip =
+      fileEntity => FileToZip(
+        path = fileEntity.id + "." + fileEntity.ext,
+        source = fileService.fetch(userId, fileEntity.id)
+      )
 
-    def sourcesToZips(fileEntities: List[FileEntity]) = fileEntities.map(fileEntity =>
-      SourceToZip(fileEntity, fileService.fetch(userId, fileEntity.id)))
+    val receiptJsonEntry: List[ReceiptEntity] => FileToZip = receipts => {
+      val receiptsAsJson = receipts.toJson.prettyPrint
+      val byteString = ByteString(receiptsAsJson.getBytes(StandardCharsets.UTF_8))
+      FileToZip(
+        path = "receipts.json",
+        source = Source[ByteString](List(byteString))
+      )
+    }
+
+    receiptService.findForUserId(userId)
+      .map(_.map(receiptWithMainFiles)).map { receipts =>
+
+      val files: List[FileToZip] = receipts.flatMap(_.files).map(fileToZip)
+      val jsonFile: FileToZip = receiptJsonEntry(receipts)
+
+      files.::(jsonFile)
+    }
+  }
+
+  val createUserBackup: String => ReceiptsBackup = userId => {
 
     val inputStream = new PipedInputStream()
     val outputStream = new PipedOutputStream(inputStream)
 
-    val receiptsToZip = for {
-      receipts <- receiptService.findForUserId(userId)
-      fileEntities <- Future.successful(receipts.flatMap(_.files.filter(isOriginal)))
-    } yield ReceiptsToZip(receipts = receipts, sources = sourcesToZips(fileEntities)) // .take(3)
-
-    val zipFileFuture: Future[Unit] = receiptsToZip.flatMap { receipts =>
-    //  val fileOutputStream = new FileOutputStream("/home/leonti/Downloads/ziptest.zip")
+    fetchFilesToZip(userId).map { files =>
       val zipOutputStream = new ZipOutputStream(outputStream)
+      val sink: Sink[ByteString, Future[Done]] = Sink.foreach[ByteString](bs => zipOutputStream.write(bs.toArray))
 
-      val fSerialized = {
-        var fAccum = Future{()}
-        for(source <- receipts.sources) {
-          println(s"Processing ${source.entity.id}")
-          fAccum = fAccum.flatMap(unit => {
-            val sink: Sink[ByteString, Future[Done]] = Sink.foreach[ByteString](bs => zipOutputStream.write(bs.toArray))
+      val serialized = {
+        var acc = Future{()}
+        for(file <- files) {
+          println(s"Processing ${file.path}")
+          acc = acc.flatMap(unit => {
 
-            val zipEntry = new ZipEntry(source.entity.id + "." + source.entity.ext)
+            val zipEntry = new ZipEntry(file.path)
             zipOutputStream.putNextEntry(zipEntry)
 
-            source.source.runWith(sink).map(done => {
+            file.source.runWith(sink).map(done => {
               zipOutputStream.closeEntry()
             })
           })
         }
-        fAccum
+        acc
       }
 
-      fSerialized.map(uni => {
+      serialized.onComplete { result =>
         zipOutputStream.close()
-      })
+      }
     }
 
-    val source: Source[ByteString, Future[IOResult]] = StreamConverters.fromInputStream(() => inputStream)
-
-    ReceiptsBackup(source = source, filename = "backup.zip")
-
+    ReceiptsBackup(
+      source = StreamConverters.fromInputStream(() => inputStream),
+      filename = "backup.zip")
   }
 
 }

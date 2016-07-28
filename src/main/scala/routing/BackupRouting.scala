@@ -47,7 +47,7 @@ class BackupRouting(authenticaton: AuthenticationDirective[User],
           authorizePath {
             get {
 
-              val backup = backupService.userReceipts(userId)
+              val backup = backupService.createUserBackup(userId)
 
               val contentDisposition = `Content-Disposition`(ContentDispositionTypes.attachment,
                 Map("filename" -> backup.filename))
