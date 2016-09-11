@@ -13,7 +13,7 @@ import model.{CreateUserRequest, JsonProtocols, UserInfo}
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
-package object TestUtils extends JsonProtocols {
+package object UserTestUtils extends JsonProtocols {
 
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
