@@ -1,6 +1,6 @@
 package routing
 
-import java.io.{File, PrintWriter, StringWriter}
+import java.io.{File, PrintWriter, Serializable, StringWriter}
 
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.StatusCodes._
@@ -17,12 +17,20 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.stream.ActorMaterializer
+import com.typesafe.scalalogging.Logger
 import spray.json._
 import gnieh.diffson._
+import org.slf4j.LoggerFactory
+import processing.ReceiptFiles
 
-class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, authenticaton: AuthenticationDirective[User]
+class ReceiptRouting(
+                      receiptService: ReceiptService,
+                      fileService: FileService,
+                      receiptFiles: ReceiptFiles,
+                      authenticaton: AuthenticationDirective[User]
                     )(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) extends JsonProtocols {
 
+  val logger = Logger(LoggerFactory.getLogger("ReceiptRouting"))
 
   def myRejectionHandler =
     RejectionHandler.newBuilder()
@@ -78,19 +86,17 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
       Future.sequence(fileFutures).flatMap(_ => receiptService.delete(receiptId))
     }))
 
-    onComplete(deletion) { (deletionOptionTry: Try[Option[Future[Unit]]]) =>
-      deletionOptionTry match {
+    onComplete(deletion) {
         case Success(deletionOption: Option[Future[Unit]]) => deletionOption match {
           case Some(deletionFuture: Future[Unit]) => onComplete(deletionFuture) { (deletionResult: Try[Unit]) =>
             deletionResult match {
               case Success(_) => complete(OK)
-              case Failure(t) => complete(InternalServerError -> ErrorResponse(s"server failure: ${t}"))
+              case Failure(t) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
             }
           }
           case None => complete(NotFound -> ErrorResponse(s"Receipt $receiptId was not found"))
         }
-        case Failure(t) => complete(InternalServerError -> ErrorResponse(s"server failure: ${t}"))
-      }
+        case Failure(t) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
     }
   }
 
@@ -117,17 +123,18 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                 uploadedFile("receipt") {
                   case (metadata: FileInfo, file: File) =>
 
-                    val receiptFuture = for {
-                      fileEntities <- Future.sequence(fileService.save(userId, file, ext(metadata.fileName)))
-                      _ <- Future.sequence(fileEntities.map(fileEntity => receiptService.addFileToReceipt(receiptId, fileEntity)))
-                      updatedReceipt <- receiptService.findById(receiptId)
-                    } yield updatedReceipt
+                    val pendingFilesFuture = receiptService.findById(receiptId).flatMap({
+                      case Some(receiptEntity: ReceiptEntity) => receiptFiles
+                        .submitFile(userId, receiptEntity.id, file, ext(metadata.fileName))
+                        .map(pendingFile => Some(pendingFile))
+                      case None => Future.successful(None)
+                    })
 
-                    onComplete(receiptFuture) { (result: Try[Option[ReceiptEntity]]) =>
-                      file.delete()
+                    onComplete(pendingFilesFuture) { (result: Try[Option[PendingFile]]) =>
+
                       result match {
-                        case Success(receiptResult: Option[ReceiptEntity]) => receiptResult match {
-                          case Some(receipt) => complete(Created -> receipt)
+                        case Success(maybePendingFile: Option[PendingFile]) => maybePendingFile match {
+                          case Some(pendingFile) => complete(Created -> pendingFile)
                           case None => complete(BadRequest -> ErrorResponse(s"Receipt $receiptId doesn't exist"))
                         }
                         case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
@@ -176,24 +183,22 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                 (parsedForm: ParsedForm) =>
 
                   val uploadedFile = parsedForm.files("receipt")
-
-                  val fileUploadsFuture: Future[Seq[FileEntity]] =
-                    Future.sequence(fileService.save(userId, uploadedFile.file, ext(uploadedFile.fileInfo.fileName)))
+                  val start = System.currentTimeMillis()
+                  logger.info(s"Received file to upload ${uploadedFile.file.getAbsolutePath}")
 
                   val receiptFuture: Future[ReceiptEntity] = for {
-                    fileEntities <- fileUploadsFuture
                     receipt <- receiptService.createReceipt(
                       userId = userId,
-                      file = fileEntities.head,
                       total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
                       description = parsedForm.fields("description")
                     )
-                    _ <- Future.sequence(fileEntities.tail.map(fileEntity => receiptService.addFileToReceipt(receipt.id, fileEntity)))
-                    updatedReceipt <- receiptService.findById(receipt.id)
-                  } yield updatedReceipt.get
+                    pendingFile <- receiptFiles.submitFile(userId, receipt.id, uploadedFile.file, ext(uploadedFile.fileInfo.fileName))
+                  } yield receipt
 
                   onComplete(receiptFuture) { receiptTry =>
-                    uploadedFile.file.delete()
+                    val end = System.currentTimeMillis()
+                    logger.info(s"Receipt created in ${(end-start)/1000}s")
+
                     receiptTry match {
                       case Success(receipt: ReceiptEntity) => complete(Created -> receipt)
                       case Failure(error) => {
@@ -203,7 +208,8 @@ class ReceiptRouting(receiptService: ReceiptService, fileService: FileService, a
                         error.printStackTrace(new PrintWriter(sw))
                         println(sw.toString)
 
-                        complete(BadRequest -> ErrorResponse(s"Could not create a receipt"))}
+                        complete(InternalServerError -> ErrorResponse(s"Could not create a receipt"))
+                      }
                     }
                   }
                 }

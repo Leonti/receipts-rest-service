@@ -51,7 +51,7 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
     val file = new File(UUID.randomUUID().toString)
 
     val fileEntityFuture = for {
-      f <- source.runWith(FileIO.toFile(file))
+      f <- source.runWith(FileIO.toPath(file.toPath))
       fileEntity <- fileService.save("userId", file, "png").head
     } yield fileEntity
 
@@ -76,7 +76,7 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
     val file = new File(UUID.randomUUID().toString)
 
     val fileEntityFuture = for {
-      f <- source.runWith(FileIO.toFile(file))
+      f <- source.runWith(FileIO.toPath(file.toPath))
       fileEntity <- fileService.save("userId", file, "txt").head
     } yield fileEntity
 

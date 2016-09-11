@@ -21,7 +21,7 @@ import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import model.ReceiptEntity
 import model._
-import repository.{ReceiptRepository, UserRepository}
+import repository.{PendingFileRepository, ReceiptRepository, UserRepository}
 import routing._
 import service._
 
@@ -30,6 +30,9 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import spray.json._
 import de.choffmeister.auth.akkahttp.Authenticator
 import de.choffmeister.auth.common._
+import processing.{FileProcessor, ReceiptFiles}
+import queue.{Queue, QueueProcessor}
+import queue.files.ReceiptFileQueue
 
 import scala.concurrent.duration._
 import scala.util.Try
@@ -67,6 +70,7 @@ trait Service extends JsonProtocols with CorsSupport {
 
   val userRouting: UserRouting
   val receiptRouting: ReceiptRouting
+  val pendingFileRouting: PendingFileRouting
   val authenticationRouting: AuthenticationRouting
   val appConfigRouting: AppConfigRouting
   val oauthRouting: OauthRouting
@@ -86,12 +90,13 @@ trait Service extends JsonProtocols with CorsSupport {
       .result()
 
   val routes = {
-    logRequest("receipt-rest-service") {
-      logRequestResult("receipt-rest-service") {
+    //logRequest("receipt-rest-service") {
+     // logRequestResult("receipt-rest-service") {
         handleRejections(myRejectionHandler) {
           cors {
-            userRouting.routes ~ // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
+            userRouting.routes ~
             receiptRouting.routes ~
+            pendingFileRouting.routes ~
             authenticationRouting.routes ~
             appConfigRouting.routes ~
             oauthRouting.routes ~
@@ -103,8 +108,9 @@ trait Service extends JsonProtocols with CorsSupport {
             }
           }
         }
-      }
-    }
+     // }
+   // }
+
   }
 }
 
@@ -135,13 +141,22 @@ object ReceiptRestService extends App with Service {
   val fileCachingService = new FileCachingService()
   val imageResizingService = new ImageResizingService()
   val receiptService = new ReceiptService(new ReceiptRepository())
+  val pendingFileService = new PendingFileService(new PendingFileRepository())
   val fileService = FileService.s3(config, materializer, fileCachingService, imageResizingService)
+
+  val queue = new Queue()
+  val receiptFiles = new ReceiptFiles(pendingFileService, new ReceiptFileQueue(queue))
 
   //override val logger = Logging(system, getClass)
   override val receiptRouting = new ReceiptRouting(
     receiptService,
     fileService,
+    receiptFiles,
     authenticator.bearerToken(acceptExpired = true))
+  override val pendingFileRouting = new PendingFileRouting(
+    pendingFileService,
+    authenticator.bearerToken(acceptExpired = true)
+  )
   override val userRouting = new UserRouting(userService, authenticator.bearerToken(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)
   override val appConfigRouting = new AppConfigRouting()
@@ -153,6 +168,20 @@ object ReceiptRestService extends App with Service {
     authenticator.bearerToken(acceptExpired = true),
     pathAuthorization.authorizePath,
     backupService)
+
+  val fileProcessor = new FileProcessor(
+    fileService = fileService,
+    receiptService = receiptService,
+    pendingFileService = pendingFileService
+  )
+
+  val queueProcessor = new QueueProcessor(
+    queue = queue,
+    fileProcessor = fileProcessor,
+    system = system
+  )
+
+  queueProcessor.reserveNextJob()
 
   Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
 }

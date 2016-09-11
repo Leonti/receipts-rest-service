@@ -30,7 +30,6 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     whenReady(receiptService.createReceipt(
       userId = "user id",
-      file = FileEntity(id = "1", parentId = None, ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)),
       total = Some(BigDecimal("12.38")),
       description = "some description"
     )) { result =>

@@ -1,16 +1,14 @@
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%-4relative [%thread] %-5level %logger{60} - %msg %n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{60} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <logger name="slick" level="INFO">
-        <appender-ref ref="STDOUT" />
-    </logger>
-
-    <root level="debug">
+    <root level="DEBUG">
         <appender-ref ref="STDOUT" />
     </root>
+
+    <logger name="reactivemongo" level="WARN" />
 
 </configuration>

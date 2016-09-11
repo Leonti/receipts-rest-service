@@ -1,6 +1,7 @@
 package routing
 
 import java.io.File
+import java.util.concurrent.Executors
 
 import akka.stream.scaladsl._
 import akka.http.scaladsl.model.Multipart
@@ -12,7 +13,7 @@ import akka.http.scaladsl.server.directives.RouteDirectives._
 import akka.stream.scaladsl.FileIO
 
 import scala.collection.immutable.Seq
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
@@ -23,13 +24,15 @@ object FileUploadDirective {
     extractRequestContext.flatMap { ctx =>
       import ctx.executionContext
       import ctx.materializer
+
       entity(as[Multipart.FormData]).flatMap { formData =>
 
         val processedParts: Future[Seq[Future[Part]]] = formData.parts.map({ part =>
           if (part.filename.isDefined) {
             val destination = File.createTempFile("akka-http-upload", ".tmp")
             val fileInfo = FileInfo(part.name, part.filename.get, part.entity.contentType)
-            val filePart: Future[Part] = part.entity.dataBytes.runWith(FileIO.toFile(destination)).map(_ => Part(
+
+            val filePart: Future[Part] = part.entity.dataBytes.runWith(FileIO.toPath(destination.toPath)).map(_ => Part(
               name = part.name,
               fileInfo = Some(fileInfo),
               file = Some(destination)))

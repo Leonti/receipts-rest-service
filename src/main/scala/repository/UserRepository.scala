@@ -7,16 +7,16 @@ import reactivemongo.bson.BSONDocument
 import scala.concurrent.Future
 
 class UserRepository extends MongoDao[User] {
-  val collection: BSONCollection = db[BSONCollection]("users")
+  lazy val collectionFuture: Future[BSONCollection] = dbFuture.map(db => db[BSONCollection]("users"))
 
-  def save(user: User): Future[User] = save(collection, user)
+  def save(user: User): Future[User] = save(collectionFuture, user)
 
   def findUserById(userId: String): Future[Option[User]]  = {
-    find(collection, BSONDocument("_id" -> userId))
+    find(collectionFuture, BSONDocument("_id" -> userId))
   }
 
   def findUserByUserName(userName: String): Future[Option[User]] = {
-    find(collection, BSONDocument("userName" -> userName))
+    find(collectionFuture, BSONDocument("userName" -> userName))
   }
 
 }

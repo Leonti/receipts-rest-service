@@ -67,7 +67,7 @@ class FileCachingService {
 
   val get : (String, String) => Option[Source[ByteString, Future[IOResult]]] = (userId, fileId) => {
     val file = tempFile(userId, fileId)
-    if (file.exists()) Some(FileIO.fromFile(file)) else None
+    if (file.exists()) Some(FileIO.fromPath(file.toPath)) else None
   }
 
 }

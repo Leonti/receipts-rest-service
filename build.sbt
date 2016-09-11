@@ -3,7 +3,7 @@ enablePlugins(JavaAppPackaging)
 name         := "receipts-rest-service"
 organization := "rocks.leonti"
 version      := "1.0"
-scalaVersion := "2.11.7"
+scalaVersion := "2.11.8"
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 
@@ -24,10 +24,10 @@ val e2eSettings =
       scalaSource in EndToEndTest := baseDirectory.value / "src/e2e/scala")
 
 libraryDependencies ++= {
-  val akkaV       = "2.4.3"
+  val akkaV       = "2.4.9"
   val amazonS3V   = "1.10.68"
   val scalaTestV  = "2.2.5"
-  val reactiveMongoV = "0.11.9"
+  val reactiveMongoV = "0.11.14"
   val jwtAuthV    = "0.3.0"
   Seq(
     "com.typesafe.akka" %% "akka-actor"                           % akkaV,
@@ -59,8 +59,8 @@ resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositor
 
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
 
-val userHome = System.getProperty("user.home")
-javaOptions +=  s"-Dconfig.file=${userHome}/.receipts-rest-service/service.conf"
+//val userHome = System.getProperty("user.home")
+//javaOptions +=  s"-Dconfig.file=${userHome}/.receipts-rest-service/service.conf"
 
 Revolver.settings
 

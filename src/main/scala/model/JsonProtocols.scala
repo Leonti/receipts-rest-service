@@ -12,4 +12,5 @@ trait JsonProtocols extends DefaultJsonProtocol with NullOptions {
   implicit val errorResponseFormat = jsonFormat1(ErrorResponse.apply)
   implicit val okResponseFormat = jsonFormat1(OkResponse.apply)
   implicit val jwtTokenFormat = OAuth2AccessTokenResponseFormat
+  implicit val pendingFileFormat = jsonFormat3(PendingFile.apply)
 }
