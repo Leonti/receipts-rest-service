@@ -28,13 +28,8 @@ class ReceiptService(receiptRepository: ReceiptRepository) {
 
   def save(receiptEntity: ReceiptEntity): Future[ReceiptEntity] = receiptRepository.save(receiptEntity)
 
-  def addFileToReceipt(receiptId: String, file: FileEntity) : Future[Option[ReceiptEntity]] = {
-
-    receiptRepository.findById(receiptId).flatMap((receiptEntity: Option[ReceiptEntity]) => receiptEntity match {
-      case Some(receipt: ReceiptEntity) => save(receipt.copy(files = receipt.files :+ file)).map(result => Some(result))
-      case None => Future(None)
-    })
-  }
+  def addFileToReceipt(receiptId: String, file: FileEntity) : Future[Option[ReceiptEntity]] =
+    receiptRepository.addFileToReceipt(receiptId, file).flatMap(_ => receiptRepository.findById(receiptId))
 
   def delete(receiptId: String): Future[Unit] = receiptRepository.deleteById(receiptId).map(r => ())
 }

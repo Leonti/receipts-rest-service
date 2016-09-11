@@ -29,13 +29,13 @@ class FileProcessor(
       result
     })
 
-    val receiptOption: Future[Option[ReceiptEntity]] = for {
+    val receiptOption: Future[Seq[Option[ReceiptEntity]]] = for {
       fileEntities <- fileEntitiesFuture
-      receiptResult <- fileEntities.tail.foldLeft(receiptService.addFileToReceipt(receiptFileJob.receiptId, fileEntities.head)) {
-        (acc: Future[Option[ReceiptEntity]], next: FileEntity) => {
-          acc.flatMap(_ => receiptService.addFileToReceipt(receiptFileJob.receiptId, next))
-        }
+      receiptResult <- Future.sequence(fileEntities.map(fileEntity => {
+        println(s"Adding file to receipt ${fileEntity}")
+        receiptService.addFileToReceipt(receiptFileJob.receiptId, fileEntity)
       }
+      ))
       _ <- pendingFileService.deleteByReceiptId(receiptFileJob.receiptId)
     } yield receiptResult
 
