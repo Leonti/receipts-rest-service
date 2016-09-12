@@ -1,6 +1,7 @@
 package service
 
 import model.PendingFile
+import model.PendingFile.PendingFileId
 import repository.PendingFileRepository
 
 import scala.concurrent.Future
@@ -11,6 +12,6 @@ class PendingFileService(pendingFileRepository: PendingFileRepository) {
 
   def findForUserId(userId: String): Future[List[PendingFile]] = pendingFileRepository.findForUserId(userId)
 
-  def deleteByReceiptId(receiptId: String): Future[Unit] = pendingFileRepository.deleteByReceiptId(receiptId)
+  def deleteById(pendingFileId: PendingFileId): Future[Unit] = pendingFileRepository.deleteById(pendingFileId)
 
 }

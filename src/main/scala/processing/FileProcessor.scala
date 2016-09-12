@@ -36,7 +36,7 @@ class FileProcessor(
         receiptService.addFileToReceipt(receiptFileJob.receiptId, fileEntity)
       }
       ))
-      _ <- pendingFileService.deleteByReceiptId(receiptFileJob.receiptId)
+      _ <- pendingFileService.deleteById(receiptFileJob.pendingFileId)
     } yield receiptResult
 
     receiptOption.map(_ => ())

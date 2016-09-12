@@ -1,7 +1,9 @@
 package repository
 
 import model.PendingFile
+import model.PendingFile.PendingFileId
 import reactivemongo.api.collections.bson.BSONCollection
+import reactivemongo.api.commands.WriteResult
 import reactivemongo.bson.BSONDocument
 
 import scala.concurrent.Future
@@ -15,8 +17,7 @@ class PendingFileRepository extends MongoDao[PendingFile] {
   def findForUserId(userId: String): Future[List[PendingFile]] =
     findList(collectionFuture, BSONDocument("userId" -> userId))
 
-  def deleteByReceiptId(receiptId: String): Future[Unit] =
-    collectionFuture.flatMap(_.remove(BSONDocument("receiptId" -> receiptId))).map(_ => ())
+  def deleteById(id: String): Future[Unit] = deleteById(collectionFuture, id).map(_ => ())
 
   def deleteAll(): Future[Unit] = collectionFuture.flatMap(_.remove(BSONDocument())).map(_ => ())
 

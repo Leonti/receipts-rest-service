@@ -20,7 +20,7 @@ class ReceiptFiles(pendingFileService: PendingFileService, receiptFileQueue: Rec
         userId = userId,
         receiptId = receiptId
       ))
-      _ <- receiptFileQueue.submitFile(userId, receiptId, file, fileExt)
+      _ <- receiptFileQueue.submitFile(userId, receiptId, file, fileExt, pendingFile.id)
     } yield pendingFile
 
     pendingFileFuture

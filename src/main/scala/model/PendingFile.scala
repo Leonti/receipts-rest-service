@@ -1,10 +1,13 @@
 package model
 
+import model.PendingFile.PendingFileId
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 
-case class PendingFile(id: String, userId: String, receiptId: String) extends WithId
+case class PendingFile(id: PendingFileId, userId: String, receiptId: String) extends WithId
 
 object PendingFile {
+
+  type PendingFileId = String
 
   implicit object PendingFileBSONReader extends BSONDocumentReader[PendingFile] {
 

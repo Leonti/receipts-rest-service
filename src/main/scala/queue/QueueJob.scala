@@ -1,4 +1,6 @@
 package queue
+
+import model.PendingFile.PendingFileId
 import queue.Models.JobId
 import service.{ImageSize, ImageSizeFormat}
 import spray.json._
@@ -9,19 +11,20 @@ trait QueueJob {
 
 case class ContextHolder(context: String)
 
-case class ReceiptFileJob(
-                           userId: String,
-                           receiptId: String,
-                           filePath: String,
-                           fileExt: String,
-                          context: String = "RECEIPT_FILE") extends QueueJob
+case class  ReceiptFileJob(
+                            userId: String,
+                            receiptId: String,
+                            filePath: String,
+                            fileExt: String,
+                            pendingFileId: PendingFileId,
+                            context: String = "RECEIPT_FILE") extends QueueJob
 
 case class ReservedJob(id: JobId, job: QueueJob)
 
 object QueueJob extends DefaultJsonProtocol with NullOptions {
 
   implicit val contextHolderFormat = jsonFormat1(ContextHolder.apply)
-  implicit val receiptFileJobFormat = jsonFormat5(ReceiptFileJob.apply)
+  implicit val receiptFileJobFormat = jsonFormat6(ReceiptFileJob.apply)
 
   def fromString(asString: String): QueueJob = {
     val contextHolder = asString.parseJson.convertTo[ContextHolder]
