@@ -21,8 +21,8 @@ class QueueProcessor(
   val logger = Logger(LoggerFactory.getLogger("QueueProcessor"))
   implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 
-  def reserveNextJob(): Future[Unit] = {
-    logger.info("Checking fo new jobs")
+  def reserveNextJob(): Future[Any] = {
+    logger.info("Checking for new jobs")
     queue.reserve().map(reservedJobOption => {
 
       val nextPickupTimeout: FiniteDuration = reservedJobOption match {
@@ -33,7 +33,12 @@ class QueueProcessor(
       }
 
       after(nextPickupTimeout, using = system.scheduler)(reserveNextJob())
-    })
+    }).recoverWith{
+      case e: Throwable => {
+        logger.error(s"Exception on reserving next job $e")
+        after(10.seconds, using = system.scheduler)(reserveNextJob())
+      }
+    }
   }
 
   def process(job: ReservedJob) = {
