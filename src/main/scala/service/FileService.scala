@@ -3,6 +3,7 @@ package service
 import java.io.File
 import java.util.concurrent.Executors
 
+import akka.actor.ActorSystem
 import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.{Source, _}
 import akka.util.ByteString
@@ -14,6 +15,7 @@ import com.typesafe.scalalogging.Logger
 import model.{FileEntity, ImageMetadata}
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 trait FileService {
@@ -39,9 +41,10 @@ trait FileService {
 
 class S3FileService(
                      config: Config,
+                     system: ActorSystem,
                      materializer: Materializer,
                      fileCachingService: FileCachingService,
-                     imageResizingService: ImageResizingService) extends FileService {
+                     imageResizingService: ImageResizingService) extends FileService with Retry {
   val logger = Logger(LoggerFactory.getLogger("S3FileService"))
 
   implicit val mat : Materializer = materializer
@@ -53,15 +56,19 @@ class S3FileService(
 
   override def save(userId: String, file: File, ext: String): Seq[Future[FileEntity]] = {
     val fileId = java.util.UUID.randomUUID.toString
+
+    implicit val scheduler = system.scheduler
+    val retryIntervals = Seq(1.seconds, 10.seconds, 30.seconds)
+
     logger.info(s"Uploading file ${file.getAbsolutePath}")
-    val uploadResult = upload(userId, fileId, file)
+    val uploadResult = retry(upload(userId, fileId, file), retryIntervals)
     val fileEntity = toFileEntity(userId, None, fileId, file, ext)
 
     if (fileEntity.metaData.isInstanceOf[ImageMetadata]) {
       val resizedFileId = java.util.UUID.randomUUID.toString
       val resizedFileEntity: Future[FileEntity] = imageResizingService.resize(file, WebSize).flatMap(resizedFile => {
         logger.info(s"Starting to upload a resized file $resizedFileId")
-        upload(userId, resizedFileId, resizedFile).map(ur => resizedFile)
+        retry(upload(userId, resizedFileId, resizedFile).map(ur => resizedFile), retryIntervals)
       }).map(resizedFile => toFileEntity(userId, Some(fileId), resizedFileId, resizedFile, ext))
 
       Seq(uploadResult.map(ur => {
@@ -108,9 +115,10 @@ object FileService {
 
   def s3(
           config: Config,
+          system: ActorSystem,
           materializer: Materializer,
           fileCachingService: FileCachingService,
           imageResizingService: ImageResizingService) =
-    new S3FileService(config, materializer, fileCachingService, imageResizingService)
+    new S3FileService(config, system, materializer, fileCachingService, imageResizingService)
 
 }

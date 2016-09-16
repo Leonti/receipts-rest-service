@@ -142,7 +142,7 @@ object ReceiptRestService extends App with Service {
   val imageResizingService = new ImageResizingService()
   val receiptService = new ReceiptService(new ReceiptRepository())
   val pendingFileService = new PendingFileService(new PendingFileRepository())
-  val fileService = FileService.s3(config, materializer, fileCachingService, imageResizingService)
+  val fileService = FileService.s3(config, system, materializer, fileCachingService, imageResizingService)
 
   val queue = new Queue()
   val receiptFiles = new ReceiptFiles(pendingFileService, new ReceiptFileQueue(queue))

@@ -4,7 +4,6 @@ import java.io.{PrintWriter, StringWriter}
 import java.util.concurrent.Executors
 
 import akka.actor.{ActorRef, ActorSystem, Props}
-import akka.pattern.after
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import processing.FileProcessor
@@ -21,10 +20,9 @@ class QueueProcessor(
   val logger = Logger(LoggerFactory.getLogger("QueueProcessor"))
   implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 
-  def reserveNextJob(): Future[Any] = {
+  def reserveNextJob(): Unit = {
     logger.info("Checking for new jobs")
     queue.reserve().map(reservedJobOption => {
-
       val nextPickupTimeout: FiniteDuration = reservedJobOption match {
         case Some(job: ReservedJob) =>
           process(job)
@@ -32,11 +30,11 @@ class QueueProcessor(
         case None => 10.seconds
       }
 
-      after(nextPickupTimeout, using = system.scheduler)(reserveNextJob())
-    }).recoverWith{
+      system.scheduler.scheduleOnce(nextPickupTimeout)(reserveNextJob)
+    }).onFailure {
       case e: Throwable => {
         logger.error(s"Exception on reserving next job $e")
-        after(10.seconds, using = system.scheduler)(reserveNextJob())
+        system.scheduler.scheduleOnce(10.seconds)(reserveNextJob)
       }
     }
   }
