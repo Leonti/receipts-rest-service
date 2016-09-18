@@ -172,10 +172,12 @@ class ReceiptRouting(
               }
             } ~
             get {
-              val userReceiptsFuture = receiptService.findForUserId(userId)
+              parameters("last-modified".as[Long].?) { (lastModified: Option[Long]) =>
+                val userReceiptsFuture = receiptService.findForUserId(userId, lastModified)
 
-              onComplete(userReceiptsFuture) { userReceipts =>
-                complete(userReceipts)
+                onComplete(userReceiptsFuture) { userReceipts =>
+                  complete(userReceipts)
+                }
               }
             } ~
             post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt

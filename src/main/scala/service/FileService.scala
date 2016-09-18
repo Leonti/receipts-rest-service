@@ -69,7 +69,11 @@ class S3FileService(
       val resizedFileEntity: Future[FileEntity] = imageResizingService.resize(file, WebSize).flatMap(resizedFile => {
         logger.info(s"Starting to upload a resized file $resizedFileId")
         retry(upload(userId, resizedFileId, resizedFile).map(ur => resizedFile), retryIntervals)
-      }).map(resizedFile => toFileEntity(userId, Some(fileId), resizedFileId, resizedFile, ext))
+      }).map(resizedFile => {
+        val fileEntity = toFileEntity(userId, Some(fileId), resizedFileId, resizedFile, ext)
+        resizedFile.delete()
+        fileEntity
+      })
 
       Seq(uploadResult.map(ur => {
         logger.info(s"File uploaded to S3 with $ur")
@@ -89,6 +93,7 @@ class S3FileService(
       s"user/$userId/$fileId", file)
 
     Future {
+      fileCachingService.cacheFile(userId, fileId, file)
       amazonS3Client.putObject(putObjectRequest)
     }
   }

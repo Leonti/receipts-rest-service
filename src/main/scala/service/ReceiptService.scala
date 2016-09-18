@@ -11,7 +11,10 @@ class ReceiptService(receiptRepository: ReceiptRepository) {
 
   implicit val executor: ExecutionContext = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
-  def findForUserId(userId: String): Future[List[ReceiptEntity]] = receiptRepository.findForUserId(userId)
+  def findForUserId(userId: String, lastModifiedOption: Option[Long] = None): Future[List[ReceiptEntity]] = {
+    receiptRepository.findForUserId(userId)
+      .map(_.filter(receiptEntity => receiptEntity.lastModified >= lastModifiedOption.getOrElse(0l)))
+  }
 
   def createReceipt(userId: String, total: Option[BigDecimal], description: String):
     Future[ReceiptEntity] = {
@@ -26,7 +29,8 @@ class ReceiptService(receiptRepository: ReceiptRepository) {
   def findById(id: String): Future[Option[ReceiptEntity]] =
     receiptRepository.findById(id)
 
-  def save(receiptEntity: ReceiptEntity): Future[ReceiptEntity] = receiptRepository.save(receiptEntity)
+  def save(receiptEntity: ReceiptEntity): Future[ReceiptEntity] = receiptRepository
+    .save(receiptEntity.copy(lastModified = System.currentTimeMillis()))
 
   def addFileToReceipt(receiptId: String, file: FileEntity) : Future[Option[ReceiptEntity]] =
     receiptRepository.addFileToReceipt(receiptId, file).flatMap(_ => receiptRepository.findById(receiptId))

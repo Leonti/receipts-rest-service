@@ -1,6 +1,6 @@
 package model
 
-import reactivemongo.bson.{BSONDocumentWriter, BSONDocument, BSONDocumentReader}
+import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 
 case class ReceiptEntity(
                           id: String = java.util.UUID.randomUUID.toString,
@@ -8,7 +8,9 @@ case class ReceiptEntity(
                           files: List[FileEntity] = List.empty,
                           description: String = "",
                           total: Option[BigDecimal] = None,
-                          timestamp: Long = System.currentTimeMillis
+                          timestamp: Long = System.currentTimeMillis,
+                          lastModified: Long = System.currentTimeMillis(),
+                          transactionTime: Long = System.currentTimeMillis()
                         ) extends WithId
 
 object ReceiptEntity {
@@ -24,7 +26,9 @@ object ReceiptEntity {
         case Some(value) => if (value != "None") Some(BigDecimal(value.replace("Some(", "").replace(")", ""))) else None
         case None => None
       },
-      timestamp = doc.getAs[Long]("timestamp").get
+      timestamp = doc.getAs[Long]("timestamp").get,
+      lastModified = doc.getAs[Long]("lastModified").get,
+      transactionTime = doc.getAs[Long]("transactionTime").get
     ))
   }
 
@@ -37,7 +41,9 @@ object ReceiptEntity {
         "files" -> receiptEntity.files,
         "description" -> receiptEntity.description,
         "total" -> receiptEntity.total.toString,
-        "timestamp" -> receiptEntity.timestamp
+        "timestamp" -> receiptEntity.timestamp,
+        "lastModified" -> receiptEntity.lastModified,
+        "transactionTime" -> receiptEntity.transactionTime
       )
     }
   }

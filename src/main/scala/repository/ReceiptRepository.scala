@@ -24,9 +24,9 @@ class ReceiptRepository extends MongoDao[ReceiptEntity] {
   def addFileToReceipt(receiptId: String, file: FileEntity): Future[Unit] =
     collectionFuture.flatMap(_.update(
       selector = BSONDocument("_id" -> receiptId),
-      update = BSONDocument("$push" -> BSONDocument(
-        "files" -> file
-      )
+      update = BSONDocument(
+        "$push" -> BSONDocument("files" -> file),
+        "$set" -> BSONDocument("lastModified" -> System.currentTimeMillis())
       )
     )).map(_ => ())
 
