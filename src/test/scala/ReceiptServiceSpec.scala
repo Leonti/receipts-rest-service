@@ -55,7 +55,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receipt = ReceiptEntity(id = "1", userId = "userId")
     when(receiptRepository.findById(receipt.id)).thenReturn(Future(Some(receipt)))
-    when(receiptRepository.save(receipt)).thenReturn(Future(receipt))
+    when(receiptRepository.save(any[ReceiptEntity])).thenReturn(Future(receipt))
 
     val receiptService = new ReceiptService(receiptRepository)
 
