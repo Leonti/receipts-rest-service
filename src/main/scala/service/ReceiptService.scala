@@ -13,7 +13,7 @@ class ReceiptService(receiptRepository: ReceiptRepository) {
 
   def findForUserId(userId: String, lastModifiedOption: Option[Long] = None): Future[List[ReceiptEntity]] = {
     receiptRepository.findForUserId(userId)
-      .map(_.filter(receiptEntity => receiptEntity.lastModified >= lastModifiedOption.getOrElse(0l)))
+      .map(_.filter(receiptEntity => receiptEntity.lastModified > lastModifiedOption.getOrElse(0l)))
   }
 
   def createReceipt(userId: String, total: Option[BigDecimal], description: String):
