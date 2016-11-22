@@ -44,7 +44,7 @@ package object ReceiptTestUtils extends JsonProtocols {
     def pendingFilesToReceipt(pendingFilesFuture: Future[List[PendingFile]], retry: Int = 0): Future[ReceiptEntity] = {
       val checkInterval = 1.seconds
 
-      if (retry > 20) Future.failed(new RuntimeException("Could not get receipt entity in time")) else {
+      if (retry > 40) Future.failed(new RuntimeException("Could not get receipt entity in time")) else {
         for {
           pending <- pendingFilesFuture
           receipt <- if (pending.exists(_.receiptId == receiptId))

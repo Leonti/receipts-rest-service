@@ -30,7 +30,7 @@ object ReceiptEntity {
       timestamp = doc.getAs[Long]("timestamp").get,
       lastModified = doc.getAs[Long]("lastModified").get,
       transactionTime = doc.getAs[Long]("transactionTime").get,
-      tags = doc.getAs[List[String]]("tags").get
+      tags = doc.getAs[List[String]]("tags").getOrElse(List.empty)
     ))
   }
 
