@@ -50,7 +50,7 @@ object FileMetadataFormat extends RootJsonFormat[FileMetadata] {
             width = width.toInt,
             height = height.toInt
           )
-          case _ =>  throw new DeserializationException("'IMAGE' file metadata whould have 'width' and 'height' fields!")
+          case _ =>  throw new DeserializationException("'IMAGE' file metadata should have 'width' and 'height' fields!")
         }
       case Seq(JsString(fileType), JsNumber(length)) =>
         GenericMetadata(

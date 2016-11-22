@@ -10,7 +10,8 @@ case class ReceiptEntity(
                           total: Option[BigDecimal] = None,
                           timestamp: Long = System.currentTimeMillis,
                           lastModified: Long = System.currentTimeMillis(),
-                          transactionTime: Long = System.currentTimeMillis()
+                          transactionTime: Long = System.currentTimeMillis(),
+                          tags: List[String] = List.empty
                         ) extends WithId
 
 object ReceiptEntity {
@@ -28,7 +29,8 @@ object ReceiptEntity {
       },
       timestamp = doc.getAs[Long]("timestamp").get,
       lastModified = doc.getAs[Long]("lastModified").get,
-      transactionTime = doc.getAs[Long]("transactionTime").get
+      transactionTime = doc.getAs[Long]("transactionTime").get,
+      tags = doc.getAs[List[String]]("tags").get
     ))
   }
 
@@ -43,7 +45,8 @@ object ReceiptEntity {
         "total" -> receiptEntity.total.toString,
         "timestamp" -> receiptEntity.timestamp,
         "lastModified" -> receiptEntity.lastModified,
-        "transactionTime" -> receiptEntity.transactionTime
+        "transactionTime" -> receiptEntity.transactionTime,
+        "tags" -> receiptEntity.tags
       )
     }
   }

@@ -61,7 +61,7 @@ class ReceiptRouting(
     val patchedReceipt: Future[Option[ReceiptEntity]] = receiptService.findById(receiptId)
       .map(_.map(patchReceipt(_, jsonPatch)))
 
-    patchedReceipt.flatMap(_ match {
+    patchedReceipt.flatMap({
       case Some(receipt) => receiptService.save(receipt).map(Some(_))
       case None => Future.successful(None)
     })

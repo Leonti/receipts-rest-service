@@ -272,6 +272,36 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     }
   }
 
+  it should "set tags with a patch" in {
+    def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+    }
+    val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
+    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+
+    val receipt = ReceiptEntity(userId = "123-user", files = List(), description="some description",
+      total=Some(BigDecimal("12.38")))
+    when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
+
+    val patchedTags = List("vegetables", "food")
+    val patchedReceipt = receipt.copy(tags = patchedTags)
+    when(receiptService.save(patchedReceipt)).thenReturn(Future(patchedReceipt))
+
+    val patch = """[
+                  |  {
+                  |    "op": "replace",
+                  |    "path": "/tags",
+                  |    "value": ["vegetables", "food"]
+                  |  }
+                  |]""".stripMargin
+
+    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes ~> check {
+      status shouldBe OK
+      contentType shouldBe `application/json`
+      responseAs[ReceiptEntity].tags shouldBe patchedTags
+    }
+  }
+
   it should "delete a receipt " in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
