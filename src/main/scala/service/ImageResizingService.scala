@@ -9,7 +9,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
 
 sealed trait ImageSize { def pixels : Int }
-case object WebSize extends ImageSize { val pixels: Int = 500000 }
+case object WebSize extends ImageSize { val pixels: Int = 1000000 }
 
 object ImageSizeFormat extends RootJsonFormat[ImageSize] {
 
