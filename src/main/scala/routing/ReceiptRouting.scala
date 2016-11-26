@@ -188,13 +188,14 @@ class ReceiptRouting(
                   val start = System.currentTimeMillis()
                   logger.info(s"Received file to upload ${uploadedFile.file.getAbsolutePath}")
 
+                  val tags = parsedForm.fields("tags")
                   val receiptFuture: Future[ReceiptEntity] = for {
                     receipt <- receiptService.createReceipt(
                       userId = userId,
                       total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
                       description = parsedForm.fields("description"),
                       transactionTime = parsedForm.fields("transactionTime").toLong,
-                      tags = parsedForm.fields("tags").split(",").toList
+                      tags = if (tags.trim() == "") List() else tags.split(",").toList
                     )
                     pendingFile <- receiptFiles.submitFile(userId, receipt.id, uploadedFile.file, ext(uploadedFile.fileInfo.fileName))
                   } yield receipt
