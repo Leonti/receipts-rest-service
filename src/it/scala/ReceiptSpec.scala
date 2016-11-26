@@ -46,6 +46,11 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
     whenReady(receiptEntityFuture) { receiptEntity =>
       receiptEntity.files.length shouldBe 2
 
+      receiptEntity.total shouldBe ReceiptTestUtils.total
+      receiptEntity.description shouldBe ReceiptTestUtils.description
+      receiptEntity.transactionTime shouldBe ReceiptTestUtils.transactionTime
+      receiptEntity.tags shouldBe ReceiptTestUtils.tags
+
       receiptEntity.files(0).metaData match {
         case ImageMetadata(fileType, length, width, height) =>
           width shouldBe 50

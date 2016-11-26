@@ -181,7 +181,7 @@ class ReceiptRouting(
               }
             } ~
             post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
-              FileUploadDirective.uploadedFileWithFields("receipt", "total", "description") {
+              FileUploadDirective.uploadedFileWithFields("receipt", "total", "description", "transactionTime", "tags") {
                 (parsedForm: ParsedForm) =>
 
                   val uploadedFile = parsedForm.files("receipt")
@@ -192,7 +192,9 @@ class ReceiptRouting(
                     receipt <- receiptService.createReceipt(
                       userId = userId,
                       total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
-                      description = parsedForm.fields("description")
+                      description = parsedForm.fields("description"),
+                      transactionTime = parsedForm.fields("transactionTime").toLong,
+                      tags = parsedForm.fields("tags").split(",").toList
                     )
                     pendingFile <- receiptFiles.submitFile(userId, receipt.id, uploadedFile.file, ext(uploadedFile.fileInfo.fileName))
                   } yield receipt

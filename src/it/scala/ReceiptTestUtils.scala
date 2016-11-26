@@ -20,6 +20,12 @@ package object ReceiptTestUtils extends JsonProtocols {
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
+  val total = Some(BigDecimal(12.38))
+  val description = "some description"
+  val transactionTime = 1480130712396l
+  val tags = List("veggies", "food")
+  val tagsAsString = tags.reduce((acc,tag) => s"$acc,$tag")
+
   // utility functions
   def getProcessedReceipt(userId: String, receiptId: String, accessToken: String): Future[ReceiptEntity] = {
 
@@ -65,8 +71,10 @@ package object ReceiptTestUtils extends JsonProtocols {
         "receipt",
         HttpEntity(`application/octet-stream`, content),
         Map("filename" -> "receipt.txt")),
-        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity("12.38")),
-        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description"))
+        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity(s"${total.get}")),
+        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity(description)),
+        Multipart.FormData.BodyPart.Strict("transactionTime", utf8TextEntity(s"$transactionTime")),
+        Multipart.FormData.BodyPart.Strict("tags", utf8TextEntity(tagsAsString))
       )
     Marshal(multipartForm).to[RequestEntity]
   }
@@ -79,8 +87,10 @@ package object ReceiptTestUtils extends JsonProtocols {
         "receipt",
         HttpEntity(`application/octet-stream`, content),
         Map("filename" -> "receipt.png")),
-        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity("12.38")),
-        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description"))
+        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity(s"${total.get}")),
+        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity(description)),
+        Multipart.FormData.BodyPart.Strict("transactionTime", utf8TextEntity(s"$transactionTime")),
+        Multipart.FormData.BodyPart.Strict("tags", utf8TextEntity(tagsAsString))
       )
     Marshal(multipartForm).to[RequestEntity]
   }

@@ -54,7 +54,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       receiptId = "1"
     )
     when(receiptFiles.submitFile(any[String], any[String], any[File], any[String])).thenReturn(Future.successful(pendingFile))
-    when(receiptService.createReceipt("123-user", Some(BigDecimal("12.38")), "some description"))
+    when(receiptService.createReceipt("123-user", Some(BigDecimal("12.38")), "some description", 1480130712396l, List("veggies", "food")))
       .thenReturn(Future(receipt))
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
 
@@ -65,7 +65,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
         HttpEntity(`application/octet-stream`, content),
         Map("filename" -> "receipt.png")),
         Multipart.FormData.BodyPart.Strict("total", utf8TextEntity("12.38")),
-        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description"))
+        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description")),
+        Multipart.FormData.BodyPart.Strict("transactionTime", utf8TextEntity("1480130712396")),
+        Multipart.FormData.BodyPart.Strict("tags", utf8TextEntity("veggies,food"))
       )
 
     Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes ~> check {
@@ -91,7 +93,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       receiptId = "1"
     )
     when(receiptFiles.submitFile(any[String], any[String], any[File], any[String])).thenReturn(Future.successful(pendingFile))
-    when(receiptService.createReceipt("123-user", Some(BigDecimal("12.38")), "some description")).thenReturn(Future(receipt))
+    when(receiptService.createReceipt("123-user", Some(BigDecimal("12.38")), "some description", 1480130712396l, List("veggies", "food")))
+      .thenReturn(Future(receipt))
 
     val content = "file content".getBytes
     val multipartForm =
@@ -100,7 +103,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
         HttpEntity(`application/octet-stream`, content),
         Map("filename" -> "receipt.png")),
         Multipart.FormData.BodyPart.Strict("total", utf8TextEntity("12.38")),
-        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description"))
+        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description")),
+        Multipart.FormData.BodyPart.Strict("transactionTime", utf8TextEntity("1480130712396")),
+        Multipart.FormData.BodyPart.Strict("tags", utf8TextEntity("veggies,food"))
       )
 
     Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes ~> check {

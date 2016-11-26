@@ -16,12 +16,14 @@ class ReceiptService(receiptRepository: ReceiptRepository) {
       .map(_.filter(receiptEntity => receiptEntity.lastModified > lastModifiedOption.getOrElse(0l)))
   }
 
-  def createReceipt(userId: String, total: Option[BigDecimal], description: String):
+  def createReceipt(userId: String, total: Option[BigDecimal], description: String, transactionTime: Long, tags: List[String]):
     Future[ReceiptEntity] = {
       val receiptEntity = ReceiptEntity(
         userId = userId,
         total = total,
         description = description,
+        transactionTime = transactionTime,
+        tags = tags,
         files = List())
       receiptRepository.save(receiptEntity)
   }

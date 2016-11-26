@@ -31,7 +31,9 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
     whenReady(receiptService.createReceipt(
       userId = "user id",
       total = Some(BigDecimal("12.38")),
-      description = "some description"
+      description = "some description",
+      transactionTime = 1480130712396l,
+      tags = List("veggies", "food")
     )) { result =>
       result shouldBe receipt
     }
