@@ -1,7 +1,7 @@
 import akka.http.scaladsl.model.headers.{BasicHttpCredentials, HttpChallenge, HttpCredentials}
 import akka.http.scaladsl.server.directives.{SecurityDirectives, AuthenticationDirective, AuthenticationResult}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import de.choffmeister.auth.akkahttp.Authenticator
+import authentication.JwtAuthenticator
 import de.choffmeister.auth.common.OAuth2AccessTokenResponse
 import model.{JsonProtocols, ErrorResponse, User}
 import org.mockito.Matchers._
@@ -21,7 +21,7 @@ import scala.concurrent.duration.FiniteDuration
 
 class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with MockitoSugar with JsonProtocols {
 
-  val authenticator = mock[Authenticator[User]]
+  val authenticator = mock[JwtAuthenticator[User]]
 
   it should "authenticate a user" in {
 
@@ -72,7 +72,7 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
 
     val authenticationDirective: AuthenticationDirective[User] = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
-    when(authenticator.bearerToken(true)).thenReturn(authenticationDirective)
+    when(authenticator.bearerTokenOrCookie(true)).thenReturn(authenticationDirective)
 
     val authenticationRouting = new AuthenticationRouting(authenticator)
 
@@ -92,7 +92,7 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
 
     val authenticationDirective: AuthenticationDirective[User] = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
-    when(authenticator.bearerToken(true)).thenReturn(authenticationDirective)
+    when(authenticator.bearerTokenOrCookie(true)).thenReturn(authenticationDirective)
 
     val authenticationRouting = new AuthenticationRouting(authenticator)
 

@@ -8,9 +8,10 @@ import model.{ErrorResponse, JsonProtocols, User}
 
 import scala.concurrent.duration._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import authentication.JwtAuthenticator
 import service.JwtTokenGenerator
 
-class AuthenticationRouting(authenticator: Authenticator[User]) extends JsonProtocols {
+class AuthenticationRouting(authenticator: JwtAuthenticator[User]) extends JsonProtocols {
 
   def myRejectionHandler =
     RejectionHandler.newBuilder()
@@ -36,7 +37,7 @@ class AuthenticationRouting(authenticator: Authenticator[User]) extends JsonProt
         get {
           // Here we can send an expired JWT via HTTP bearer authentication and
           // get a renewed JWT for it.
-          authenticator.bearerToken(acceptExpired = true)(user => complete(JwtTokenGenerator.generateToken(user)))
+          authenticator.bearerTokenOrCookie(acceptExpired = true)(user => complete(JwtTokenGenerator.generateToken(user)))
         }
       }
     }

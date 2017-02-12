@@ -16,6 +16,7 @@ import akka.http.scaladsl.server.directives.FileInfo
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.stream.scaladsl._
 import akka.util.ByteString
+import authentication.JwtAuthenticator
 import authorization.PathAuthorization
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
@@ -125,7 +126,7 @@ object ReceiptRestService extends App with Service {
   val googleOauthService = new GoogleOauthService()
   override val config = ConfigFactory.load()
 
-  val authenticator = new Authenticator[User](
+  val authenticator = new JwtAuthenticator[User](
     realm = "Example realm",
     bearerTokenSecret = config.getString("tokenSecret").getBytes,
     fromBearerToken = token => userService.findById(token.claimAsString("sub").right.get),
@@ -152,12 +153,12 @@ object ReceiptRestService extends App with Service {
     receiptService,
     fileService,
     receiptFiles,
-    authenticator.bearerToken(acceptExpired = true))
+    authenticator.bearerTokenOrCookie(acceptExpired = true))
   override val pendingFileRouting = new PendingFileRouting(
     pendingFileService,
-    authenticator.bearerToken(acceptExpired = true)
+    authenticator.bearerTokenOrCookie(acceptExpired = true)
   )
-  override val userRouting = new UserRouting(userService, authenticator.bearerToken(acceptExpired = true))
+  override val userRouting = new UserRouting(userService, authenticator.bearerTokenOrCookie(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)
   override val appConfigRouting = new AppConfigRouting()
   override val oauthRouting = new OauthRouting(userService, googleOauthService)
@@ -165,7 +166,7 @@ object ReceiptRestService extends App with Service {
   val backupService = new BackupService(receiptService, fileService)
 
   override val backupRouting = new BackupRouting(
-    authenticator.bearerToken(acceptExpired = true),
+    authenticator.bearerTokenOrCookie(acceptExpired = true),
     pathAuthorization.authorizePath,
     backupService)
 
