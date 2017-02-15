@@ -1,11 +1,13 @@
 package authentication
 
-import akka.http.scaladsl.model.headers._
+import akka.http.scaladsl.model.DateTime
+import akka.http.scaladsl.model.headers.{HttpCookiePair, _}
 import akka.http.scaladsl.server.AuthenticationFailedRejection.{CredentialsMissing, CredentialsRejected}
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1}
 import akka.http.scaladsl.server.directives.BasicDirectives._
 import akka.http.scaladsl.server.directives.FutureDirectives._
 import akka.http.scaladsl.server.directives.RouteDirectives._
+import akka.http.scaladsl.server.directives.CookieDirectives._
 import akka.http.scaladsl.server.directives._
 import akka.pattern.after
 import de.choffmeister.auth.common.JsonWebToken
@@ -58,8 +60,8 @@ class JwtAuthenticator[Auth](
       case None => deny(None)
     }
 
-    val authenticator: Option[HttpCredentials] => Future[AuthenticationResult[Auth]] = {
-      case Some(OAuth2BearerToken(tokenStr)) =>
+    val authenticator: Option[String] => Future[AuthenticationResult[Auth]] = {
+      case Some(tokenStr) =>
         JsonWebToken.read(tokenStr, bearerTokenSecret) match {
           case Right(token) => resolve(token)
           case Left(Expired(token)) if acceptExpired => resolve(token)
@@ -68,14 +70,26 @@ class JwtAuthenticator[Auth](
       case None => Future(deny(Some(Missing)))
     }
 
-
     extractExecutionContext.flatMap { implicit ec =>
-      extractCredentials.flatMap { cred =>
-        onSuccess(authenticator(cred)).flatMap {
-          case Right(user) ⇒ provide(user)
-          case Left(challenge) ⇒
-            val cause = if (cred.isEmpty) CredentialsMissing else CredentialsRejected
-            reject(AuthenticationFailedRejection(cause, challenge)): Directive1[Auth]
+      optionalCookie("access_token").flatMap { (cookieTokenOption: Option[HttpCookiePair]) =>
+        extractCredentials.flatMap { (credOption: Option[HttpCredentials]) => {
+
+          val cookieToken = cookieTokenOption.map(_.value)
+          val credToken = credOption.map(_.token())
+          val tokenOption = credToken.orElse(cookieToken)
+
+            onSuccess(authenticator(tokenOption)).flatMap {
+              case Right(user) => setCookie(HttpCookie.fromPair(
+                pair = HttpCookiePair("access_token", tokenOption.get),
+                path = Some("/"),
+                httpOnly = true
+              )).tflatMap((Unit) => provide(user))
+              case Left(challenge) =>
+                val cause = if (tokenOption.isEmpty) CredentialsMissing else CredentialsRejected
+                reject(AuthenticationFailedRejection(cause, challenge)): Directive1[Auth]
+            }
+
+          }
         }
       }
     }
