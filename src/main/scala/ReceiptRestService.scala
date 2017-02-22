@@ -7,9 +7,9 @@ import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.HttpHeader
+import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpMethods}
 import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Max-Age`}
+import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`, `Access-Control-Max-Age`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.FileInfo
@@ -60,10 +60,18 @@ trait Service extends JsonProtocols with CorsSupport {
     "User-Agent",
     "Authorization")
   override val corsAllowCredentials: Boolean = true
+  override val corsAllowedMethods = List[HttpMethod](
+    HttpMethods.OPTIONS,
+    HttpMethods.PATCH,
+    HttpMethods.POST,
+    HttpMethods.PUT,
+    HttpMethods.GET,
+    HttpMethods.DELETE)
   override val optionsCorsHeaders: List[HttpHeader] = List[HttpHeader](
     `Access-Control-Allow-Headers`(corsAllowedHeaders.mkString(", ")),
     `Access-Control-Max-Age`(60 * 60 * 24 * 20), // cache pre-flight response for 20 days
-    `Access-Control-Allow-Credentials`(corsAllowCredentials)
+    `Access-Control-Allow-Credentials`(corsAllowCredentials),
+    `Access-Control-Allow-Methods`(corsAllowedMethods)
   )
 
   def config: Config

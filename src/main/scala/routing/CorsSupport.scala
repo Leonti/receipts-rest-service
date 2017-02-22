@@ -1,8 +1,7 @@
 package routing
 
-import akka.http.scaladsl.model.HttpHeader
+import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpResponse}
 import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Credentials`
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Methods`
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Origin`
@@ -17,6 +16,8 @@ trait CorsSupport {
   protected def corsAllowedHeaders: List[String]
 
   protected def corsAllowCredentials: Boolean
+
+  protected def corsAllowedMethods: List[HttpMethod]
 
   protected def optionsCorsHeaders: List[HttpHeader]
 
@@ -46,12 +47,12 @@ trait CorsSupport {
     ((context.request.method, context.request.header[Origin].flatMap(originToAllowOrigin)) match {
       case (OPTIONS, Some(allowOrigin)) =>
         handleRejections(corsRejectionHandler(allowOrigin)) {
-          respondWithHeaders(allowOrigin, `Access-Control-Allow-Credentials`(corsAllowCredentials)) {
+          respondWithHeaders(allowOrigin :: optionsCorsHeaders) {
             route
           }
         }
       case (_, Some(allowOrigin)) =>
-        respondWithHeaders(allowOrigin, `Access-Control-Allow-Credentials`(corsAllowCredentials)) {
+        respondWithHeaders(allowOrigin :: optionsCorsHeaders) {
           route
         }
       case (_, _) =>
