@@ -9,6 +9,7 @@ docker build -t leonti/receipts-rest-service:$version target/scala-2.11/
 docker push leonti/receipts-rest-service
 git tag -a v$version -m 'new version $version'
 
-git push --quiet "https://${TAG_TOKEN}@github.com/Leonti/receipts-rest-service" --follow-tags > /dev/null 2>&1
+git push --quiet "https://${TAG_TOKEN}@github.com/Leonti/receipts-rest-service" HEAD:master --follow-tags > /dev/null 2>&1
+
 
 echo "Released version $version"
