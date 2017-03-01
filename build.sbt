@@ -12,6 +12,7 @@ val logging = Seq (
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
 
   "org.slf4j" % "slf4j-api" % "1.7.12",
+  "net.logstash.logback" % "logstash-logback-encoder" % "4.8",
   "com.typesafe.akka" %% "akka-slf4j" % "2.4.1"
 )
 
