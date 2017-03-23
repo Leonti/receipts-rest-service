@@ -2,12 +2,13 @@ package service
 
 import java.util.concurrent.Executors
 
-import model.{FileEntity, ReceiptEntity}
-import repository.ReceiptRepository
+import model.{FileEntity, OcrEntity, ReceiptEntity}
+import ocr.model.OcrTextAnnotation
+import repository.{OcrRepository, ReceiptRepository}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class ReceiptService(receiptRepository: ReceiptRepository) {
+class ReceiptService(receiptRepository: ReceiptRepository, ocrRepository: OcrRepository) {
 
   implicit val executor: ExecutionContext = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
@@ -37,5 +38,11 @@ class ReceiptService(receiptRepository: ReceiptRepository) {
   def addFileToReceipt(receiptId: String, file: FileEntity) : Future[Option[ReceiptEntity]] =
     receiptRepository.addFileToReceipt(receiptId, file).flatMap(_ => receiptRepository.findById(receiptId))
 
-  def delete(receiptId: String): Future[Unit] = receiptRepository.deleteById(receiptId).map(r => ())
+  def saveOcrResult(receiptId: String, ocrResult: OcrTextAnnotation): Future[OcrEntity] =
+    ocrRepository.save(OcrEntity(id = receiptId, result = ocrResult))
+
+  def delete(receiptId: String): Future[Unit] = for {
+    _ <- receiptRepository.deleteById(receiptId)
+    _ <- ocrRepository.deleteById(receiptId)
+    } yield Unit
 }

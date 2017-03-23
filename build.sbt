@@ -30,6 +30,8 @@ libraryDependencies ++= {
   val scalaTestV  = "2.2.5"
   val reactiveMongoV = "0.11.14"
   val jwtAuthV    = "0.3.0"
+  val visionApiV  = "v1-rev346-1.22.0"
+  val googleApiClient = "1.22.0"
   Seq(
     "com.typesafe.akka" %% "akka-actor"                           % akkaV,
     "com.typesafe.akka" %% "akka-stream"                          % akkaV,
@@ -38,6 +40,8 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http-spray-json-experimental"    % akkaV,
     "com.typesafe.akka" %% "akka-http-testkit"                    % akkaV,
     "com.amazonaws"     %   "aws-java-sdk-s3"                     % amazonS3V,
+    "com.google.apis"   % "google-api-services-vision"            % visionApiV,
+    "com.google.api-client" % "google-api-client"                 % googleApiClient,
     "org.reactivemongo" %% "reactivemongo"                        % reactiveMongoV,
     "com.drewnoakes"    %  "metadata-extractor"                   % "2.9.0",
     "de.choffmeister"   %% "auth-common"                          % jwtAuthV,

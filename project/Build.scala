@@ -41,7 +41,9 @@ object AppRunnerRemoteControl {
       "-Dmongodb.servers.0=" + System.getenv("MONGODB_SERVER"),
       "-Ds3.bucket=" + System.getenv("S3_BUCKET"),
       "-Ds3.accessKey=" + System.getenv("S3_ACCESS_KEY"),
-      "-Ds3.secretAccessKey=" + System.getenv("S3_SECRET_ACCESS_KEY"))
+      "-Ds3.secretAccessKey=" + System.getenv("S3_SECRET_ACCESS_KEY"),
+      "-DuseOcrStub=true"
+    )
     //Here goes the name of the class which would be launched
     val mainClass: String = "ReceiptRestService"
     //Launch it. Pay attention that class name comes last in the list of arguments

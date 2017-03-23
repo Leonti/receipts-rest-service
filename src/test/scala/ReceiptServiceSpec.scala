@@ -1,4 +1,5 @@
-import model.{FileEntity, GenericMetadata, ImageMetadata, ReceiptEntity}
+import model._
+import ocr.model.OcrTextAnnotation
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -8,7 +9,7 @@ import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Matchers.any
-import repository.ReceiptRepository
+import repository.{OcrRepository, ReceiptRepository}
 import service.ReceiptService
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -24,9 +25,10 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receipt = ReceiptEntity(userId = "123")
     val receiptRepository = mock[ReceiptRepository]
-    when(receiptRepository.save(any[ReceiptEntity])).thenReturn(Future(receipt))
+    val ocrRepository = mock[OcrRepository]
 
-    val receiptService = new ReceiptService(receiptRepository)
+    when(receiptRepository.save(any[ReceiptEntity])).thenReturn(Future(receipt))
+    val receiptService = new ReceiptService(receiptRepository, ocrRepository)
 
     whenReady(receiptService.createReceipt(
       userId = "user id",
@@ -41,11 +43,12 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
   it should "return receipts for user" in {
     val receiptRepository = mock[ReceiptRepository]
+    val ocrRepository = mock[OcrRepository]
 
     val receipts = List(ReceiptEntity(userId = "userId"))
     when(receiptRepository.findForUserId("userId")).thenReturn(Future(receipts))
 
-    val receiptService = new ReceiptService(receiptRepository)
+    val receiptService = new ReceiptService(receiptRepository, ocrRepository)
 
     whenReady(receiptService.findForUserId("userId")) { result =>
       result shouldBe receipts
@@ -54,12 +57,13 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
   it should "return specific receipt" in {
     val receiptRepository = mock[ReceiptRepository]
+    val ocrRepository = mock[OcrRepository]
 
     val receipt = ReceiptEntity(id = "1", userId = "userId")
     when(receiptRepository.findById(receipt.id)).thenReturn(Future(Some(receipt)))
     when(receiptRepository.save(any[ReceiptEntity])).thenReturn(Future(receipt))
 
-    val receiptService = new ReceiptService(receiptRepository)
+    val receiptService = new ReceiptService(receiptRepository, ocrRepository)
 
     whenReady(receiptService.save(receipt)) { savedReceipt =>
       savedReceipt.id shouldBe "1"
@@ -68,12 +72,13 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
   it should "add a file to existing receipt" in {
     val receiptRepository = mock[ReceiptRepository]
+    val ocrRepository = mock[OcrRepository]
 
     val receipt = ReceiptEntity(id = "1", userId = "userId")
     when(receiptRepository.addFileToReceipt(any[String], any[FileEntity])).thenReturn(Future.successful(()))
     when(receiptRepository.findById(receipt.id)).thenReturn(Future(Some(receipt)))
 
-    val receiptService = new ReceiptService(receiptRepository)
+    val receiptService = new ReceiptService(receiptRepository, ocrRepository)
 
     whenReady(receiptService.addFileToReceipt("1", FileEntity(id = "1", parentId = None, ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { savedReceipt =>
       savedReceipt shouldBe Some(receipt)
@@ -82,12 +87,13 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
   it should "return None if adding a file to non-existing receipt" in {
     val receiptRepository = mock[ReceiptRepository]
+    val ocrRepository = mock[OcrRepository]
 
     val receipt = ReceiptEntity(id = "1", userId = "userId")
     when(receiptRepository.addFileToReceipt(any[String], any[FileEntity])).thenReturn(Future.successful(()))
     when(receiptRepository.findById(receipt.id)).thenReturn(Future(None))
 
-    val receiptService = new ReceiptService(receiptRepository)
+    val receiptService = new ReceiptService(receiptRepository, ocrRepository)
 
     whenReady(receiptService.addFileToReceipt("1", FileEntity(id = "1", parentId = None, ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { result =>
       result shouldBe None

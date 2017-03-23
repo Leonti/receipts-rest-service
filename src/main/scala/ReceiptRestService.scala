@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.Date
 
 import org.slf4j.LoggerFactory
@@ -22,7 +23,7 @@ import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import model.ReceiptEntity
 import model._
-import repository.{PendingFileRepository, ReceiptRepository, UserRepository}
+import repository.{OcrRepository, PendingFileRepository, ReceiptRepository, UserRepository}
 import routing._
 import service._
 
@@ -31,6 +32,7 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import spray.json._
 import de.choffmeister.auth.akkahttp.Authenticator
 import de.choffmeister.auth.common._
+import ocr.service.{GoogleOcrService, OcrService, OcrServiceStub}
 import processing.{FileProcessor, ReceiptFiles}
 import queue.{Queue, QueueProcessor}
 import queue.files.ReceiptFileQueue
@@ -149,7 +151,13 @@ object ReceiptRestService extends App with Service {
 
   val fileCachingService = new FileCachingService()
   val imageResizingService = new ImageResizingService()
-  val receiptService = new ReceiptService(new ReceiptRepository())
+  val receiptService = new ReceiptService(new ReceiptRepository(), new OcrRepository())
+  val ocrService =
+    if (config.getBoolean("useOcrStub"))
+      new OcrServiceStub()
+    else
+      new GoogleOcrService(new File(config.getString("googleApiCredentials")))
+
   val pendingFileService = new PendingFileService(new PendingFileRepository())
   val fileService = FileService.s3(config, system, materializer, fileCachingService, imageResizingService)
 
@@ -180,6 +188,7 @@ object ReceiptRestService extends App with Service {
 
   val fileProcessor = new FileProcessor(
     fileService = fileService,
+    ocrService = ocrService,
     receiptService = receiptService,
     pendingFileService = pendingFileService
   )
