@@ -5,6 +5,7 @@ import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 
 case class OcrEntity(
                     id: String,
+                    userId: String,
                     result: OcrTextAnnotation
                     ) extends WithId
 
@@ -14,6 +15,7 @@ object OcrEntity {
 
     def read(doc: BSONDocument): OcrEntity = Serialization.deserialize(doc, OcrEntity(
       id = doc.getAs[String]("_id").get,
+      userId = doc.getAs[String]("userId").get,
       result = doc.getAs[OcrTextAnnotation]("result").get
     )
     )
@@ -24,6 +26,7 @@ object OcrEntity {
     def write(ocrResult: OcrEntity): BSONDocument = {
       BSONDocument(
         "_id" -> ocrResult.id,
+        "userId" -> ocrResult.userId,
         "result" -> ocrResult.result
       )
     }

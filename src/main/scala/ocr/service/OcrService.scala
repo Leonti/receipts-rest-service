@@ -10,7 +10,10 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.vision.v1.model.{AnnotateImageRequest, BatchAnnotateImagesRequest, Feature, Image}
 import com.google.api.services.vision.v1.{Vision, VisionScopes}
 import com.google.common.collect.ImmutableList
+import com.typesafe.scalalogging.Logger
 import ocr.model.OcrTextAnnotation
+import org.slf4j.LoggerFactory
+import service.ImageResizingService
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -18,11 +21,24 @@ trait OcrService {
   def ocrImage(file: File): Future[OcrTextAnnotation]
 }
 
-class GoogleOcrService(credentialsFile: File) extends OcrService {
+class GoogleOcrService(credentialsFile: File, imageResizeService: ImageResizingService) extends OcrService {
 
   implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+  val logger = Logger(LoggerFactory.getLogger("GoogleOcrService"))
 
   def ocrImage(file: File): Future[OcrTextAnnotation] = {
+    if (file.length() >= 4000000) {
+      logger.info(s"File is too damn big, resizing ${file.getAbsolutePath}")
+
+      for {
+        resized <- imageResizeService.resizeToSize(file, 3.7)
+        annotation <- ocrResizedImage(resized)
+        _ = resized.delete()
+      } yield annotation
+    } else ocrResizedImage(file)
+  }
+
+  def ocrResizedImage(file: File): Future[OcrTextAnnotation] = {
     val credential =
       GoogleCredential.fromStream(new FileInputStream(credentialsFile))
         .createScoped(VisionScopes.all())

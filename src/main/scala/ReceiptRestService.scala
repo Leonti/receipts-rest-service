@@ -156,7 +156,7 @@ object ReceiptRestService extends App with Service {
     if (config.getBoolean("useOcrStub"))
       new OcrServiceStub()
     else
-      new GoogleOcrService(new File(config.getString("googleApiCredentials")))
+      new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
 
   val pendingFileService = new PendingFileService(new PendingFileRepository())
   val fileService = FileService.s3(config, system, materializer, fileCachingService, imageResizingService)

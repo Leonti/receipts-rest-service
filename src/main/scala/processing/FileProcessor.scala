@@ -36,7 +36,7 @@ class FileProcessor(
         receiptService.addFileToReceipt(receiptFileJob.receiptId, fileEntity)
       }))
       ocrResult <- ocrService.ocrImage(new File(receiptFileJob.filePath))
-      _ <- receiptService.saveOcrResult(receiptFileJob.receiptId, ocrResult)
+      _ <- receiptService.saveOcrResult(receiptFileJob.userId, receiptFileJob.receiptId, ocrResult)
         .map(result => println(s"Ocr text result ${receiptFileJob.receiptId} ${result.result.text}"))
       _ <- Future {new File(receiptFileJob.filePath).delete()}
       _ <- pendingFileService.deleteById(receiptFileJob.pendingFileId)

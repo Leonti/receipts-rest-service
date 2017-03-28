@@ -38,8 +38,8 @@ class ReceiptService(receiptRepository: ReceiptRepository, ocrRepository: OcrRep
   def addFileToReceipt(receiptId: String, file: FileEntity) : Future[Option[ReceiptEntity]] =
     receiptRepository.addFileToReceipt(receiptId, file).flatMap(_ => receiptRepository.findById(receiptId))
 
-  def saveOcrResult(receiptId: String, ocrResult: OcrTextAnnotation): Future[OcrEntity] =
-    ocrRepository.save(OcrEntity(id = receiptId, result = ocrResult))
+  def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): Future[OcrEntity] =
+    ocrRepository.save(OcrEntity(userId = userId, id = receiptId, result = ocrResult))
 
   def delete(receiptId: String): Future[Unit] = for {
     _ <- receiptRepository.deleteById(receiptId)

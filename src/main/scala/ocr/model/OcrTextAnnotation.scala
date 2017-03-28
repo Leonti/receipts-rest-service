@@ -1,14 +1,13 @@
 package ocr.model
 
 import com.google.api.services.vision.v1.model.TextAnnotation
-import collection.JavaConverters._
+import model.{OcrEntity, Serialization}
 
-import reactivemongo.bson.{
-BSONDocumentWriter, BSONDocumentReader, Macros, document
-}
+import collection.JavaConverters._
+import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter, Macros, document}
 case class DetectedLanguage(languageCode: String)
 case class TextProperty(detectedLanguages: Seq[DetectedLanguage])
-case class Vertex(x: Int, y: Int)
+case class Vertex(x: Option[Int], y: Option[Int])
 case class BoundingPoly(vertices: Seq[Vertex])
 case class Symbol(boundingBox: BoundingPoly, property: TextProperty, text: String)
 case class Word(boundingBox: BoundingPoly, property: TextProperty, symbols: Seq[Symbol])
@@ -23,7 +22,16 @@ object OcrTextAnnotation {
 
   implicit def detectedLanguageWriter: BSONDocumentWriter[DetectedLanguage] = Macros.writer[DetectedLanguage]
   implicit def textPropertyWriter: BSONDocumentWriter[TextProperty] = Macros.writer[TextProperty]
-  implicit def vertexWriter: BSONDocumentWriter[Vertex] = Macros.writer[Vertex]
+
+  implicit object VertexWriter extends BSONDocumentWriter[Vertex] {
+    def write(vertex: Vertex): BSONDocument = {
+      BSONDocument(
+        "x" -> vertex.x.getOrElse(-1),
+        "y" -> vertex.y.getOrElse(-1)
+      )
+    }
+  }
+
   implicit def boundingPolyWriter: BSONDocumentWriter[BoundingPoly] = Macros.writer[BoundingPoly]
   implicit def symbolWriter: BSONDocumentWriter[Symbol] = Macros.writer[Symbol]
   implicit def wordWriter: BSONDocumentWriter[Word] = Macros.writer[Word]
@@ -34,7 +42,16 @@ object OcrTextAnnotation {
 
   implicit def detectedLanguageReader: BSONDocumentReader[DetectedLanguage] = Macros.reader[DetectedLanguage]
   implicit def textPropertyReader: BSONDocumentReader[TextProperty] = Macros.reader[TextProperty]
-  implicit def vertexReader: BSONDocumentReader[Vertex] = Macros.reader[Vertex]
+
+
+  implicit object VertexBSONReader extends BSONDocumentReader[Vertex] {
+
+    def read(doc: BSONDocument): Vertex = Serialization.deserialize(doc, Vertex(
+      x = if (doc.getAs[Int]("x").get == -1) None else Some(doc.getAs[Int]("x").get),
+      y = if (doc.getAs[Int]("y").get == -1) None else Some(doc.getAs[Int]("y").get)
+    ))
+  }
+
   implicit def boundingPolyReader: BSONDocumentReader[BoundingPoly] = Macros.reader[BoundingPoly]
   implicit def symbolReader: BSONDocumentReader[Symbol] = Macros.reader[Symbol]
   implicit def wordReader: BSONDocumentReader[Word] = Macros.reader[Word]
@@ -54,11 +71,14 @@ object OcrTextAnnotation {
     }
 
     def toVertex(vertex: com.google.api.services.vision.v1.model.Vertex): Vertex = {
-      Vertex(x = vertex.getX, y = vertex.getY)
+      Vertex(
+        x = if (vertex.getX == null) None else Option(vertex.getX),
+        y = if (vertex.getY == null) None else Option(vertex.getY)
+      )
     }
 
     def toBoundingPoly(boundingBox: com.google.api.services.vision.v1.model.BoundingPoly): BoundingPoly = {
-      BoundingPoly(vertices = boundingBox.getVertices.asScala.map(toVertex))
+        BoundingPoly(vertices = boundingBox.getVertices.asScala.map(toVertex))
     }
 
     def toSymbol(s: com.google.api.services.vision.v1.model.Symbol) : Symbol = {
