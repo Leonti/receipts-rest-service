@@ -75,7 +75,7 @@ class ReceiptRouting(
     patched.parseJson.convertTo[ReceiptEntity]
   }
 
-  val deleteReceipt: (String) => Route = (receiptId) => {
+  val deleteReceipt: String => Route = (receiptId) => {
 
     val deletion: Future[Option[Future[Unit]]] = receiptService.findById(receiptId).map(_.map({ receipt =>
       val fileFutures = receipt.files.map({ fileEntity =>
@@ -172,8 +172,12 @@ class ReceiptRouting(
               }
             } ~
             get {
-              parameters("last-modified".as[Long].?) { (lastModified: Option[Long]) =>
-                val userReceiptsFuture = receiptService.findForUserId(userId, lastModified)
+              parameters("last-modified".as[Long].?, "q".as[String].?) { (lastModified: Option[Long], queryOption: Option[String]) =>
+
+                val userReceiptsFuture: Future[List[ReceiptEntity]] = queryOption
+                  .flatMap(query => if (query.trim.isEmpty) None else Some(query))
+                  .map(query => receiptService.findByText(userId, query))
+                  .getOrElse(receiptService.findForUserId(userId, lastModified))
 
                 onComplete(userReceiptsFuture) { userReceipts =>
                   complete(userReceipts)

@@ -2,7 +2,7 @@ package service
 
 import java.util.concurrent.Executors
 
-import model.{FileEntity, OcrEntity, ReceiptEntity}
+import model.{FileEntity, OcrEntity, OcrTextOnly, ReceiptEntity}
 import ocr.model.OcrTextAnnotation
 import repository.{OcrRepository, ReceiptRepository}
 
@@ -40,6 +40,13 @@ class ReceiptService(receiptRepository: ReceiptRepository, ocrRepository: OcrRep
 
   def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): Future[OcrEntity] =
     ocrRepository.save(OcrEntity(userId = userId, id = receiptId, result = ocrResult))
+
+  def findByText(userId: String, query: String): Future[List[ReceiptEntity]] =
+    for {
+      ocrTexts: List[OcrTextOnly] <- ocrRepository.findTextOnlyForUserId(userId = userId, query = query)
+      receiptIds: List[String] = ocrTexts.map(_.id)
+      results <- receiptRepository.findByIds(receiptIds)
+    } yield results
 
   def delete(receiptId: String): Future[Unit] = for {
     _ <- receiptRepository.deleteById(receiptId)

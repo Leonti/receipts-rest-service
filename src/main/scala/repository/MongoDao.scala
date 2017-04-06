@@ -33,5 +33,11 @@ trait MongoDao[T <: WithId] extends MongoConnection {
       .collect[List]())
   }
 
+  def findList(collectionFuture: Future[BSONCollection], query: BSONDocument, projection: BSONDocument)(implicit reader: BSONDocumentReader[T]): Future[List[T]] = {
+    collectionFuture.flatMap(_.find(query)
+      .cursor[T]()
+      .collect[List]())
+  }
+
   def queryById(id: String) = BSONDocument("_id" -> id)
 }

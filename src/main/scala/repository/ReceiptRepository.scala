@@ -6,7 +6,7 @@ import model.{FileEntity, ReceiptEntity}
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.api.commands.WriteResult
 import reactivemongo.bson
-import reactivemongo.bson.BSONDocument
+import reactivemongo.bson.{BSONArray, BSONDocument, BSONString}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -20,6 +20,13 @@ class ReceiptRepository extends MongoDao[ReceiptEntity] {
 
   def findForUserId(userId: String): Future[List[ReceiptEntity]] =
     findList(collectionFuture, BSONDocument("userId" -> userId)).map(_.sortWith(_.timestamp > _.timestamp))
+
+  def findByIds(ids: List[String]): Future[List[ReceiptEntity]] =
+    findList(collectionFuture,
+      BSONDocument("_id" ->
+        BSONDocument("$in" -> BSONArray(ids.map(BSONString))
+      )))
+      .map(_.sortWith(_.timestamp > _.timestamp))
 
   def addFileToReceipt(receiptId: String, file: FileEntity): Future[Unit] =
     collectionFuture.flatMap(_.update(

@@ -25,3 +25,4 @@ project/plugins/project/
 
 curl
 run.sh
+src/main/scala/OcrOld.scala
