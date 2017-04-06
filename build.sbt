@@ -25,7 +25,8 @@ val e2eSettings =
       scalaSource in EndToEndTest := baseDirectory.value / "src/e2e/scala")
 
 libraryDependencies ++= {
-  val akkaV       = "2.4.9"
+  val akkaV       = "2.4.17"
+  val akkaHttpV   = "10.0.5"
   val amazonS3V   = "1.10.68"
   val scalaTestV  = "2.2.5"
   val reactiveMongoV = "0.11.14"
@@ -35,10 +36,10 @@ libraryDependencies ++= {
   Seq(
     "com.typesafe.akka" %% "akka-actor"                           % akkaV,
     "com.typesafe.akka" %% "akka-stream"                          % akkaV,
-    "com.typesafe.akka" %% "akka-http-core"                       % akkaV,
-    "com.typesafe.akka" %% "akka-http-experimental"               % akkaV,
-    "com.typesafe.akka" %% "akka-http-spray-json-experimental"    % akkaV,
-    "com.typesafe.akka" %% "akka-http-testkit"                    % akkaV,
+    "com.typesafe.akka" %% "akka-http-core"                       % akkaHttpV,
+    "com.typesafe.akka" %% "akka-http"                            % akkaHttpV,
+    "com.typesafe.akka" %% "akka-http-spray-json"                 % akkaHttpV,
+    "com.typesafe.akka" %% "akka-http-testkit"                    % akkaHttpV,
     "com.amazonaws"     %   "aws-java-sdk-s3"                     % amazonS3V,
     "com.google.apis"   % "google-api-services-vision"            % visionApiV,
     "com.google.api-client" % "google-api-client"                 % googleApiClient,
