@@ -3,7 +3,7 @@ package queue
 import java.util.concurrent.Executors
 
 import queue.Models._
-import reactivemongo.api.ReadPreference
+import reactivemongo.api.{Cursor, ReadPreference}
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 import repository.MongoConnection
@@ -123,7 +123,7 @@ class Queue extends MongoConnection {
   def list(): Future[List[Job]] =
     collectionFuture.flatMap(_.find(BSONDocument())
       .cursor[Job]()
-      .collect[List]()
+      .collect[List](-1, Cursor.FailOnError[List[Job]]())
     )
 
   def clear(): Future[Unit] = collectionFuture.flatMap(_.remove(BSONDocument()).map(_ => ()))

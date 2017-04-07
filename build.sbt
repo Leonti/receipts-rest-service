@@ -4,8 +4,19 @@ name         := "receipts-rest-service"
 organization := "rocks.leonti"
 version      := "1.0"
 scalaVersion := "2.11.8"
+test in assembly := {}
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
+
+val akkaV       = "2.4.17"
+val akkaHttpV   = "10.0.5"
+val amazonS3V   = "1.10.68"
+val scalaTestV  = "2.2.5"
+val reactiveMongoV = "0.12.1"
+val jwtAuthV    = "0.3.0"
+val visionApiV  = "v1-rev346-1.22.0"
+val googleApiClient = "1.22.0"
+
 
 val logging = Seq (
   "ch.qos.logback" % "logback-classic" % "1.1.6",
@@ -13,7 +24,7 @@ val logging = Seq (
 
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "net.logstash.logback" % "logstash-logback-encoder" % "4.8",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.4.1"
+  "com.typesafe.akka" %% "akka-slf4j" % akkaV
 )
 
 val EndToEndTest = config("e2e") extend(Test)
@@ -25,14 +36,6 @@ val e2eSettings =
       scalaSource in EndToEndTest := baseDirectory.value / "src/e2e/scala")
 
 libraryDependencies ++= {
-  val akkaV       = "2.4.17"
-  val akkaHttpV   = "10.0.5"
-  val amazonS3V   = "1.10.68"
-  val scalaTestV  = "2.2.5"
-  val reactiveMongoV = "0.11.14"
-  val jwtAuthV    = "0.3.0"
-  val visionApiV  = "v1-rev346-1.22.0"
-  val googleApiClient = "1.22.0"
   Seq(
     "com.typesafe.akka" %% "akka-actor"                           % akkaV,
     "com.typesafe.akka" %% "akka-stream"                          % akkaV,
@@ -43,10 +46,14 @@ libraryDependencies ++= {
     "com.amazonaws"     %   "aws-java-sdk-s3"                     % amazonS3V,
     "com.google.apis"   % "google-api-services-vision"            % visionApiV,
     "com.google.api-client" % "google-api-client"                 % googleApiClient,
-    "org.reactivemongo" %% "reactivemongo"                        % reactiveMongoV,
+    "org.reactivemongo" %% "reactivemongo"                        % reactiveMongoV excludeAll(
+      ExclusionRule(organization = "com.typesafe.akka")
+      ),
     "com.drewnoakes"    %  "metadata-extractor"                   % "2.9.0",
     "de.choffmeister"   %% "auth-common"                          % jwtAuthV,
-    "de.choffmeister"   %% "auth-akka-http"                       % jwtAuthV,
+    "de.choffmeister"   %% "auth-akka-http"                       % jwtAuthV excludeAll(
+      ExclusionRule(organization = "com.typesafe.akka")
+      ),
     "org.gnieh" %% "diffson"                                      % "1.1.0",
     "org.scalatest"     %% "scalatest"                            % scalaTestV % "it,test",
     "org.mockito"       %  "mockito-all"                          % "1.8.4" % "test"

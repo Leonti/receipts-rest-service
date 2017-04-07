@@ -1,6 +1,7 @@
 package repository
 
 import model.{OcrEntity, OcrTextOnly, PendingFile}
+import reactivemongo.api.Cursor
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.api.commands.WriteResult
 import reactivemongo.bson.{BSONDocument, BSONRegex}
@@ -23,5 +24,5 @@ class OcrRepository extends MongoDao[OcrEntity] {
       "result.text" -> BSONRegex(query, "i")
     ), BSONDocument("result.text" -> 1))
       .cursor[OcrTextOnly]()
-      .collect[List]())
+      .collect[List](-1, Cursor.FailOnError[List[OcrTextOnly]]()))
 }
