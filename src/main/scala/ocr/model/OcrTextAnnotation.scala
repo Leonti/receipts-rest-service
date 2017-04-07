@@ -14,8 +14,6 @@ case class Word(boundingBox: BoundingPoly, property: TextProperty, symbols: Seq[
 case class Paragraph(boundingBox: BoundingPoly, property: TextProperty, words: Seq[Word])
 case class Block(blockType: String, boundingBox: BoundingPoly, paragraphs: Seq[Paragraph], property: TextProperty)
 case class Page(height: Int, width: Int, property: TextProperty, blocks: Seq[Block])
-
-
 case class OcrTextAnnotation(pages: Seq[Page], text: String)
 
 object OcrTextAnnotation {
