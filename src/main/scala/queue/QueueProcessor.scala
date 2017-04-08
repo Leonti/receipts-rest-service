@@ -30,12 +30,12 @@ class QueueProcessor(
         case None => 10.seconds
       }
 
-      system.scheduler.scheduleOnce(nextPickupTimeout)(reserveNextJob)
-    }).onFailure {
-      case e: Throwable => {
+      system.scheduler.scheduleOnce(nextPickupTimeout)(reserveNextJob())
+    }).onComplete {
+      case Failure(e: Throwable) =>
         logger.error(s"Exception on reserving next job $e")
-        system.scheduler.scheduleOnce(10.seconds)(reserveNextJob)
-      }
+        system.scheduler.scheduleOnce(10.seconds)(reserveNextJob())
+      case Success(_) => ()
     }
   }
 

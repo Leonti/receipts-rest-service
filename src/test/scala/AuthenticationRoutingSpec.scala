@@ -7,7 +7,7 @@ import model.{JsonProtocols, ErrorResponse, User}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, FlatSpec}
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._

@@ -2,7 +2,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import model.{CreateUserRequest, JsonProtocols, User, UserInfo}
 import org.mockito.Mockito._
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model.ContentTypes._
@@ -15,8 +15,6 @@ import akka.http.scaladsl.model.headers.{HttpChallenge, HttpCredentials}
 import akka.http.scaladsl.server.directives.{AuthenticationResult, SecurityDirectives}
 
 class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with MockitoSugar with JsonProtocols {
-
-
 
   def createAuthentication(user: User) = {
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {

@@ -8,7 +8,7 @@ import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.ByteString
 import model.{FileEntity, GenericMetadata, ImageMetadata}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FlatSpec, Matchers}
 import service.{FileService, ImageResizingService}
