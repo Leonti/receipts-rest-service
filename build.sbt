@@ -3,7 +3,8 @@ enablePlugins(JavaAppPackaging)
 name         := "receipts-rest-service"
 organization := "rocks.leonti"
 version      := "1.0"
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.1"
+scalacOptions += "-Ypartial-unification"
 test in assembly := {}
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
@@ -11,16 +12,18 @@ scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 val akkaV       = "2.4.17"
 val akkaHttpV   = "10.0.5"
 val amazonS3V   = "1.10.68"
-val scalaTestV  = "2.2.5"
+val scalaTestV  = "3.0.1"
 val reactiveMongoV = "0.12.1"
 val jwtAuthV    = "0.3.0"
 val visionApiV  = "v1-rev346-1.22.0"
 val googleApiClient = "1.22.0"
-
+val scalaLoggingV = "3.5.0"
+val logbackV = "1.1.7"
+val diffsonV = "2.1.2"
 
 val logging = Seq (
-  "ch.qos.logback" % "logback-classic" % "1.1.6",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+  "ch.qos.logback" % "logback-classic" % logbackV,
+  "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingV,
 
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "net.logstash.logback" % "logstash-logback-encoder" % "4.8",
@@ -50,11 +53,14 @@ libraryDependencies ++= {
       ExclusionRule(organization = "com.typesafe.akka")
       ),
     "com.drewnoakes"    %  "metadata-extractor"                   % "2.9.0",
-    "de.choffmeister"   %% "auth-common"                          % jwtAuthV,
-    "de.choffmeister"   %% "auth-akka-http"                       % jwtAuthV excludeAll(
-      ExclusionRule(organization = "com.typesafe.akka")
+    "de.choffmeister"   % "auth-common_2.11"                          % jwtAuthV excludeAll(
+      ExclusionRule(organization = "io.spray")
       ),
-    "org.gnieh" %% "diffson"                                      % "1.1.0",
+    "de.choffmeister"   % "auth-akka-http_2.11"                       % jwtAuthV excludeAll(
+      ExclusionRule(organization = "com.typesafe.akka"),
+      ExclusionRule(organization = "io.spray")
+      ),
+    "org.gnieh" %% "diffson-spray-json"                           % diffsonV,
     "org.scalatest"     %% "scalatest"                            % scalaTestV % "it,test",
     "org.mockito"       %  "mockito-all"                          % "1.8.4" % "test"
   )

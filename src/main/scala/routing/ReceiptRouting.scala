@@ -19,7 +19,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
 import spray.json._
-import gnieh.diffson._
+import gnieh.diffson.sprayJson._
 import org.slf4j.LoggerFactory
 import processing.ReceiptFiles
 
