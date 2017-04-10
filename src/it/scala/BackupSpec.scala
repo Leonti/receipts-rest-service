@@ -24,34 +24,39 @@ import scala.concurrent.Future
 class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtocols {
   implicit val defaultPatience =
     PatienceConfig(timeout = Span(30, Seconds), interval = Span(500, Millis))
-  implicit val system = ActorSystem()
+  implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
-
   it should "test downloading a backup" in {
-    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val username          = "ci_user_" + java.util.UUID.randomUUID()
     val createUserRequest = CreateUserRequest(username, "password")
 
     val zipEntriesFuture: Future[List[ZipEntry]] = for {
-      userInfo <- createUser(createUserRequest)
-      accessToken <- authenticateUser(userInfo)
+      userInfo      <- createUser(createUserRequest)
+      accessToken   <- authenticateUser(userInfo)
       requestEntity <- createImageFileContent()
-      response <- Http().singleRequest(HttpRequest(method = HttpMethods.POST,
-        uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
-        entity = requestEntity,
-        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      response <- Http().singleRequest(
+        HttpRequest(
+          method = HttpMethods.POST,
+          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          entity = requestEntity,
+          headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
+        ))
       firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      receiptEntity <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.accessToken)
-      backupToken <- Http().singleRequest(HttpRequest(method = HttpMethods.GET,
-        uri = s"http://localhost:9000/user/${userInfo.id}/backup/token",
-        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      receiptEntity      <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.accessToken)
+      backupToken <- Http()
+        .singleRequest(HttpRequest(
+          method = HttpMethods.GET,
+          uri = s"http://localhost:9000/user/${userInfo.id}/backup/token",
+          headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
+        ))
         .flatMap(response => Unmarshal(response.entity).to[OAuth2AccessTokenResponse])
-      backupResponse: HttpResponse <- Http().singleRequest(HttpRequest(method = HttpMethods.GET,
-        uri = s"http://localhost:9000/user/${userInfo.id}/backup/download?access_token=${backupToken.accessToken}",
-        entity = requestEntity
-      ))
+      backupResponse: HttpResponse <- Http().singleRequest(
+        HttpRequest(method = HttpMethods.GET,
+                    uri = s"http://localhost:9000/user/${userInfo.id}/backup/download?access_token=${backupToken.accessToken}",
+                    entity = requestEntity))
       backupBytes <- responseToBytes(backupResponse)
-      zipEntries <- Future.successful(toZipEntries(backupBytes))
+      zipEntries  <- Future.successful(toZipEntries(backupBytes))
     } yield zipEntries
 
     whenReady(zipEntriesFuture) { (zipEntries: List[ZipEntry]) =>
@@ -67,7 +72,7 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProto
   }
 
   def toZipEntries(bytes: Array[Byte]): List[ZipEntry] = {
-    val zipStream = new ZipInputStream(new ByteArrayInputStream(bytes))
+    val zipStream  = new ZipInputStream(new ByteArrayInputStream(bytes))
     val zipEntries = Stream.continually(zipStream.getNextEntry).takeWhile(_ != null).toList
     zipStream.close()
 

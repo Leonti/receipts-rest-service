@@ -11,9 +11,9 @@ import akka.util.ByteString
 
 import scala.concurrent.Future
 
-class Cache(file : File) extends GraphStage[FlowShape[ByteString, ByteString]] {
+class Cache(file: File) extends GraphStage[FlowShape[ByteString, ByteString]] {
 
-  val in = Inlet[ByteString]("Cache.in")
+  val in  = Inlet[ByteString]("Cache.in")
   val out = Outlet[ByteString]("Cache.out")
 
   override val shape = FlowShape.of(in, out)
@@ -21,26 +21,29 @@ class Cache(file : File) extends GraphStage[FlowShape[ByteString, ByteString]] {
   override def createLogic(attr: Attributes): GraphStageLogic =
     new GraphStageLogic(shape) {
 
-      val partFile = new File(file.getAbsolutePath + ".part")
+      val partFile       = new File(file.getAbsolutePath + ".part")
       lazy val cacheFile = new FileOutputStream(partFile)
 
       println("Caching file to " + partFile)
 
-      setHandler(in, new InHandler {
-        override def onPush(): Unit = {
+      setHandler(
+        in,
+        new InHandler {
+          override def onPush(): Unit = {
 
-          val chunk: ByteString = grab(in)
-          cacheFile.write(chunk.toArray)
-          push(out, chunk)
-        }
+            val chunk: ByteString = grab(in)
+            cacheFile.write(chunk.toArray)
+            push(out, chunk)
+          }
 
-        override def onUpstreamFinish(): Unit = {
-          println("Upstream finish, closing file")
-          complete(out)
-          cacheFile.close()
-          partFile.renameTo(file)
+          override def onUpstreamFinish(): Unit = {
+            println("Upstream finish, closing file")
+            complete(out)
+            cacheFile.close()
+            partFile.renameTo(file)
+          }
         }
-      })
+      )
       setHandler(out, new OutHandler {
         override def onPull(): Unit = {
 
@@ -56,21 +59,21 @@ class Cache(file : File) extends GraphStage[FlowShape[ByteString, ByteString]] {
 
 class FileCachingService {
 
-  private val tempFile : (String, String) => File = (userId, fileId) => {
-    val tmpDir = Paths.get(System.getProperty("java.io.tmpdir"), "receipts-rest-service-cache")
+  private val tempFile: (String, String) => File = (userId, fileId) => {
+    val tmpDir  = Paths.get(System.getProperty("java.io.tmpdir"), "receipts-rest-service-cache")
     val userDir = Paths.get(tmpDir.toFile.getAbsolutePath, userId)
     Files.createDirectories(userDir)
     Paths.get(userDir.toFile.getAbsolutePath, fileId).toFile
   }
 
-  val cacheFile : (String, String, File) => Unit = (userId, fileId, file) => {
+  val cacheFile: (String, String, File) => Unit = (userId, fileId, file) => {
     Files.copy(file.toPath, tempFile(userId, fileId).toPath, StandardCopyOption.REPLACE_EXISTING)
   }
 
-  val cacheFlow : (String, String) => Flow[ByteString, ByteString, NotUsed] = (userId, fileId) =>
+  val cacheFlow: (String, String) => Flow[ByteString, ByteString, NotUsed] = (userId, fileId) =>
     Flow.fromGraph(new Cache(tempFile(userId, fileId)))
 
-  val get : (String, String) => Option[Source[ByteString, Future[IOResult]]] = (userId, fileId) => {
+  val get: (String, String) => Option[Source[ByteString, Future[IOResult]]] = (userId, fileId) => {
     val file = tempFile(userId, fileId)
     if (file.exists()) Some(FileIO.fromPath(file.toPath)) else None
   }

@@ -16,8 +16,8 @@ object OcrTest {
 
   def main2(args: Array[String]): Unit = {
     val credential =
-      GoogleCredential.fromStream(new FileInputStream(
-        new File("/home/leonti/development/google-cloud/Receipts-dev-ocr-service-account.json")))
+      GoogleCredential
+        .fromStream(new FileInputStream(new File("/home/leonti/development/google-cloud/Receipts-dev-ocr-service-account.json")))
         .createScoped(VisionScopes.all())
 
     val jsonFactory = JacksonFactory.getDefaultInstance
@@ -25,26 +25,25 @@ object OcrTest {
       .setApplicationName("Receipts")
       .build()
 
-
     val requests: ImmutableList.Builder[AnnotateImageRequest] = ImmutableList.builder()
 
     requests.add(
       new AnnotateImageRequest()
-        .setImage(new Image().encodeContent(Files.readAllBytes(new File("/home/leonti/development/document-scanner/images/7.jpg").toPath)))
-        .setFeatures(ImmutableList.of(
-          new Feature()
-            .setType("TEXT_DETECTION")
-            .setMaxResults(100))))
+        .setImage(
+          new Image().encodeContent(Files.readAllBytes(new File("/home/leonti/development/document-scanner/images/7.jpg").toPath)))
+        .setFeatures(ImmutableList.of(new Feature()
+          .setType("TEXT_DETECTION")
+          .setMaxResults(100))))
 
     val annotate =
-      vision.images()
+      vision
+        .images()
         .annotate(new BatchAnnotateImagesRequest().setRequests(requests.build()))
     // Due to a bug: requests to Vision API containing large images fail when GZipped.
     annotate.setDisableGZipContent(true)
     val batchResponse = annotate.execute()
 
     val response = batchResponse.getResponses().get(0)
-
 
     val annotations = response.getTextAnnotations
 

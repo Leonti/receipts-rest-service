@@ -11,19 +11,19 @@ trait QueueJob {
 
 case class ContextHolder(context: String)
 
-case class  ReceiptFileJob(
-                            userId: String,
-                            receiptId: String,
-                            filePath: String,
-                            fileExt: String,
-                            pendingFileId: PendingFileId,
-                            context: String = "RECEIPT_FILE") extends QueueJob
+case class ReceiptFileJob(userId: String,
+                          receiptId: String,
+                          filePath: String,
+                          fileExt: String,
+                          pendingFileId: PendingFileId,
+                          context: String = "RECEIPT_FILE")
+    extends QueueJob
 
 case class ReservedJob(id: JobId, job: QueueJob)
 
 object QueueJob extends DefaultJsonProtocol with NullOptions {
 
-  implicit val contextHolderFormat = jsonFormat1(ContextHolder.apply)
+  implicit val contextHolderFormat  = jsonFormat1(ContextHolder.apply)
   implicit val receiptFileJobFormat = jsonFormat6(ReceiptFileJob.apply)
 
   def fromString(asString: String): QueueJob = {
@@ -38,4 +38,3 @@ object QueueJob extends DefaultJsonProtocol with NullOptions {
     case (receiptFileJob: ReceiptFileJob) => receiptFileJob.toJson.prettyPrint
   }
 }
-

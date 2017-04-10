@@ -24,14 +24,14 @@ trait OcrService {
 class GoogleOcrService(credentialsFile: File, imageResizeService: ImageResizingService) extends OcrService {
 
   implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
-  val logger = Logger(LoggerFactory.getLogger("GoogleOcrService"))
+  val logger      = Logger(LoggerFactory.getLogger("GoogleOcrService"))
 
   def ocrImage(file: File): Future[OcrTextAnnotation] = {
     if (file.length() >= 4000000) {
       logger.info(s"File is too damn big, resizing ${file.getAbsolutePath}")
 
       for {
-        resized <- imageResizeService.resizeToSize(file, 3.7)
+        resized    <- imageResizeService.resizeToSize(file, 3.7)
         annotation <- ocrResizedImage(resized)
         _ = resized.delete()
       } yield annotation
@@ -40,7 +40,8 @@ class GoogleOcrService(credentialsFile: File, imageResizeService: ImageResizingS
 
   def ocrResizedImage(file: File): Future[OcrTextAnnotation] = {
     val credential =
-      GoogleCredential.fromStream(new FileInputStream(credentialsFile))
+      GoogleCredential
+        .fromStream(new FileInputStream(credentialsFile))
         .createScoped(VisionScopes.all())
 
     val jsonFactory = JacksonFactory.getDefaultInstance
@@ -53,15 +54,14 @@ class GoogleOcrService(credentialsFile: File, imageResizeService: ImageResizingS
     requests.add(
       new AnnotateImageRequest()
         .setImage(new Image().encodeContent(Files.readAllBytes(file.toPath)))
-        .setFeatures(ImmutableList.of(
-          new Feature()
-            .setType("TEXT_DETECTION")
-            .setMaxResults(10000))))
+        .setFeatures(ImmutableList.of(new Feature()
+          .setType("TEXT_DETECTION")
+          .setMaxResults(10000))))
 
     val annotate =
-      vision.images()
+      vision
+        .images()
         .annotate(new BatchAnnotateImagesRequest().setRequests(requests.build()))
-
 
     // Due to a bug: requests to Vision API containing large images fail when GZipped.
     annotate.setDisableGZipContent(true)

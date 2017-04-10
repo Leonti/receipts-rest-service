@@ -17,18 +17,20 @@ import scala.util.{Failure, Success, Try}
 
 case class GoogleToken(token: String)
 
-class OauthRouting(userService: UserService, googleOauthService: GoogleOauthService)
-                  (implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) extends JsonProtocols {
+class OauthRouting(userService: UserService, googleOauthService: GoogleOauthService)(implicit system: ActorSystem,
+                                                                                     executor: ExecutionContextExecutor,
+                                                                                     materializer: ActorMaterializer)
+    extends JsonProtocols {
 
   implicit val googleTokenFormat = jsonFormat1(GoogleToken)
 
   private val validateTokenWithUserCreation: (GoogleToken, TokenType) => Route = (googleToken, tokenType) => {
     val tokenFuture: Future[OAuth2AccessTokenResponse] = for {
-      tokenInfo <- googleOauthService.fetchAndValidateTokenInfo(googleToken.token, tokenType)
+      tokenInfo  <- googleOauthService.fetchAndValidateTokenInfo(googleToken.token, tokenType)
       optionUser <- userService.findByUserName(tokenInfo.email)
       user: User <- optionUser match {
         case Some(user) => Future.successful(user)
-        case None => userService.createGoogleUser(tokenInfo.email)
+        case None       => userService.createGoogleUser(tokenInfo.email)
       }
       token <- Future.successful(JwtTokenGenerator.generateToken(user))
     } yield token

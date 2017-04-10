@@ -25,22 +25,24 @@ import com.typesafe.config.ConfigFactory
 import scala.collection.immutable.Seq
 
 class Uploader extends JsonProtocols {
-  implicit val system = ActorSystem()
+  implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()
-  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(200))
+  implicit val ec           = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(200))
 
   def createUser(createUserRequest: CreateUserRequest): Future[UserInfo] = {
     for {
       request <- Marshal(createUserRequest).to[RequestEntity]
-      response <- Http().singleRequest(HttpRequest(method = HttpMethods.POST, uri = s"http://localhost:9000/user/create", entity = request))
+      response <- Http().singleRequest(
+        HttpRequest(method = HttpMethods.POST, uri = s"http://localhost:9000/user/create", entity = request))
       userInfo <- Unmarshal(response.entity).to[UserInfo]
     } yield userInfo
   }
 
   def authenticateUser(userInfo: UserInfo): Future[OAuth2AccessTokenResponse] = {
     for {
-      response <- Http().singleRequest(HttpRequest(uri = s"http://localhost:9000/token/create",
-        headers = List(Authorization(BasicHttpCredentials(userInfo.userName, "password")))))
+      response <- Http().singleRequest(
+        HttpRequest(uri = s"http://localhost:9000/token/create",
+                    headers = List(Authorization(BasicHttpCredentials(userInfo.userName, "password")))))
       accessToken <- Unmarshal(response.entity).to[OAuth2AccessTokenResponse]
     } yield accessToken
   }
@@ -52,13 +54,11 @@ class Uploader extends JsonProtocols {
 
   def createImageFileContent(): Future[RequestEntity] = {
     val receiptImage: BufferedSource = scala.io.Source.fromFile("/home/leonti/Downloads/receipt.jpg", "ISO-8859-1")
-    val content = receiptImage.map(_.toByte).toArray
+    val content                      = receiptImage.map(_.toByte).toArray
 
     val multipartForm =
-      Multipart.FormData(Multipart.FormData.BodyPart.Strict(
-        "receipt",
-        HttpEntity(`application/octet-stream`, content),
-        Map("filename" -> "receipt.png")),
+      Multipart.FormData(
+        Multipart.FormData.BodyPart.Strict("receipt", HttpEntity(`application/octet-stream`, content), Map("filename" -> "receipt.png")),
         Multipart.FormData.BodyPart.Strict("total", utf8TextEntity("12.38")),
         Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description"))
       )
@@ -67,13 +67,13 @@ class Uploader extends JsonProtocols {
 
   val toReceiptRequest: (MessageEntity, String, String, String) => HttpRequest = (requestEntity, baseUrl, userId, accessToken) => {
     HttpRequest(method = HttpMethods.POST,
-      uri = s"${baseUrl}/user/${userId}/receipt",
-      entity = requestEntity,
-      headers = List(Authorization(OAuth2BearerToken(accessToken))))
+                uri = s"${baseUrl}/user/${userId}/receipt",
+                entity = requestEntity,
+                headers = List(Authorization(OAuth2BearerToken(accessToken))))
   }
 
   def upload() = {
-    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val username          = "ci_user_" + java.util.UUID.randomUUID()
     val createUserRequest = CreateUserRequest(username, "password")
 
     val uploadReceipt: (HttpRequest) => Future[StatusCode] = request => {
@@ -82,20 +82,22 @@ class Uploader extends JsonProtocols {
 
       val config = ConfigFactory.load()
 
-    //  println("max connections " + ConfigFactory.load().getInt("akka.http.client.host-connection-pool.max-connections"))
+      //  println("max connections " + ConfigFactory.load().getInt("akka.http.client.host-connection-pool.max-connections"))
 
-      Http(system).singleRequest(request).map(response => {
-        println(response.status)
-        val end = System.currentTimeMillis()
-        println(s"Receipt uploaded in ${(end - start)}ms")
-        response.status
-      })
+      Http(system)
+        .singleRequest(request)
+        .map(response => {
+          println(response.status)
+          val end = System.currentTimeMillis()
+          println(s"Receipt uploaded in ${(end - start)}ms")
+          response.status
+        })
     }
 
     val requests: Future[Seq[HttpRequest]] = for {
-      userInfo: UserInfo <- createUser(createUserRequest)
+      userInfo: UserInfo                     <- createUser(createUserRequest)
       accessToken: OAuth2AccessTokenResponse <- authenticateUser(userInfo)
-      requestEntity: MessageEntity <- createImageFileContent()
+      requestEntity: MessageEntity           <- createImageFileContent()
     } yield Seq.fill(10)(toReceiptRequest(requestEntity, "http://localhost:9000", userInfo.id, accessToken.accessToken))
 
     val result: Future[Seq[StatusCode]] = requests.flatMap(requests => Future.sequence(requests.map(request => uploadReceipt(request))))
@@ -103,35 +105,35 @@ class Uploader extends JsonProtocols {
   }
 
   def uploadWithFlow() = {
-    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val username          = "ci_user_" + java.util.UUID.randomUUID()
     val createUserRequest = CreateUserRequest(username, "password")
 
     val requestsFuture: Future[Seq[HttpRequest]] = for {
-      userInfo: UserInfo <- createUser(createUserRequest)
+      userInfo: UserInfo                     <- createUser(createUserRequest)
       accessToken: OAuth2AccessTokenResponse <- authenticateUser(userInfo)
-      requestEntity: MessageEntity <- createImageFileContent()
+      requestEntity: MessageEntity           <- createImageFileContent()
     } yield Seq.fill(10)(toReceiptRequest(requestEntity, "", userInfo.id, accessToken.accessToken))
 
     val statusPrinterFlow = Flow[HttpResponse].map(httpResponse => {
       println(httpResponse.status)
       println(s"Response ${httpResponse.entity.toString}")
 
-
       httpResponse
     })
 
     val result: Future[Seq[HttpResponse]] = requestsFuture.flatMap(requests => {
-      val res: Future[Seq[HttpResponse]] = Future.sequence(requests
+      val res: Future[Seq[HttpResponse]] = Future.sequence(
+        requests
           .map(httpRequest => {
 
             val requestFlow = Http().outgoingConnection("localhost", 9000)
 
-            Source.single[HttpRequest](httpRequest)
+            Source
+              .single[HttpRequest](httpRequest)
               .via(requestFlow)
               .via(statusPrinterFlow)
               .runWith(Sink.head)
-          })
-      )
+          }))
 
       res
     })
@@ -141,8 +143,6 @@ class Uploader extends JsonProtocols {
 
 }
 
-
-
 object LoadTest {
   implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(200))
 
@@ -150,14 +150,16 @@ object LoadTest {
 
     val start = System.currentTimeMillis()
 
-    new Uploader().upload().onComplete({
+    new Uploader()
+      .upload()
+      .onComplete({
         case Success(receipt) => {
-          val end = System.currentTimeMillis()
+          val end      = System.currentTimeMillis()
           val toUpload = end - start
-          println(s"All receipts uploaded in ${toUpload/1000}s")
+          println(s"All receipts uploaded in ${toUpload / 1000}s")
         }
         case Failure(e) => println(s"Exception happened! ${e} ${e.getStackTrace.foreach(e => println(e))}")
-    })
+      })
 
   }
 }

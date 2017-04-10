@@ -9,13 +9,11 @@ import repository.UserRepository
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Right
 
-class UserService (userRepository: UserRepository) {
+class UserService(userRepository: UserRepository) {
 
   implicit val executor: ExecutionContext = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
-  private val hasher = new PasswordHasher(
-    "pbkdf2", "hmac-sha1" :: "10000" :: "128" :: Nil,
-    List(PBKDF2, Plain))
+  private val hasher = new PasswordHasher("pbkdf2", "hmac-sha1" :: "10000" :: "128" :: Nil, List(PBKDF2, Plain))
 
   def createUser(createUserRequest: CreateUserRequest): Future[Either[String, User]] = {
     findByUserName(createUserRequest.userName).flatMap({
@@ -27,7 +25,8 @@ class UserService (userRepository: UserRepository) {
               userName = createUserRequest.userName,
               passwordHash = hasher.hash(createUserRequest.password)
             )
-          ).map(user => Right(user))
+          )
+          .map(user => Right(user))
     })
   }
 

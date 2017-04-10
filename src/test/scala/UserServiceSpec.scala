@@ -13,7 +13,6 @@ import scala.util.Right
 
 import org.scalatest.time.{Millis, Seconds, Span}
 
-
 class UserServiceSpec extends FlatSpec with Matchers with MockitoSugar with ScalaFutures {
 
   implicit val defaultPatience =
@@ -22,10 +21,11 @@ class UserServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
   it should "return existing user" in {
 
     val repository = mock[UserRepository]
-    val user = Future(Some(User(
-      id = "id",
-      userName = "name",
-      passwordHash = "pbkdf2:hmac-sha1:10000:128:Z0+02KhCGr4xkEzZIVKfu9qfoYR+ZgrNUDF/C3JJTwk=:W7LYY7TanDr++ha3507kCg==")))
+    val user = Future(
+      Some(
+        User(id = "id",
+             userName = "name",
+             passwordHash = "pbkdf2:hmac-sha1:10000:128:Z0+02KhCGr4xkEzZIVKfu9qfoYR+ZgrNUDF/C3JJTwk=:W7LYY7TanDr++ha3507kCg==")))
 
     when(repository.findUserById("id")).thenReturn(user)
     when(repository.findUserByUserName("userName")).thenReturn(user)

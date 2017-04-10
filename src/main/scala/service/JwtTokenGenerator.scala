@@ -12,9 +12,9 @@ import scala.concurrent.duration._
 
 object JwtTokenGenerator {
 
-  private val config = ConfigFactory.load()
-  private val bearerTokenSecret: Array[Byte] = config.getString("tokenSecret").getBytes
-  private val bearerTokenLifetime: FiniteDuration = 60.minutes
+  private val config                                  = ConfigFactory.load()
+  private val bearerTokenSecret: Array[Byte]          = config.getString("tokenSecret").getBytes
+  private val bearerTokenLifetime: FiniteDuration     = 60.minutes
   private val bearerPathTokenLifetime: FiniteDuration = 5.minutes
 
   val generateToken: User => OAuth2AccessTokenResponse = (user) => {

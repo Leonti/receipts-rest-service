@@ -19,15 +19,18 @@ import akka.http.scaladsl.model.headers.{ContentDispositionTypes, `Content-Dispo
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
-class BackupRouting(authenticaton: AuthenticationDirective[User],
-                    authorizePath: PathAuthorizationDirective,
-                    backupService: BackupService)
-  (implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) extends JsonProtocols{
+class BackupRouting(
+    authenticaton: AuthenticationDirective[User],
+    authorizePath: PathAuthorizationDirective,
+    backupService: BackupService)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
+    extends JsonProtocols {
 
   def myRejectionHandler =
-    RejectionHandler.newBuilder()
-      .handle { case AuthorizationFailedRejection =>
-        complete(Forbidden -> ErrorResponse("Access forbidden"))
+    RejectionHandler
+      .newBuilder()
+      .handle {
+        case AuthorizationFailedRejection =>
+          complete(Forbidden -> ErrorResponse("Access forbidden"))
       }
       .result()
 
@@ -49,14 +52,12 @@ class BackupRouting(authenticaton: AuthenticationDirective[User],
 
               val backup = backupService.createUserBackup(userId)
 
-              val contentDisposition = `Content-Disposition`(ContentDispositionTypes.attachment,
-                Map("filename" -> backup.filename))
+              val contentDisposition = `Content-Disposition`(ContentDispositionTypes.attachment, Map("filename" -> backup.filename))
 
-              complete(HttpResponse(
-                headers = List(contentDisposition),
-                entity = HttpEntity(
-                  contentType = ContentType(MediaTypes.`application/zip`, () => HttpCharsets.`UTF-8`),
-                  data = backup.source)))
+              complete(
+                HttpResponse(headers = List(contentDisposition),
+                             entity = HttpEntity(contentType = ContentType(MediaTypes.`application/zip`, () => HttpCharsets.`UTF-8`),
+                                                 data = backup.source)))
 
             }
 

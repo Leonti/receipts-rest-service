@@ -15,16 +15,16 @@ class ReceiptFiles(pendingFileService: PendingFileService, receiptFileQueue: Rec
   def submitFile(userId: String, receiptId: String, file: File, fileExt: String): Future[PendingFile] = {
 
     val pendingFileFuture = for {
-      pendingFile <- pendingFileService.save(PendingFile(
-        id = java.util.UUID.randomUUID().toString,
-        userId = userId,
-        receiptId = receiptId
-      ))
+      pendingFile <- pendingFileService.save(
+        PendingFile(
+          id = java.util.UUID.randomUUID().toString,
+          userId = userId,
+          receiptId = receiptId
+        ))
       _ <- receiptFileQueue.submitFile(userId, receiptId, file, fileExt, pendingFile.id)
     } yield pendingFile
 
     pendingFileFuture
   }
-
 
 }

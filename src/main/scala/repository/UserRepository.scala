@@ -11,7 +11,7 @@ class UserRepository extends MongoDao[User] {
 
   def save(user: User): Future[User] = save(collectionFuture, user)
 
-  def findUserById(userId: String): Future[Option[User]]  = {
+  def findUserById(userId: String): Future[Option[User]] = {
     find(collectionFuture, BSONDocument("_id" -> userId))
   }
 

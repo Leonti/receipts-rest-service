@@ -29,7 +29,8 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
       Future(AuthenticationResult.success(User(id = "id", userName = "name", passwordHash = "hash")))
     }
 
-    val authenticationDirective: AuthenticationDirective[User] = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
+    val authenticationDirective: AuthenticationDirective[User] =
+      SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     when(authenticator.basic(any[Option[FiniteDuration]])).thenReturn(authenticationDirective)
 
@@ -40,7 +41,7 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
 
       status shouldBe OK
       contentType shouldBe `application/json`
-      responseAs[String] should include ("access_token")
+      responseAs[String] should include("access_token")
     }
   }
 
@@ -49,7 +50,8 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
       Future(Left(HttpChallenge("MyAuth", "MyRealm")))
     }
 
-    val authenticationDirective: AuthenticationDirective[User] = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
+    val authenticationDirective: AuthenticationDirective[User] =
+      SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     when(authenticator.basic(any[Option[FiniteDuration]])).thenReturn(authenticationDirective)
 
@@ -70,7 +72,8 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
       Future(AuthenticationResult.success(User(id = "id", userName = "name", passwordHash = "hash")))
     }
 
-    val authenticationDirective: AuthenticationDirective[User] = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
+    val authenticationDirective: AuthenticationDirective[User] =
+      SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     when(authenticator.bearerTokenOrCookie(true)).thenReturn(authenticationDirective)
 
@@ -80,7 +83,7 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
     Get("/token/renew") ~> authenticationRouting.routes ~> check {
       status shouldBe OK
       contentType shouldBe `application/json`
-      responseAs[String] should include ("access_token")
+      responseAs[String] should include("access_token")
     }
   }
 
@@ -90,7 +93,8 @@ class AuthenticationRoutingSpec extends FlatSpec with Matchers with ScalatestRou
       Future(Left(HttpChallenge("MyAuth", "MyRealm")))
     }
 
-    val authenticationDirective: AuthenticationDirective[User] = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
+    val authenticationDirective: AuthenticationDirective[User] =
+      SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     when(authenticator.bearerTokenOrCookie(true)).thenReturn(authenticationDirective)
 

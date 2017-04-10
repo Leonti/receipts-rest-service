@@ -21,21 +21,25 @@ trait CorsSupport {
 
   protected def optionsCorsHeaders: List[HttpHeader]
 
-  protected def corsRejectionHandler(allowOrigin: `Access-Control-Allow-Origin`) = RejectionHandler
-    .newBuilder().handle {
-    case MethodRejection(supported) =>
-      complete(HttpResponse().withHeaders(
-        `Access-Control-Allow-Methods`(OPTIONS, supported) ::
-          allowOrigin ::
-          optionsCorsHeaders
-      ))
-    case AuthenticationFailedRejection(cause, challenge) =>
-      complete(HttpResponse().withHeaders(
-          allowOrigin ::
-          optionsCorsHeaders
-      ))
-  }
-    .result()
+  protected def corsRejectionHandler(allowOrigin: `Access-Control-Allow-Origin`) =
+    RejectionHandler
+      .newBuilder()
+      .handle {
+        case MethodRejection(supported) =>
+          complete(
+            HttpResponse().withHeaders(
+              `Access-Control-Allow-Methods`(OPTIONS, supported) ::
+                allowOrigin ::
+                optionsCorsHeaders
+            ))
+        case AuthenticationFailedRejection(cause, challenge) =>
+          complete(
+            HttpResponse().withHeaders(
+              allowOrigin ::
+                optionsCorsHeaders
+            ))
+      }
+      .result()
 
   private def originToAllowOrigin(origin: Origin): Option[`Access-Control-Allow-Origin`] =
     if (corsAllowOrigins.contains("*") || corsAllowOrigins.contains(origin.value))

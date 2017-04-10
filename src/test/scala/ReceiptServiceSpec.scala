@@ -23,27 +23,28 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
   it should "create receipt" in {
 
-    val receipt = ReceiptEntity(userId = "123")
+    val receipt           = ReceiptEntity(userId = "123")
     val receiptRepository = mock[ReceiptRepository]
-    val ocrRepository = mock[OcrRepository]
+    val ocrRepository     = mock[OcrRepository]
 
     when(receiptRepository.save(any[ReceiptEntity])).thenReturn(Future(receipt))
     val receiptService = new ReceiptService(receiptRepository, ocrRepository)
 
-    whenReady(receiptService.createReceipt(
-      userId = "user id",
-      total = Some(BigDecimal("12.38")),
-      description = "some description",
-      transactionTime = 1480130712396l,
-      tags = List("veggies", "food")
-    )) { result =>
+    whenReady(
+      receiptService.createReceipt(
+        userId = "user id",
+        total = Some(BigDecimal("12.38")),
+        description = "some description",
+        transactionTime = 1480130712396l,
+        tags = List("veggies", "food")
+      )) { result =>
       result shouldBe receipt
     }
   }
 
   it should "return receipts for user" in {
     val receiptRepository = mock[ReceiptRepository]
-    val ocrRepository = mock[OcrRepository]
+    val ocrRepository     = mock[OcrRepository]
 
     val receipts = List(ReceiptEntity(userId = "userId"))
     when(receiptRepository.findForUserId("userId")).thenReturn(Future(receipts))
@@ -57,7 +58,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
   it should "return specific receipt" in {
     val receiptRepository = mock[ReceiptRepository]
-    val ocrRepository = mock[OcrRepository]
+    val ocrRepository     = mock[OcrRepository]
 
     val receipt = ReceiptEntity(id = "1", userId = "userId")
     when(receiptRepository.findById(receipt.id)).thenReturn(Future(Some(receipt)))
@@ -72,7 +73,7 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
   it should "add a file to existing receipt" in {
     val receiptRepository = mock[ReceiptRepository]
-    val ocrRepository = mock[OcrRepository]
+    val ocrRepository     = mock[OcrRepository]
 
     val receipt = ReceiptEntity(id = "1", userId = "userId")
     when(receiptRepository.addFileToReceipt(any[String], any[FileEntity])).thenReturn(Future.successful(()))
@@ -80,14 +81,18 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository, ocrRepository)
 
-    whenReady(receiptService.addFileToReceipt("1", FileEntity(id = "1", parentId = None, ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { savedReceipt =>
-      savedReceipt shouldBe Some(receipt)
+    whenReady(
+      receiptService.addFileToReceipt(
+        "1",
+        FileEntity(id = "1", parentId = None, ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) {
+      savedReceipt =>
+        savedReceipt shouldBe Some(receipt)
     }
   }
 
   it should "return None if adding a file to non-existing receipt" in {
     val receiptRepository = mock[ReceiptRepository]
-    val ocrRepository = mock[OcrRepository]
+    val ocrRepository     = mock[OcrRepository]
 
     val receipt = ReceiptEntity(id = "1", userId = "userId")
     when(receiptRepository.addFileToReceipt(any[String], any[FileEntity])).thenReturn(Future.successful(()))
@@ -95,7 +100,10 @@ class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with S
 
     val receiptService = new ReceiptService(receiptRepository, ocrRepository)
 
-    whenReady(receiptService.addFileToReceipt("1", FileEntity(id = "1", parentId = None, ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { result =>
+    whenReady(
+      receiptService.addFileToReceipt(
+        "1",
+        FileEntity(id = "1", parentId = None, ext = "png", metaData = ImageMetadata(length = 11, width = 1, height = 1)))) { result =>
       result shouldBe None
     }
   }

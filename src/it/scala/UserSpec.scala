@@ -19,17 +19,16 @@ class UserSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtoco
 
   it should "create a user" in {
 
-    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val username          = "ci_user_" + java.util.UUID.randomUUID()
     val createUserRequest = CreateUserRequest(username, "password")
 
     whenReady(createUser(createUserRequest)) { userInfo =>
-
       userInfo.userName shouldBe username
     }
   }
 
   it should "authenticate a user" in {
-    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val username          = "ci_user_" + java.util.UUID.randomUUID()
     val createUserRequest = CreateUserRequest(username, "password")
 
     whenReady(createUser(createUserRequest).flatMap(authenticateUser(_))) { accessToken =>
@@ -38,14 +37,15 @@ class UserSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtoco
   }
 
   it should "renew token" in {
-    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val username          = "ci_user_" + java.util.UUID.randomUUID()
     val createUserRequest = CreateUserRequest(username, "password")
 
     val renewedTokenFuture = for {
-      userInfo <- createUser(createUserRequest)
+      userInfo    <- createUser(createUserRequest)
       accessToken <- authenticateUser(userInfo)
-      response <- Http().singleRequest(HttpRequest(uri = s"http://localhost:9000/token/renew",
-        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      response <- Http().singleRequest(
+        HttpRequest(uri = s"http://localhost:9000/token/renew",
+                    headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
       renewedToken <- Unmarshal(response.entity).to[OAuth2AccessTokenResponse]
     } yield renewedToken
 
@@ -55,14 +55,14 @@ class UserSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtoco
   }
 
   it should "display user info" in {
-    val username = "ci_user_" + java.util.UUID.randomUUID()
+    val username          = "ci_user_" + java.util.UUID.randomUUID()
     val createUserRequest = CreateUserRequest(username, "password")
 
     val userInfoFuture = for {
-      userInfo <- createUser(createUserRequest)
+      userInfo    <- createUser(createUserRequest)
       accessToken <- authenticateUser(userInfo)
-      response <- Http().singleRequest(HttpRequest(uri = s"http://localhost:9000/user/info",
-        headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      response <- Http().singleRequest(
+        HttpRequest(uri = s"http://localhost:9000/user/info", headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
       userInfo <- Unmarshal(response.entity).to[UserInfo]
     } yield userInfo
 

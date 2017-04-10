@@ -17,32 +17,34 @@ import scala.io.BufferedSource
 
 package object ReceiptTestUtils extends JsonProtocols {
 
-  implicit val system = ActorSystem()
+  implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
-  val total = Some(BigDecimal(12.38))
-  val description = "some description"
+  val total           = Some(BigDecimal(12.38))
+  val description     = "some description"
   val transactionTime = 1480130712396l
-  val tags = List("veggies", "food")
-  val tagsAsString = tags.reduce((acc,tag) => s"$acc,$tag")
+  val tags            = List("veggies", "food")
+  val tagsAsString    = tags.reduce((acc, tag) => s"$acc,$tag")
 
   // utility functions
   def getProcessedReceipt(userId: String, receiptId: String, accessToken: String): Future[ReceiptEntity] = {
 
     def pendingFiles(): Future[List[PendingFile]] = {
       for {
-        userPendingFilesResponse <- Http().singleRequest(HttpRequest(method = HttpMethods.GET,
-          uri = s"http://localhost:9000/user/$userId/pending-file",
-          headers = List(Authorization(OAuth2BearerToken(accessToken)))))
+        userPendingFilesResponse <- Http().singleRequest(
+          HttpRequest(method = HttpMethods.GET,
+                      uri = s"http://localhost:9000/user/$userId/pending-file",
+                      headers = List(Authorization(OAuth2BearerToken(accessToken)))))
         userPendingFiles <- Unmarshal(userPendingFilesResponse.entity).to[List[PendingFile]]
       } yield userPendingFiles
     }
 
     def receiptEntity(): Future[ReceiptEntity] = {
       for {
-        response <- Http().singleRequest(HttpRequest(method = HttpMethods.GET,
-          uri = s"http://localhost:9000/user/$userId/receipt/$receiptId",
-          headers = List(Authorization(OAuth2BearerToken(accessToken)))))
+        response <- Http().singleRequest(
+          HttpRequest(method = HttpMethods.GET,
+                      uri = s"http://localhost:9000/user/$userId/receipt/$receiptId",
+                      headers = List(Authorization(OAuth2BearerToken(accessToken)))))
         receipt <- Unmarshal(response.entity).to[ReceiptEntity]
       } yield receipt
     }
@@ -50,7 +52,8 @@ package object ReceiptTestUtils extends JsonProtocols {
     def pendingFilesToReceipt(pendingFilesFuture: Future[List[PendingFile]], retry: Int = 0): Future[ReceiptEntity] = {
       val checkInterval = 1.seconds
 
-      if (retry > 60) Future.failed(new RuntimeException("Could not get receipt entity in time")) else {
+      if (retry > 60) Future.failed(new RuntimeException("Could not get receipt entity in time"))
+      else {
         for {
           pending <- pendingFilesFuture
           receipt <- if (pending.exists(_.receiptId == receiptId))
@@ -67,10 +70,8 @@ package object ReceiptTestUtils extends JsonProtocols {
   def createTextFileContent(text: String): Future[RequestEntity] = {
     val content = text.getBytes
     val multipartForm =
-      Multipart.FormData(Multipart.FormData.BodyPart.Strict(
-        "receipt",
-        HttpEntity(`application/octet-stream`, content),
-        Map("filename" -> "receipt.txt")),
+      Multipart.FormData(
+        Multipart.FormData.BodyPart.Strict("receipt", HttpEntity(`application/octet-stream`, content), Map("filename" -> "receipt.txt")),
         Multipart.FormData.BodyPart.Strict("total", utf8TextEntity(s"${total.get}")),
         Multipart.FormData.BodyPart.Strict("description", utf8TextEntity(description)),
         Multipart.FormData.BodyPart.Strict("transactionTime", utf8TextEntity(s"$transactionTime")),
@@ -81,12 +82,10 @@ package object ReceiptTestUtils extends JsonProtocols {
 
   def createImageFileContent(): Future[RequestEntity] = {
     val receiptImage: BufferedSource = scala.io.Source.fromURL(getClass.getResource("/receipt.png"), "ISO-8859-1")
-    val content = receiptImage.map(_.toByte).toArray
+    val content                      = receiptImage.map(_.toByte).toArray
     val multipartForm =
-      Multipart.FormData(Multipart.FormData.BodyPart.Strict(
-        "receipt",
-        HttpEntity(`application/octet-stream`, content),
-        Map("filename" -> "receipt.png")),
+      Multipart.FormData(
+        Multipart.FormData.BodyPart.Strict("receipt", HttpEntity(`application/octet-stream`, content), Map("filename" -> "receipt.png")),
         Multipart.FormData.BodyPart.Strict("total", utf8TextEntity(s"${total.get}")),
         Multipart.FormData.BodyPart.Strict("description", utf8TextEntity(description)),
         Multipart.FormData.BodyPart.Strict("transactionTime", utf8TextEntity(s"$transactionTime")),

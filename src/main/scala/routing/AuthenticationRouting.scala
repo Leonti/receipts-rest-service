@@ -14,12 +14,13 @@ import service.JwtTokenGenerator
 class AuthenticationRouting(authenticator: JwtAuthenticator[User]) extends JsonProtocols {
 
   def myRejectionHandler =
-    RejectionHandler.newBuilder()
-      .handle { case AuthenticationFailedRejection(cause, challenge) =>
-        complete((Unauthorized -> ErrorResponse(s"The supplied authentication is invalid ${cause.toString}")))
+    RejectionHandler
+      .newBuilder()
+      .handle {
+        case AuthenticationFailedRejection(cause, challenge) =>
+          complete((Unauthorized -> ErrorResponse(s"The supplied authentication is invalid ${cause.toString}")))
       }
       .result()
-
 
   val routes =
     handleRejections(myRejectionHandler) {

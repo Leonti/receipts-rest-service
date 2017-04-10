@@ -15,9 +15,10 @@ import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 
 class PendingFileRouting(
-                          pendingFileService: PendingFileService,
-                          authenticaton: AuthenticationDirective[User]
-                        )(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) extends JsonProtocols  {
+    pendingFileService: PendingFileService,
+    authenticaton: AuthenticationDirective[User]
+)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
+    extends JsonProtocols {
 
   val logger = Logger(LoggerFactory.getLogger("PendingFileRouting"))
 

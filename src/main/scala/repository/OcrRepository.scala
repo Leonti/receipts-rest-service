@@ -16,13 +16,15 @@ class OcrRepository extends MongoDao[OcrEntity] {
 
   def deleteById(id: String): Future[WriteResult] = deleteById(collectionFuture, id)
 
-  def findById(id: String): Future[Option[OcrEntity]]  = find(collectionFuture, queryById(id))
+  def findById(id: String): Future[Option[OcrEntity]] = find(collectionFuture, queryById(id))
 
   def findTextOnlyForUserId(userId: String, query: String): Future[List[OcrTextOnly]] =
-    collectionFuture.flatMap(_.find(BSONDocument(
-      "userId" -> userId,
-      "result.text" -> BSONRegex(query, "i")
-    ), BSONDocument("result.text" -> 1))
-      .cursor[OcrTextOnly]()
-      .collect[List](-1, Cursor.FailOnError[List[OcrTextOnly]]()))
+    collectionFuture.flatMap(
+      _.find(BSONDocument(
+               "userId"      -> userId,
+               "result.text" -> BSONRegex(query, "i")
+             ),
+             BSONDocument("result.text" -> 1))
+        .cursor[OcrTextOnly]()
+        .collect[List](-1, Cursor.FailOnError[List[OcrTextOnly]]()))
 }

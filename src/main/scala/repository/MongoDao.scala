@@ -19,24 +19,29 @@ trait MongoDao[T <: WithId] extends MongoConnection {
   def deleteById(collectionFuture: Future[BSONCollection], id: String) = collectionFuture.flatMap(_.remove(queryById(id)))
 
   def find(collectionFuture: Future[BSONCollection], query: BSONDocument)(implicit reader: BSONDocumentReader[T]): Future[Option[T]] = {
-    collectionFuture.flatMap(_.find(query)
-      .cursor[T]()
-      .collect[List](-1, Cursor.FailOnError[List[T]]()).map {
-      case x::xs => Some(x)
-      case _ => None
-    })
+    collectionFuture.flatMap(
+      _.find(query)
+        .cursor[T]()
+        .collect[List](-1, Cursor.FailOnError[List[T]]())
+        .map {
+          case x :: xs => Some(x)
+          case _       => None
+        })
   }
 
   def findList(collectionFuture: Future[BSONCollection], query: BSONDocument)(implicit reader: BSONDocumentReader[T]): Future[List[T]] = {
-    collectionFuture.flatMap(_.find(query)
-      .cursor[T]()
-      .collect[List](-1, Cursor.FailOnError[List[T]]()))
+    collectionFuture.flatMap(
+      _.find(query)
+        .cursor[T]()
+        .collect[List](-1, Cursor.FailOnError[List[T]]()))
   }
 
-  def findList(collectionFuture: Future[BSONCollection], query: BSONDocument, projection: BSONDocument)(implicit reader: BSONDocumentReader[T]): Future[List[T]] = {
-    collectionFuture.flatMap(_.find(query)
-      .cursor[T]()
-      .collect[List](-1, Cursor.FailOnError[List[T]]()))
+  def findList(collectionFuture: Future[BSONCollection], query: BSONDocument, projection: BSONDocument)(
+      implicit reader: BSONDocumentReader[T]): Future[List[T]] = {
+    collectionFuture.flatMap(
+      _.find(query)
+        .cursor[T]()
+        .collect[List](-1, Cursor.FailOnError[List[T]]()))
   }
 
   def queryById(id: String) = BSONDocument("_id" -> id)

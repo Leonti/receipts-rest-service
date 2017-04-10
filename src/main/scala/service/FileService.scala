@@ -26,8 +26,9 @@ trait FileService {
 
   def delete(userId: String, fileId: String): Future[Unit]
 
-  protected def toFileEntity(userId: String, parentFileId: Option[String], fileId: String, file: File, ext: String)
-                    (implicit materializer: Materializer, imageResizingService: ImageResizingService): FileEntity = {
+  protected def toFileEntity(userId: String, parentFileId: Option[String], fileId: String, file: File, ext: String)(
+      implicit materializer: Materializer,
+      imageResizingService: ImageResizingService): FileEntity = {
 
     FileEntity(
       id = fileId,
@@ -39,41 +40,45 @@ trait FileService {
 
 }
 
-class S3FileService(
-                     config: Config,
-                     system: ActorSystem,
-                     materializer: Materializer,
-                     fileCachingService: FileCachingService,
-                     imageResizingService: ImageResizingService) extends FileService with Retry {
+class S3FileService(config: Config,
+                    system: ActorSystem,
+                    materializer: Materializer,
+                    fileCachingService: FileCachingService,
+                    imageResizingService: ImageResizingService)
+    extends FileService
+    with Retry {
   val logger = Logger(LoggerFactory.getLogger("S3FileService"))
 
-  implicit val mat : Materializer = materializer
-  implicit val irs = imageResizingService
-  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+  implicit val mat: Materializer = materializer
+  implicit val irs               = imageResizingService
+  implicit val ec                = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
-  val credentials = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
+  val credentials    = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
   val amazonS3Client = new AmazonS3Client(credentials)
 
   override def save(userId: String, file: File, ext: String): Seq[Future[FileEntity]] = {
     val fileId = java.util.UUID.randomUUID.toString
 
     implicit val scheduler = system.scheduler
-    val retryIntervals = Seq(1.seconds, 10.seconds, 30.seconds)
+    val retryIntervals     = Seq(1.seconds, 10.seconds, 30.seconds)
 
     logger.info(s"Uploading file ${file.getAbsolutePath}")
     val uploadResult = retry(upload(userId, fileId, file), retryIntervals)
-    val fileEntity = toFileEntity(userId, None, fileId, file, ext)
+    val fileEntity   = toFileEntity(userId, None, fileId, file, ext)
 
     if (fileEntity.metaData.isInstanceOf[ImageMetadata]) {
       val resizedFileId = java.util.UUID.randomUUID.toString
-      val resizedFileEntity: Future[FileEntity] = imageResizingService.resize(file, WebSize).flatMap(resizedFile => {
-        logger.info(s"Starting to upload a resized file $resizedFileId")
-        retry(upload(userId, resizedFileId, resizedFile).map(ur => resizedFile), retryIntervals)
-      }).map(resizedFile => {
-        val fileEntity = toFileEntity(userId, Some(fileId), resizedFileId, resizedFile, ext)
-        resizedFile.delete()
-        fileEntity
-      })
+      val resizedFileEntity: Future[FileEntity] = imageResizingService
+        .resize(file, WebSize)
+        .flatMap(resizedFile => {
+          logger.info(s"Starting to upload a resized file $resizedFileId")
+          retry(upload(userId, resizedFileId, resizedFile).map(ur => resizedFile), retryIntervals)
+        })
+        .map(resizedFile => {
+          val fileEntity = toFileEntity(userId, Some(fileId), resizedFileId, resizedFile, ext)
+          resizedFile.delete()
+          fileEntity
+        })
 
       Seq(uploadResult.map(ur => {
         logger.info(s"File uploaded to S3 with $ur")
@@ -87,10 +92,8 @@ class S3FileService(
     }
   }
 
-  val upload : (String, String, File) => Future[PutObjectResult] = (userId, fileId, file) => {
-    val putObjectRequest = new PutObjectRequest(
-      config.getString("s3.bucket"),
-      s"user/$userId/$fileId", file)
+  val upload: (String, String, File) => Future[PutObjectResult] = (userId, fileId, file) => {
+    val putObjectRequest = new PutObjectRequest(config.getString("s3.bucket"), s"user/$userId/$fileId", file)
 
     Future {
       fileCachingService.cacheFile(userId, fileId, file)
@@ -98,9 +101,8 @@ class S3FileService(
     }
   }
 
-  val fetchFromS3 : (String, String) => Source[ByteString, Future[IOResult]] = (userId, fileId) => {
-    val fileStream = () => amazonS3Client.getObject(config.getString("s3.bucket"), s"user/$userId/$fileId")
-      .getObjectContent
+  val fetchFromS3: (String, String) => Source[ByteString, Future[IOResult]] = (userId, fileId) => {
+    val fileStream = () => amazonS3Client.getObject(config.getString("s3.bucket"), s"user/$userId/$fileId").getObjectContent
 
     StreamConverters.fromInputStream(fileStream)
   }
@@ -118,12 +120,11 @@ class S3FileService(
 
 object FileService {
 
-  def s3(
-          config: Config,
-          system: ActorSystem,
-          materializer: Materializer,
-          fileCachingService: FileCachingService,
-          imageResizingService: ImageResizingService) =
+  def s3(config: Config,
+         system: ActorSystem,
+         materializer: Materializer,
+         fileCachingService: FileCachingService,
+         imageResizingService: ImageResizingService) =
     new S3FileService(config, system, materializer, fileCachingService, imageResizingService)
 
 }

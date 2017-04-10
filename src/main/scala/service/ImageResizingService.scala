@@ -10,7 +10,7 @@ import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
 
-sealed trait ImageSize { def pixels : Int }
+sealed trait ImageSize { def pixels: Int }
 case object WebSize extends ImageSize { val pixels: Int = 1000000 }
 
 object ImageSizeFormat extends RootJsonFormat[ImageSize] {
@@ -24,17 +24,17 @@ object ImageSizeFormat extends RootJsonFormat[ImageSize] {
   def read(value: JsValue): ImageSize =
     value match {
       case JsString(asString) => jsMappings(asString)
-      case _ => throw new DeserializationException("ImageSize should be encoded as JsString!")
+      case _                  => throw new DeserializationException("ImageSize should be encoded as JsString!")
     }
 }
 
 class ImageResizingService {
-  val logger = Logger(LoggerFactory.getLogger("ImageResizingService"))
+  val logger      = Logger(LoggerFactory.getLogger("ImageResizingService"))
   implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
-  val resize : (File, ImageSize) => Future[File] = (originalFile, imageSize: ImageSize) => {
+  val resize: (File, ImageSize) => Future[File] = (originalFile, imageSize: ImageSize) => {
     val resized = new File(originalFile.getAbsolutePath + s"_resized_${imageSize.pixels}")
-    val cmd = s"convert ${originalFile.getAbsolutePath} -resize ${imageSize.pixels}@> ${resized.getAbsolutePath}"
+    val cmd     = s"convert ${originalFile.getAbsolutePath} -resize ${imageSize.pixels}@> ${resized.getAbsolutePath}"
 
     Future {
 
@@ -47,11 +47,11 @@ class ImageResizingService {
     }
   }
 
-  val resizeToSize : (File, Double) => Future[File] = (originalFile, sizeInMb) => {
+  val resizeToSize: (File, Double) => Future[File] = (originalFile, sizeInMb) => {
     // convert original.jpeg -define jpeg:extent=300kb output.jpg
 
     val resized = new File(originalFile.getAbsolutePath + s"_resized_${sizeInMb}")
-    val cmd = s"convert ${originalFile.getAbsolutePath} -define jpeg:extent=${sizeInMb}MB ${resized.getAbsolutePath}"
+    val cmd     = s"convert ${originalFile.getAbsolutePath} -define jpeg:extent=${sizeInMb}MB ${resized.getAbsolutePath}"
 
     Future {
 

@@ -23,20 +23,23 @@ class ReceiptRepository extends MongoDao[ReceiptEntity] {
 
   def findByIds(ids: List[String]): Future[List[ReceiptEntity]] =
     findList(collectionFuture,
-      BSONDocument("_id" ->
-        BSONDocument("$in" -> BSONArray(ids.map(BSONString))
-      )))
+             BSONDocument(
+               "_id" ->
+                 BSONDocument("$in" -> BSONArray(ids.map(BSONString)))))
       .map(_.sortWith(_.timestamp > _.timestamp))
 
   def addFileToReceipt(receiptId: String, file: FileEntity): Future[Unit] =
-    collectionFuture.flatMap(_.update(
-      selector = BSONDocument("_id" -> receiptId),
-      update = BSONDocument(
-        "$push" -> BSONDocument("files" -> file),
-        "$set" -> BSONDocument("lastModified" -> System.currentTimeMillis())
-      )
-    )).map(_ => ())
+    collectionFuture
+      .flatMap(
+        _.update(
+          selector = BSONDocument("_id" -> receiptId),
+          update = BSONDocument(
+            "$push" -> BSONDocument("files"        -> file),
+            "$set"  -> BSONDocument("lastModified" -> System.currentTimeMillis())
+          )
+        ))
+      .map(_ => ())
 
-  def findById(id: String): Future[Option[ReceiptEntity]]  = find(collectionFuture, queryById(id))
+  def findById(id: String): Future[Option[ReceiptEntity]] = find(collectionFuture, queryById(id))
 
 }

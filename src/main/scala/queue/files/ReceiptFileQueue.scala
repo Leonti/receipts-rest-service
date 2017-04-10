@@ -14,20 +14,21 @@ class ReceiptFileQueue(queue: Queue) {
   implicit val ec = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
   def submitFile(
-                  userId: String,
-                  receiptId: String,
-                  file: File,
-                  fileExt: String,
-                  pendingFileId: PendingFileId
-                ): Future[JobId] = {
+      userId: String,
+      receiptId: String,
+      file: File,
+      fileExt: String,
+      pendingFileId: PendingFileId
+  ): Future[JobId] = {
 
-    queue.put(ReceiptFileJob(
-      userId = userId,
-      receiptId = receiptId,
-      filePath = file.getAbsolutePath,
-      fileExt = fileExt,
-      pendingFileId = pendingFileId
-    ))
+    queue.put(
+      ReceiptFileJob(
+        userId = userId,
+        receiptId = receiptId,
+        filePath = file.getAbsolutePath,
+        fileExt = fileExt,
+        pendingFileId = pendingFileId
+      ))
   }
 
 }

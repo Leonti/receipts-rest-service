@@ -1,4 +1,3 @@
-
 import java.io.{ByteArrayInputStream, File}
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -22,10 +21,10 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
   implicit val defaultPatience =
     PatienceConfig(timeout = Span(5, Seconds), interval = Span(500, Millis))
 
-  implicit val system = ActorSystem()
-  implicit val executor = system.dispatcher
+  implicit val system       = ActorSystem()
+  implicit val executor     = system.dispatcher
   implicit val materializer = ActorMaterializer()
-  implicit val irs = new ImageResizingService()
+  implicit val irs          = new ImageResizingService()
 
   class MockFileService extends FileService {
     implicit val mat: Materializer = materializer
@@ -44,39 +43,39 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
   it should "parse width and length of an image" in {
 
     val receiptImage: BufferedSource = scala.io.Source.fromURL(getClass.getResource("/receipt.png"), "ISO-8859-1")
-    val byteString = ByteString(receiptImage.map(_.toByte).toArray)
-    val source = Source[ByteString](List(byteString))
-    val fileService = new MockFileService()
+    val byteString                   = ByteString(receiptImage.map(_.toByte).toArray)
+    val source                       = Source[ByteString](List(byteString))
+    val fileService                  = new MockFileService()
 
     val file = new File(UUID.randomUUID().toString)
 
     val fileEntityFuture = for {
-      f <- source.runWith(FileIO.toPath(file.toPath))
+      f          <- source.runWith(FileIO.toPath(file.toPath))
       fileEntity <- fileService.save("userId", file, "png").head
     } yield fileEntity
 
-      whenReady(fileEntityFuture) { fileEntity =>
-        file.delete
+    whenReady(fileEntityFuture) { fileEntity =>
+      file.delete
 
-        fileEntity.metaData match {
-          case ImageMetadata(fileType, length, width, height) =>
-            width shouldBe 50
-            height shouldBe 67
-            length shouldBe 5874
-          case _ => fail("Metadata should be of an IMAGE type!")
-        }
+      fileEntity.metaData match {
+        case ImageMetadata(fileType, length, width, height) =>
+          width shouldBe 50
+          height shouldBe 67
+          length shouldBe 5874
+        case _ => fail("Metadata should be of an IMAGE type!")
       }
+    }
   }
 
   it should "set unknown upload to GenericMetadata" in {
-    val byteString = ByteString("some text".getBytes(StandardCharsets.UTF_8))
-    val source = Source[ByteString](List(byteString))
+    val byteString  = ByteString("some text".getBytes(StandardCharsets.UTF_8))
+    val source      = Source[ByteString](List(byteString))
     val fileService = new MockFileService()
 
     val file = new File(UUID.randomUUID().toString)
 
     val fileEntityFuture = for {
-      f <- source.runWith(FileIO.toPath(file.toPath))
+      f          <- source.runWith(FileIO.toPath(file.toPath))
       fileEntity <- fileService.save("userId", file, "txt").head
     } yield fileEntity
 

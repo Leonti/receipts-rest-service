@@ -26,7 +26,7 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
   it should "create a user" in {
 
     val createUserRequest = CreateUserRequest(userName = "userName", password = "password")
-    val user = User(userName = "userName", passwordHash = "hash")
+    val user              = User(userName = "userName", passwordHash = "hash")
 
     val userService = mock[UserService]
     when(userService.createUser(createUserRequest)).thenReturn(Future(Right(user)))
@@ -53,13 +53,13 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
     Post("/user/create", createUserRequest) ~> userRouting.routes ~> check {
       status shouldBe Conflict
       contentType shouldBe `application/json`
-      responseAs[String] should include ("error creating user")
+      responseAs[String] should include("error creating user")
     }
   }
 
   it should "respond with InternalServerError on failure" in {
 
-    val userService = mock[UserService]
+    val userService       = mock[UserService]
     val createUserRequest = CreateUserRequest(userName = "userName", password = "password")
     when(userService.createUser(createUserRequest)).thenReturn(Future.failed(new RuntimeException("test exception")))
 
@@ -67,14 +67,14 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
     Post("/user/create", createUserRequest) ~> userRouting.routes ~> check {
       status shouldBe InternalServerError
       contentType shouldBe `application/json`
-      responseAs[String] should include ("server failure")
+      responseAs[String] should include("server failure")
     }
   }
 
   it should "should show user info" in {
 
     val userService = mock[UserService]
-    val user = User(id = "123-user", userName = "name", passwordHash = "hash")
+    val user        = User(id = "123-user", userName = "name", passwordHash = "hash")
 
     val userRouting = new UserRouting(userService, createAuthentication(user))
     Get("/user/info") ~> userRouting.routes ~> check {

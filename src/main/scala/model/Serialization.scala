@@ -6,20 +6,20 @@ import reactivemongo.bson._
 
 object Serialization {
 
-  def deserialize[T](doc: BSONDocument, value: =>T): T = try {
+  def deserialize[T](doc: BSONDocument, value: => T): T =
+    try {
 
-    value
+      value
 
-  } catch {
+    } catch {
 
-    case NonFatal(e) =>
+      case NonFatal(e) =>
+        import scala.compat.Platform.EOL
 
-      import scala.compat.Platform.EOL
+        println("Failed to deserialize document " + EOL + BSONDocument.pretty(doc) + " " + e.getStackTrace.mkString("", EOL, EOL))
 
-      println("Failed to deserialize document " + EOL + BSONDocument.pretty(doc) + " " + e.getStackTrace.mkString("", EOL, EOL))
+        throw e
 
-      throw e
-
-  }
+    }
 
 }

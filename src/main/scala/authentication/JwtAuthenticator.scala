@@ -17,11 +17,11 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.Success
 
-class JwtAuthenticator[Auth](
-                           realm: String,
-                           bearerTokenSecret: Array[Byte],
-                           fromUsernamePassword: (String, String) => Future[Option[Auth]],
-                           fromBearerToken: JsonWebToken => Future[Option[Auth]])(implicit executor: ExecutionContext) extends SecurityDirectives {
+class JwtAuthenticator[Auth](realm: String,
+                             bearerTokenSecret: Array[Byte],
+                             fromUsernamePassword: (String, String) => Future[Option[Auth]],
+                             fromBearerToken: JsonWebToken => Future[Option[Auth]])(implicit executor: ExecutionContext)
+    extends SecurityDirectives {
   def apply(): Directive1[Auth] = {
     bearerTokenOrCookie(acceptExpired = false).recover { rejs =>
       basic().recover(rejs2 => reject(rejs ++ rejs2: _*))
@@ -40,50 +40,53 @@ class JwtAuthenticator[Auth](
             val promise = Promise[Option[Auth]]()
             auth.onComplete {
               case Success(Some(user)) => promise.success(Some(user))
-              case _ => delayed.onComplete(_ => promise.success(None))
+              case _                   => delayed.onComplete(_ => promise.success(None))
             }
             promise.future
         }
 
         delayedAuth map {
           case Some(user) => grant(user)
-          case None => deny
+          case None       => deny
         }
 
       case None => Future(deny)
     }
   }
 
-  def bearerTokenOrCookie(acceptExpired: Boolean = false): AuthenticationDirective[Auth]= {
+  def bearerTokenOrCookie(acceptExpired: Boolean = false): AuthenticationDirective[Auth] = {
     def resolve(token: JsonWebToken): Future[AuthenticationResult[Auth]] = fromBearerToken(token).map {
       case Some(user) => grant(user)
-      case None => deny(None)
+      case None       => deny(None)
     }
 
     val authenticator: Option[String] => Future[AuthenticationResult[Auth]] = {
       case Some(tokenStr) =>
         JsonWebToken.read(tokenStr, bearerTokenSecret) match {
-          case Right(token) => resolve(token)
+          case Right(token)                          => resolve(token)
           case Left(Expired(token)) if acceptExpired => resolve(token)
-          case Left(error) => Future(deny(Some(error)))
+          case Left(error)                           => Future(deny(Some(error)))
         }
       case None => Future(deny(Some(Missing)))
     }
 
     extractExecutionContext.flatMap { implicit ec =>
       optionalCookie("access_token").flatMap { (cookieTokenOption: Option[HttpCookiePair]) =>
-        extractCredentials.flatMap { (credOption: Option[HttpCredentials]) => {
+        extractCredentials.flatMap { (credOption: Option[HttpCredentials]) =>
+          {
 
-          val cookieToken = cookieTokenOption.map(_.value)
-          val credToken = credOption.map(_.token())
-          val tokenOption = credToken.orElse(cookieToken)
+            val cookieToken = cookieTokenOption.map(_.value)
+            val credToken   = credOption.map(_.token())
+            val tokenOption = credToken.orElse(cookieToken)
 
             onSuccess(authenticator(tokenOption)).flatMap {
-              case Right(user) => setCookie(HttpCookie.fromPair(
-                pair = HttpCookiePair("access_token", tokenOption.get),
-                path = Some("/"),
-                httpOnly = true
-              )).tflatMap((Unit) => provide(user))
+              case Right(user) =>
+                setCookie(
+                  HttpCookie.fromPair(
+                    pair = HttpCookiePair("access_token", tokenOption.get),
+                    path = Some("/"),
+                    httpOnly = true
+                  )).tflatMap((Unit) => provide(user))
               case Left(challenge) =>
                 val cause = if (tokenOption.isEmpty) CredentialsMissing else CredentialsRejected
                 reject(AuthenticationFailedRejection(cause, challenge)): Directive1[Auth]
@@ -94,7 +97,7 @@ class JwtAuthenticator[Auth](
       }
     }
   }
-/*
+  /*
   def bearerToken(acceptExpired: Boolean = false): AuthenticationDirective[Auth] = {
     def resolve(token: JsonWebToken): Future[AuthenticationResult[Auth]] = fromBearerToken(token).map {
       case Some(user) => grant(user)
@@ -111,9 +114,9 @@ class JwtAuthenticator[Auth](
       case None => Future(deny(Some(Missing)))
     }
   }
-*/
-  private def grant(user: Auth) = AuthenticationResult.success(user)
-  private def deny = AuthenticationResult.failWithChallenge(createBasicChallenge)
+   */
+  private def grant(user: Auth)          = AuthenticationResult.success(user)
+  private def deny                       = AuthenticationResult.failWithChallenge(createBasicChallenge)
   private def deny(error: Option[Error]) = AuthenticationResult.failWithChallenge(createBearerTokenChallenge(error))
 
   private def createBasicChallenge: HttpChallenge = {
@@ -122,18 +125,18 @@ class JwtAuthenticator[Auth](
 
   private def createBearerTokenChallenge(error: Option[Error]): HttpChallenge = {
     val desc = error match {
-      case None => None
-      case Some(Missing) => None
-      case Some(Malformed) => Some("The access token is malformed")
-      case Some(InvalidSignature) => Some("The access token has been manipulated")
-      case Some(Incomplete) => Some("The token must at least contain the iat and exp claim")
-      case Some(Expired(_)) => Some("The access token expired")
+      case None                             => None
+      case Some(Missing)                    => None
+      case Some(Malformed)                  => Some("The access token is malformed")
+      case Some(InvalidSignature)           => Some("The access token has been manipulated")
+      case Some(Incomplete)                 => Some("The token must at least contain the iat and exp claim")
+      case Some(Expired(_))                 => Some("The access token expired")
       case Some(UnsupportedAlgorithm(algo)) => Some(s"The signature algorithm $algo is not supported")
-      case Some(Unknown) => Some("An unknown error occured")
+      case Some(Unknown)                    => Some("An unknown error occured")
     }
     val params = desc match {
       case Some(msg) => Map("error" -> "invalid_token", "error_description" -> msg)
-      case None => Map.empty[String, String]
+      case None      => Map.empty[String, String]
     }
     HttpChallenge("Bearer", realm, params)
   }

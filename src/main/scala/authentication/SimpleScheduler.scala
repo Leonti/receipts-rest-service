@@ -7,11 +7,12 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 private[authentication] class SimpleScheduler(override val maxFrequency: Double) extends Scheduler {
-  private val lock = new AnyRef()
+  private val lock  = new AnyRef()
   private val queue = PriorityQueue.empty[(Runnable, Long, Option[Long], ExecutionContext)](ExecuteOrdering)
-  private def now = System.currentTimeMillis
+  private def now   = System.currentTimeMillis
 
-  override def schedule(initialDelay: FiniteDuration, interval: FiniteDuration, runnable: Runnable)(implicit ec: ExecutionContext): Cancellable = {
+  override def schedule(initialDelay: FiniteDuration, interval: FiniteDuration, runnable: Runnable)(
+      implicit ec: ExecutionContext): Cancellable = {
     lock.synchronized {
       queue.enqueue((runnable, now + initialDelay.toMillis, Some(interval.toMillis), ec))
       NullCancellable
@@ -34,7 +35,7 @@ private[authentication] class SimpleScheduler(override val maxFrequency: Double)
             head._4.execute(head._1)
             head._3 match {
               case Some(next) => queue.enqueue((head._1, head._2 + next, Some(next), head._4))
-              case _ => {}
+              case _          => {}
             }
           }
         }
@@ -51,7 +52,8 @@ private[authentication] class SimpleScheduler(override val maxFrequency: Double)
   }
 
   object ExecuteOrdering extends Ordering[(Runnable, Long, Option[Long], ExecutionContext)] {
-    override def compare(x: (Runnable, Long, Option[Long], ExecutionContext), y: (Runnable, Long, Option[Long], ExecutionContext)): Int = x._2.compareTo(y._2)
+    override def compare(x: (Runnable, Long, Option[Long], ExecutionContext), y: (Runnable, Long, Option[Long], ExecutionContext)): Int =
+      x._2.compareTo(y._2)
   }
 }
 

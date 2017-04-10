@@ -32,9 +32,9 @@ package object Models {
 
   object JobStatus {
     def apply(asString: String): JobStatus = asString match {
-      case "READY" => Ready
+      case "READY"    => Ready
       case "RESERVED" => Reserved
-      case "BURIED" => Buried
+      case "BURIED"   => Buried
     }
   }
 
@@ -44,10 +44,10 @@ package object Models {
 
     def write(job: Job): BSONDocument =
       BSONDocument(
-        "_id" -> job.id,
-        "payload" -> job.payload,
-        "status" -> job.status.asString,
-        "created" -> job.created,
+        "_id"      -> job.id,
+        "payload"  -> job.payload,
+        "status"   -> job.status.asString,
+        "created"  -> job.created,
         "runAfter" -> job.runAfter
       )
   }
@@ -80,51 +80,54 @@ class Queue extends MongoConnection {
   }
 
   def reserve(): Future[Option[ReservedJob]] =
-    collectionFuture.flatMap(_.findAndUpdate(
-      BSONDocument(
-        "status" -> "READY",
-        "runAfter" -> BSONDocument(
-          "$lt" -> System.currentTimeMillis)
-      ),
-      BSONDocument("$set" -> BSONDocument("status" -> "RESERVED")),
-      sort = Some(BSONDocument("created" -> 1))
-    ).map(_.result[Job].map(job => ReservedJob(
-      id = job.id,
-      job = QueueJob.fromString(job.payload)
-    )))
-    )
+    collectionFuture.flatMap(
+      _.findAndUpdate(
+        BSONDocument(
+          "status"   -> "READY",
+          "runAfter" -> BSONDocument("$lt" -> System.currentTimeMillis)
+        ),
+        BSONDocument("$set" -> BSONDocument("status" -> "RESERVED")),
+        sort = Some(BSONDocument("created" -> 1))
+      ).map(
+        _.result[Job].map(
+          job =>
+            ReservedJob(
+              id = job.id,
+              job = QueueJob.fromString(job.payload)
+          ))))
 
   def delete(id: JobId): Future[Unit] = collectionFuture.flatMap(_.remove(BSONDocument("_id" -> id)).map(_ => ()))
 
   def release(id: JobId): Future[Unit] =
-    collectionFuture.flatMap(_.update(
-      BSONDocument("_id" -> id),
-      BSONDocument("$set" -> BSONDocument("status" -> "READY"))
-    ).map(_ => ())
-    )
+    collectionFuture.flatMap(
+      _.update(
+        BSONDocument("_id"  -> id),
+        BSONDocument("$set" -> BSONDocument("status" -> "READY"))
+      ).map(_ => ()))
 
   def releaseWithDelay(id: JobId, delay: Duration) =
-    collectionFuture.flatMap(_.update(
-      BSONDocument("_id" -> id),
-      BSONDocument("$set" -> BSONDocument(
-        "status" -> "READY",
-        "runAfter" -> (System.currentTimeMillis + delay.toMillis)
-      ))
-    ).map(_ => ())
-    )
+    collectionFuture.flatMap(
+      _.update(
+        BSONDocument("_id" -> id),
+        BSONDocument(
+          "$set" -> BSONDocument(
+            "status"   -> "READY",
+            "runAfter" -> (System.currentTimeMillis + delay.toMillis)
+          ))
+      ).map(_ => ()))
 
   def bury(id: JobId) =
-    collectionFuture.flatMap(_.update(
-      BSONDocument("_id" -> id),
-      BSONDocument("$set" -> BSONDocument("status" -> "BURIED"))
-    ).map(_ => ())
-    )
+    collectionFuture.flatMap(
+      _.update(
+        BSONDocument("_id"  -> id),
+        BSONDocument("$set" -> BSONDocument("status" -> "BURIED"))
+      ).map(_ => ()))
 
   def list(): Future[List[Job]] =
-    collectionFuture.flatMap(_.find(BSONDocument())
-      .cursor[Job]()
-      .collect[List](-1, Cursor.FailOnError[List[Job]]())
-    )
+    collectionFuture.flatMap(
+      _.find(BSONDocument())
+        .cursor[Job]()
+        .collect[List](-1, Cursor.FailOnError[List[Job]]()))
 
   def clear(): Future[Unit] = collectionFuture.flatMap(_.remove(BSONDocument()).map(_ => ()))
 }

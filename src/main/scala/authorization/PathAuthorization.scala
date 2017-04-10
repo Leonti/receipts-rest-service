@@ -15,7 +15,7 @@ class PathAuthorization(bearerTokenSecret: Array[Byte]) {
 
         JsonWebToken.read(accessToken, bearerTokenSecret) match {
           case Right(token) => authorize(token.claimAsString("sub").right.get == ctx.request.uri.path.toString())
-          case Left(_) => authorize(false)
+          case Left(_)      => authorize(false)
         }
       }
     }
