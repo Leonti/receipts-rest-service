@@ -13,9 +13,9 @@ object TestInterpreters {
   class UserInterpreter(users: Seq[User], googleTokenEmail: String) extends (UserOp ~> Future) {
 
     def apply[A](i: UserOp[A]): Future[A] = i match {
-      case FindUserById(id: String) => Future.successful(users.find(_.id == id))
+      case FindUserById(id: String)             => Future.successful(users.find(_.id == id))
       case FindUserByUsername(username: String) => Future.successful(users.find(_.userName == username))
-      case SaveUser(user: User) => Future.successful(user)
+      case SaveUser(user: User)                 => Future.successful(user)
       case GetValidatedGoogleTokenInfo(tokenValue: String, tokenType: TokenType) =>
         Future.successful(GoogleTokenInfo(aud = "", sub = "", email = googleTokenEmail))
     }
@@ -24,8 +24,10 @@ object TestInterpreters {
   class TokenInterpreter(currentTimeMillis: Long, bearerTokenSecret: String) extends (TokenOp ~> Future) {
 
     def apply[A](i: TokenOp[A]): Future[A] = i match {
-      case GenerateUserToken(user: User) => Future.successful(JwtTokenGenerator.generateToken(user, currentTimeMillis, bearerTokenSecret.getBytes))
-      case GeneratePathToken(path: String) => Future.successful(JwtTokenGenerator.generatePathToken(path, currentTimeMillis, bearerTokenSecret.getBytes))
+      case GenerateUserToken(user: User) =>
+        Future.successful(JwtTokenGenerator.generateToken(user, currentTimeMillis, bearerTokenSecret.getBytes))
+      case GeneratePathToken(path: String) =>
+        Future.successful(JwtTokenGenerator.generatePathToken(path, currentTimeMillis, bearerTokenSecret.getBytes))
     }
 
   }

@@ -7,7 +7,12 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpMethods}
 import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`, `Access-Control-Max-Age`}
+import akka.http.scaladsl.model.headers.{
+  `Access-Control-Allow-Credentials`,
+  `Access-Control-Allow-Headers`,
+  `Access-Control-Allow-Methods`,
+  `Access-Control-Max-Age`
+}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.stream.{ActorMaterializer, Materializer}
@@ -116,10 +121,9 @@ object ReceiptRestService extends App with Service {
   override implicit val executor     = system.dispatcher
   override implicit val materializer = ActorMaterializer()
 
+  override val config = ConfigFactory.load()
 
-  override val config    = ConfigFactory.load()
-
-  val userRepository = new UserRepository()
+  val userRepository     = new UserRepository()
   val googleOauthService = new GoogleOauthService()
 //  val userService        = new UserService(userRepository, googleOauthService)
 

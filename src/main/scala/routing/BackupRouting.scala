@@ -22,8 +22,8 @@ class BackupRouting(
     backupService: BackupService)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
     extends JsonProtocols {
 
-  private val config                                  = ConfigFactory.load()
-  private val bearerTokenSecret: Array[Byte]          = config.getString("tokenSecret").getBytes
+  private val config                         = ConfigFactory.load()
+  private val bearerTokenSecret: Array[Byte] = config.getString("tokenSecret").getBytes
 
   def myRejectionHandler =
     RejectionHandler
@@ -41,7 +41,10 @@ class BackupRouting(
           authenticaton { user =>
             authorize(user.id == userId) {
               get {
-                complete(Created -> JwtTokenGenerator.generatePathToken(s"/user/$userId/backup/download", System.currentTimeMillis(), bearerTokenSecret))
+                complete(
+                  Created -> JwtTokenGenerator.generatePathToken(s"/user/$userId/backup/download",
+                                                                 System.currentTimeMillis(),
+                                                                 bearerTokenSecret))
               }
             }
           }

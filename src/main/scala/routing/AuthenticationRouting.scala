@@ -13,8 +13,8 @@ import service.JwtTokenGenerator
 
 class AuthenticationRouting(authenticator: JwtAuthenticator[User]) extends JsonProtocols {
 
-  private val config                                  = ConfigFactory.load()
-  private val bearerTokenSecret: Array[Byte]          = config.getString("tokenSecret").getBytes
+  private val config                         = ConfigFactory.load()
+  private val bearerTokenSecret: Array[Byte] = config.getString("tokenSecret").getBytes
 
   def myRejectionHandler =
     RejectionHandler
@@ -34,14 +34,16 @@ class AuthenticationRouting(authenticator: JwtAuthenticator[User]) extends JsonP
           // route is not completed before 1 second has passed. This makes timing
           // attacks harder, since an attacker cannot distinguish between wrong
           // username and existing username, but wrong password.
-          authenticator.basic(Some(1000.millis))(user => complete(JwtTokenGenerator.generateToken(user, System.currentTimeMillis(), bearerTokenSecret)))
+          authenticator.basic(Some(1000.millis))(user =>
+            complete(JwtTokenGenerator.generateToken(user, System.currentTimeMillis(), bearerTokenSecret)))
         }
       } ~
       path("token" / "renew") {
         get {
           // Here we can send an expired JWT via HTTP bearer authentication and
           // get a renewed JWT for it.
-          authenticator.bearerTokenOrCookie(acceptExpired = true)(user => complete(JwtTokenGenerator.generateToken(user, System.currentTimeMillis(), bearerTokenSecret)))
+          authenticator.bearerTokenOrCookie(acceptExpired = true)(user =>
+            complete(JwtTokenGenerator.generateToken(user, System.currentTimeMillis(), bearerTokenSecret)))
         }
       }
     }

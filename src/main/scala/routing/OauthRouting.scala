@@ -19,14 +19,14 @@ import cats.implicits._
 
 case class GoogleToken(token: String)
 
-class OauthRouting(interpreters: Interpreters)(implicit system: ActorSystem,
-                                               executor: ExecutionContextExecutor,
-                                               materializer: ActorMaterializer) extends JsonProtocols {
+class OauthRouting(
+    interpreters: Interpreters)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
+    extends JsonProtocols {
 
   private implicit val googleTokenFormat = jsonFormat1(GoogleToken)
 
   private val validateTokenWithUserCreation: (GoogleToken, TokenType) => Route = (googleToken, tokenType) => {
-    val interpreter = interpreters.userInterpreter :&: interpreters.tokenInterpreter
+    val interpreter                                    = interpreters.userInterpreter :&: interpreters.tokenInterpreter
     val tokenFuture: Future[OAuth2AccessTokenResponse] = UserService.validateGoogleUser(googleToken, tokenType).interpret(interpreter)
 
     onComplete(tokenFuture) { (tokenResult: Try[OAuth2AccessTokenResponse]) =>

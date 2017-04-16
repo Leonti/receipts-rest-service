@@ -8,7 +8,7 @@ import ops.UserOps.UserOp
 import scala.concurrent.Future
 
 case class Interpreters(
-                         userInterpreter: (UserOp ~> Future),
-                         tokenInterpreter: (TokenOp ~> Future),
-                         randomInterpreter: (RandomOp ~> Future)
-                       )
+    userInterpreter: (UserOp ~> Future),
+    tokenInterpreter: (TokenOp ~> Future),
+    randomInterpreter: (RandomOp ~> Future)
+)

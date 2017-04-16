@@ -19,23 +19,29 @@ object UserService {
   type PRG = UserOp :|: RandomOp :|: NilDSL
   val PRG = DSL.Make[PRG]
 
-  def createUser(createUserRequest: CreateUserRequest): Free[PRG.Cop, Either[String, User]] = for {
-    existingUser <- UserOps.FindUserByUsername(createUserRequest.userName).freek[PRG]: Free[PRG.Cop, Option[User]]
-    guid <- RandomOps.GenerateGuid().freek[PRG]
-    result <- if (existingUser.isDefined) {
-      Free.pure[PRG.Cop, Either[String, User]](Left("User already exists"))
-    } else {
-      UserOps.SaveUser(User(
-        id = guid,
-        userName = createUserRequest.userName,
-        passwordHash = hasher.hash(createUserRequest.password)
-      )).freek[PRG].map(user => Right(user))
-    }
-  } yield result
+  def createUser(createUserRequest: CreateUserRequest): Free[PRG.Cop, Either[String, User]] =
+    for {
+      existingUser <- UserOps.FindUserByUsername(createUserRequest.userName).freek[PRG]: Free[PRG.Cop, Option[User]]
+      guid         <- RandomOps.GenerateGuid().freek[PRG]
+      result <- if (existingUser.isDefined) {
+        Free.pure[PRG.Cop, Either[String, User]](Left("User already exists"))
+      } else {
+        UserOps
+          .SaveUser(
+            User(
+              id = guid,
+              userName = createUserRequest.userName,
+              passwordHash = hasher.hash(createUserRequest.password)
+            ))
+          .freek[PRG]
+          .map(user => Right(user))
+      }
+    } yield result
 
-  def findByUserNameWithPassword(userName: String, password: String): Free[PRG.Cop, Option[User]] = for {
-    user <- UserOps.FindUserByUsername(userName).freek[PRG]: Free[PRG.Cop, Option[User]]
-  } yield user.filter(u => hasher.validate(u.passwordHash, password))
+  def findByUserNameWithPassword(userName: String, password: String): Free[PRG.Cop, Option[User]] =
+    for {
+      user <- UserOps.FindUserByUsername(userName).freek[PRG]: Free[PRG.Cop, Option[User]]
+    } yield user.filter(u => hasher.validate(u.passwordHash, password))
 
   def findById(id: String): Free[PRG.Cop, Option[User]] =
     UserOps.FindUserById(id).freek[PRG]
@@ -45,7 +51,7 @@ object UserService {
 
   def validateGoogleUser(googleToken: GoogleToken, tokenType: TokenType): Free[UserAndTokenPGR.Cop, OAuth2AccessTokenResponse] =
     for {
-      tokenInfo <- UserOps.GetValidatedGoogleTokenInfo(googleToken.token, tokenType).freek[UserAndTokenPGR]
+      tokenInfo    <- UserOps.GetValidatedGoogleTokenInfo(googleToken.token, tokenType).freek[UserAndTokenPGR]
       existingUser <- UserOps.FindUserByUsername(tokenInfo.email).freek[UserAndTokenPGR]: Free[UserAndTokenPGR.Cop, Option[User]]
       user <- if (existingUser.isDefined) {
         Free.pure[UserAndTokenPGR.Cop, User](existingUser.get)

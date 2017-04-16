@@ -22,10 +22,10 @@ trait MongoConnection {
   )
 
   lazy val dbFuture: Future[DefaultDB] = connection
-      .authenticate(
-        db = database,
-        user = config.getString("mongodb.user"),
-        password = config.getString("mongodb.password")
-      )
-      .flatMap(authentication => connection.database(database))
+    .authenticate(
+      db = database,
+      user = config.getString("mongodb.user"),
+      password = config.getString("mongodb.password")
+    )
+    .flatMap(authentication => connection.database(database))
 }

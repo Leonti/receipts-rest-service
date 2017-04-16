@@ -40,7 +40,8 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
   it should "respond with appropriate error if user already exist" in {
 
     val createUserRequest = CreateUserRequest(userName = "userName", password = "password")
-    val interpreters = TestInterpreters.testInterpreters.copy(userInterpreter = new UserInterpreter(List(User(userName = "userName", passwordHash = "hash")), ""))
+    val interpreters = TestInterpreters.testInterpreters.copy(
+      userInterpreter = new UserInterpreter(List(User(userName = "userName", passwordHash = "hash")), ""))
 
     val userRouting = new UserRouting(interpreters, createAuthentication(User(id = "123-user", userName = "name", passwordHash = "hash")))
 
@@ -65,10 +66,10 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
       responseAs[String] should include("server failure")
     }
   }
-  */
+   */
 
   it should "should show user info" in {
-    val user        = User(id = "123-user", userName = "name", passwordHash = "hash")
+    val user = User(id = "123-user", userName = "name", passwordHash = "hash")
 
     val userRouting = new UserRouting(TestInterpreters.testInterpreters, createAuthentication(user))
     Get("/user/info") ~> userRouting.routes ~> check {

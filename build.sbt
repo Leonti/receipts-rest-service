@@ -6,9 +6,14 @@ version := "1.0"
 scalaVersion := "2.12.1"
 test in assembly := {}
 
-scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings",
-  "-Ywarn-unused-import",
-  "-Ypartial-unification", "-encoding", "utf8")
+scalacOptions := Seq("-unchecked",
+                     "-deprecation",
+                     "-feature",
+                     "-Xfatal-warnings",
+                     "-Ywarn-unused-import",
+                     "-Ypartial-unification",
+                     "-encoding",
+                     "utf8")
 
 addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersion.binary)
 
