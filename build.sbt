@@ -82,6 +82,8 @@ resolvers ++= Seq(
   Resolver.bintrayRepo("dwhjames", "maven")
 )
 
+resolvers += Resolver.bintrayRepo("projectseptemberinc", "maven")
+
 // auth-utils is published there
 resolvers += Resolver.bintrayRepo("leonti", "maven")
 
