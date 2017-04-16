@@ -1,8 +1,5 @@
 package model
 
-import java.util.Optional
-
-import de.choffmeister.auth.common.OAuth2AccessTokenResponse
 import model.FileMetadata.FileMetadataBSONReader.FileMetadataBSONWriter
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 import spray.json.{DeserializationException, JsNumber, JsObject, JsString, JsValue, RootJsonFormat}

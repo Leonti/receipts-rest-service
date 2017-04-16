@@ -4,7 +4,6 @@ import java.util.concurrent.Executors
 
 import com.typesafe.config.ConfigFactory
 import reactivemongo.api.{DefaultDB, MongoConnectionOptions, MongoDriver, ScramSha1Authentication}
-import reactivemongo.core.nodeset.Authenticate
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
@@ -23,10 +22,10 @@ trait MongoConnection {
   )
 
   lazy val dbFuture: Future[DefaultDB] = connection
-    .authenticate(
-      db = database,
-      user = config.getString("mongodb.user"),
-      password = config.getString("mongodb.password")
-    )
-    .flatMap(authentication => connection.database(database))
+      .authenticate(
+        db = database,
+        user = config.getString("mongodb.user"),
+        password = config.getString("mongodb.password")
+      )
+      .flatMap(authentication => connection.database(database))
 }

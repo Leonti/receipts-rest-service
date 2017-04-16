@@ -1,52 +1,33 @@
 import java.io.File
-import java.util.Date
 
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.Logger
 import akka.actor.ActorSystem
-import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpMethods}
 import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.headers.{
-  `Access-Control-Allow-Credentials`,
-  `Access-Control-Allow-Headers`,
-  `Access-Control-Allow-Methods`,
-  `Access-Control-Max-Age`
-}
+import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`, `Access-Control-Max-Age`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
-import akka.http.scaladsl.server.directives.FileInfo
 import akka.stream.{ActorMaterializer, Materializer}
-import akka.stream.scaladsl._
-import akka.util.ByteString
 import authentication.JwtAuthenticator
 import authorization.PathAuthorization
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
-import model.ReceiptEntity
 import model._
 import repository.{OcrRepository, PendingFileRepository, ReceiptRepository, UserRepository}
 import routing._
 import service._
 
-import scala.collection.mutable
-import scala.concurrent.{ExecutionContextExecutor, Future}
-import spray.json._
-import de.choffmeister.auth.akkahttp.Authenticator
-import de.choffmeister.auth.common._
-import ocr.service.{GoogleOcrService, OcrService, OcrServiceStub}
+import scala.concurrent.ExecutionContextExecutor
+import interpreters.{Interpreters, RandomInterpreter, TokenInterpreter, UserInterpreter}
+import ocr.service.{GoogleOcrService, OcrServiceStub}
 import processing.{FileProcessor, ReceiptFiles}
 import queue.{Queue, QueueProcessor}
 import queue.files.ReceiptFileQueue
-
-import scala.concurrent.duration._
-import scala.util.Try
-import scala.util.Success
-import scala.util.Failure
-
+import cats.implicits._
+import freek._
 // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
 
 trait Service extends JsonProtocols with CorsSupport {
@@ -135,15 +116,26 @@ object ReceiptRestService extends App with Service {
   override implicit val executor     = system.dispatcher
   override implicit val materializer = ActorMaterializer()
 
-  val userService        = new UserService(new UserRepository())
-  val googleOauthService = new GoogleOauthService()
+
   override val config    = ConfigFactory.load()
 
+  val userRepository = new UserRepository()
+  val googleOauthService = new GoogleOauthService()
+//  val userService        = new UserService(userRepository, googleOauthService)
+
+  val interpreters = Interpreters(
+    userInterpreter = new UserInterpreter(userRepository, googleOauthService),
+    tokenInterpreter = new TokenInterpreter(),
+    randomInterpreter = new RandomInterpreter()
+  )
+
+  val authenticatorInterpreters = interpreters.userInterpreter :&: interpreters.randomInterpreter
   val authenticator = new JwtAuthenticator[User](
     realm = "Example realm",
     bearerTokenSecret = config.getString("tokenSecret").getBytes,
-    fromBearerToken = token => userService.findById(token.claimAsString("sub").right.get),
-    fromUsernamePassword = userService.findByUserNameWithPassword
+    fromBearerToken = token => UserService.findById(token.claimAsString("sub").right.get).interpret(authenticatorInterpreters),
+    fromUsernamePassword = (userName: String, password: String) =>
+      UserService.findByUserNameWithPassword(userName, password).interpret(authenticatorInterpreters)
   )
 
   val pathAuthorization = new PathAuthorization(bearerTokenSecret = config.getString("tokenSecret").getBytes)
@@ -174,10 +166,10 @@ object ReceiptRestService extends App with Service {
     pendingFileService,
     authenticator.bearerTokenOrCookie(acceptExpired = true)
   )
-  override val userRouting           = new UserRouting(userService, authenticator.bearerTokenOrCookie(acceptExpired = true))
+  override val userRouting           = new UserRouting(interpreters, authenticator.bearerTokenOrCookie(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)
   override val appConfigRouting      = new AppConfigRouting()
-  override val oauthRouting          = new OauthRouting(userService, googleOauthService)
+  override val oauthRouting          = new OauthRouting(interpreters)
 
   val backupService = new BackupService(receiptService, fileService)
 

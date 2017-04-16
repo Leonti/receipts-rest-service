@@ -1,15 +1,11 @@
 package repository
 
-import java.util.concurrent.Executors
-
-import com.typesafe.config.ConfigFactory
-import model.{ReceiptEntity, User, WithId}
+import model.WithId
 import reactivemongo.api._
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter, BSONObjectID}
-import reactivemongo.core.nodeset.Authenticate
+import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 trait MongoDao[T <: WithId] extends MongoConnection {
 

@@ -1,54 +1,57 @@
 package service
 
-import java.util.concurrent.Executors
-
-import de.choffmeister.auth.common.{PBKDF2, PasswordHasher, Plain}
+import cats.free.Free
+import de.choffmeister.auth.common.{OAuth2AccessTokenResponse, PBKDF2, PasswordHasher, Plain}
 import model.{CreateUserRequest, User}
-import repository.UserRepository
+import ops.{RandomOps, TokenOps, UserOps}
+import ops.TokenOps.TokenOp
+import ops.UserOps.UserOp
+import routing.GoogleToken
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Right
+import freek._
+import ops.RandomOps.RandomOp
 
-class UserService(userRepository: UserRepository) {
-
-  implicit val executor: ExecutionContext = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+object UserService {
 
   private val hasher = new PasswordHasher("pbkdf2", "hmac-sha1" :: "10000" :: "128" :: Nil, List(PBKDF2, Plain))
 
-  def createUser(createUserRequest: CreateUserRequest): Future[Either[String, User]] = {
-    findByUserName(createUserRequest.userName).flatMap({
-      case Some(user) => Future(Left("User already exists"))
-      case None =>
-        userRepository
-          .save(
-            User(
-              userName = createUserRequest.userName,
-              passwordHash = hasher.hash(createUserRequest.password)
-            )
-          )
-          .map(user => Right(user))
-    })
-  }
+  type PRG = UserOp :|: RandomOp :|: NilDSL
+  val PRG = DSL.Make[PRG]
 
-  def createGoogleUser(email: String): Future[User] = {
+  def createUser(createUserRequest: CreateUserRequest): Free[PRG.Cop, Either[String, User]] = for {
+    existingUser <- UserOps.FindUserByUsername(createUserRequest.userName).freek[PRG]: Free[PRG.Cop, Option[User]]
+    guid <- RandomOps.GenerateGuid().freek[PRG]
+    result <- if (existingUser.isDefined) {
+      Free.pure[PRG.Cop, Either[String, User]](Left("User already exists"))
+    } else {
+      UserOps.SaveUser(User(
+        id = guid,
+        userName = createUserRequest.userName,
+        passwordHash = hasher.hash(createUserRequest.password)
+      )).freek[PRG].map(user => Right(user))
+    }
+  } yield result
+
+  def findByUserNameWithPassword(userName: String, password: String): Free[PRG.Cop, Option[User]] = for {
+    user <- UserOps.FindUserByUsername(userName).freek[PRG]: Free[PRG.Cop, Option[User]]
+  } yield user.filter(u => hasher.validate(u.passwordHash, password))
+
+  def findById(id: String): Free[PRG.Cop, Option[User]] =
+    UserOps.FindUserById(id).freek[PRG]
+
+  type UserAndTokenPGR = UserOp :|: TokenOp :|: NilDSL
+  val UserAndTokenPGR = DSL.Make[UserAndTokenPGR]
+
+  def validateGoogleUser(googleToken: GoogleToken, tokenType: TokenType): Free[UserAndTokenPGR.Cop, OAuth2AccessTokenResponse] =
     for {
-      existingUser <- findByUserName(email)
-      createdUser <- existingUser match {
-        case Some(user) => Future.failed(new RuntimeException("User already exists"))
-        case None => {
-          val hashedUser = User(userName = email)
-          userRepository.save(hashedUser)
-        }
+      tokenInfo <- UserOps.GetValidatedGoogleTokenInfo(googleToken.token, tokenType).freek[UserAndTokenPGR]
+      existingUser <- UserOps.FindUserByUsername(tokenInfo.email).freek[UserAndTokenPGR]: Free[UserAndTokenPGR.Cop, Option[User]]
+      user <- if (existingUser.isDefined) {
+        Free.pure[UserAndTokenPGR.Cop, User](existingUser.get)
+      } else {
+        UserOps.SaveUser(User(userName = tokenInfo.email)).freek[UserAndTokenPGR]
       }
-    } yield createdUser
-  }
-
-  def findById(id: String): Future[Option[User]] =
-    userRepository.findUserById(id)
-
-  def findByUserName(userName: String): Future[Option[User]] =
-    userRepository.findUserByUserName(userName)
-
-  def findByUserNameWithPassword(userName: String, password: String): Future[Option[User]] =
-    userRepository.findUserByUserName(userName).map(_.filter(user => hasher.validate(user.passwordHash, password)))
+      token <- TokenOps.GenerateUserToken(user).freek[UserAndTokenPGR]
+    } yield token
 }

@@ -1,9 +1,7 @@
 import java.util.concurrent.Executors
 
-import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.Http.OutgoingConnection
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, OAuth2BearerToken}
@@ -12,14 +10,13 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import de.choffmeister.auth.common.OAuth2AccessTokenResponse
-import model.{CreateUserRequest, JsonProtocols, ReceiptEntity, UserInfo}
+import model.{CreateUserRequest, JsonProtocols, UserInfo}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.BufferedSource
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.stream.scaladsl.Tcp.OutgoingConnection
 import com.typesafe.config.ConfigFactory
 
 import scala.collection.immutable.Seq

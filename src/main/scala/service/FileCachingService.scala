@@ -1,7 +1,7 @@
 package service
 
 import java.io.{File, FileOutputStream}
-import java.nio.file.{Files, Path, Paths, StandardCopyOption}
+import java.nio.file.{Files, Paths, StandardCopyOption}
 
 import akka.NotUsed
 import akka.stream._

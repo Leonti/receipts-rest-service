@@ -1,5 +1,4 @@
 import model._
-import ocr.model.OcrTextAnnotation
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -14,7 +13,6 @@ import service.ReceiptService
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.Right
 
 class ReceiptServiceSpec extends FlatSpec with Matchers with MockitoSugar with ScalaFutures {
 

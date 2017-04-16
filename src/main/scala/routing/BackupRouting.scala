@@ -3,27 +3,27 @@ package routing
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{AuthorizationFailedRejection, MissingFormFieldRejection, RejectionHandler}
-import akka.http.scaladsl.server.directives.{AuthenticationDirective, ContentTypeResolver}
-import akka.stream.{ActorMaterializer, IOResult}
+import akka.http.scaladsl.server.{AuthorizationFailedRejection, RejectionHandler}
+import akka.http.scaladsl.server.directives.AuthenticationDirective
+import akka.stream.ActorMaterializer
 import model.{ErrorResponse, JsonProtocols, User}
-import service.{BackupService, JwtTokenGenerator, ReceiptsBackup}
+import service.{BackupService, JwtTokenGenerator}
 import authorization.PathAuthorization.PathAuthorizationDirective
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model._
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
-import akka.http.javadsl.model.headers.ContentDisposition
 import akka.http.scaladsl.model.headers.{ContentDispositionTypes, `Content-Disposition`}
+import com.typesafe.config.ConfigFactory
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.ExecutionContextExecutor
 
 class BackupRouting(
     authenticaton: AuthenticationDirective[User],
     authorizePath: PathAuthorizationDirective,
     backupService: BackupService)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
     extends JsonProtocols {
+
+  private val config                                  = ConfigFactory.load()
+  private val bearerTokenSecret: Array[Byte]          = config.getString("tokenSecret").getBytes
 
   def myRejectionHandler =
     RejectionHandler
@@ -41,7 +41,7 @@ class BackupRouting(
           authenticaton { user =>
             authorize(user.id == userId) {
               get {
-                complete(Created -> JwtTokenGenerator.generatePathToken(s"/user/$userId/backup/download"))
+                complete(Created -> JwtTokenGenerator.generatePathToken(s"/user/$userId/backup/download", System.currentTimeMillis(), bearerTokenSecret))
               }
             }
           }

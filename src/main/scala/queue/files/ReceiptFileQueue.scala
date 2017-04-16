@@ -6,7 +6,6 @@ import java.util.concurrent.Executors
 import model.PendingFile.PendingFileId
 import queue.Models.JobId
 import queue.{Queue, ReceiptFileJob}
-import service.WebSize
 
 import scala.concurrent.{ExecutionContext, Future}
 

@@ -7,10 +7,9 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.vision.v1.model._
 import com.google.api.services.vision.v1.{Vision, VisionScopes}
 import com.google.common.collect.ImmutableList
-import java.nio.file.{Files, Path}
-import java.util
+import java.nio.file.{Files}
 
-import ocr.model.OcrTextAnnotation;
+import ocr.model.OcrTextAnnotation
 
 object OcrTest {
 

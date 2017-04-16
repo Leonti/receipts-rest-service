@@ -1,14 +1,11 @@
 package queue
 
-import java.util.concurrent.Executors
-
 import queue.Models._
-import reactivemongo.api.{Cursor, ReadPreference}
+import reactivemongo.api.{Cursor}
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 import repository.MongoConnection
-
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Future}
 import scala.concurrent.duration.Duration
 
 package object Models {

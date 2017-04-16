@@ -6,7 +6,6 @@ import java.util.concurrent.Executors
 import model.{FileEntity, ReceiptEntity}
 import ocr.service.OcrService
 import queue._
-import repository.PendingFileRepository
 import service.{FileService, PendingFileService, ReceiptService}
 
 import scala.concurrent.{ExecutionContext, Future}

@@ -2,7 +2,6 @@ package routing
 
 import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpResponse}
 import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.headers.`Access-Control-Allow-Credentials`
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Methods`
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Origin`
 import akka.http.scaladsl.model.headers.Origin

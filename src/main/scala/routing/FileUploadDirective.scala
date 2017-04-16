@@ -1,8 +1,6 @@
 package routing
 
 import java.io.File
-import java.util.concurrent.Executors
-
 import akka.stream.scaladsl._
 import akka.http.scaladsl.model.Multipart
 import akka.http.scaladsl.server._
@@ -11,9 +9,8 @@ import akka.http.scaladsl.server.directives.{FileInfo, FutureDirectives}
 import akka.http.scaladsl.server.directives.MarshallingDirectives._
 import akka.http.scaladsl.server.directives.RouteDirectives._
 import akka.stream.scaladsl.FileIO
-
 import scala.collection.immutable.Seq
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 

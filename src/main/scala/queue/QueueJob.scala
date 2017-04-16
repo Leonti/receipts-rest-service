@@ -2,7 +2,6 @@ package queue
 
 import model.PendingFile.PendingFileId
 import queue.Models.JobId
-import service.{ImageSize, ImageSizeFormat}
 import spray.json._
 
 trait QueueJob {

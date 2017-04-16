@@ -2,11 +2,9 @@ import akka.http.scaladsl.model.headers.{BasicHttpCredentials, HttpChallenge, Ht
 import akka.http.scaladsl.server.directives.{SecurityDirectives, AuthenticationDirective, AuthenticationResult}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import authentication.JwtAuthenticator
-import de.choffmeister.auth.common.OAuth2AccessTokenResponse
 import model.{JsonProtocols, ErrorResponse, User}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, FlatSpec}
 

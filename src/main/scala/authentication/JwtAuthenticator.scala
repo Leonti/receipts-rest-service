@@ -1,6 +1,5 @@
 package authentication
 
-import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.headers.{HttpCookiePair, _}
 import akka.http.scaladsl.server.AuthenticationFailedRejection.{CredentialsMissing, CredentialsRejected}
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive1}

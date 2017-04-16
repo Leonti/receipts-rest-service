@@ -1,14 +1,10 @@
 package repository
 
-import java.util.concurrent.Executors
-
 import model.{FileEntity, ReceiptEntity}
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.api.commands.WriteResult
-import reactivemongo.bson
 import reactivemongo.bson.{BSONArray, BSONDocument, BSONString}
-
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class ReceiptRepository extends MongoDao[ReceiptEntity] {
 

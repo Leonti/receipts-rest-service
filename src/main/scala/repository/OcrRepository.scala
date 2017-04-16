@@ -1,6 +1,6 @@
 package repository
 
-import model.{OcrEntity, OcrTextOnly, PendingFile}
+import model.{OcrEntity, OcrTextOnly}
 import reactivemongo.api.Cursor
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.api.commands.WriteResult

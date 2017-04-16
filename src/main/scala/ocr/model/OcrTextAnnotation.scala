@@ -1,10 +1,10 @@
 package ocr.model
 
 import com.google.api.services.vision.v1.model.TextAnnotation
-import model.{OcrEntity, Serialization}
+import model.{Serialization}
 
 import collection.JavaConverters._
-import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter, Macros, document}
+import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter, Macros}
 case class DetectedLanguage(languageCode: String)
 case class TextProperty(detectedLanguages: Seq[DetectedLanguage])
 case class Vertex(x: Option[Int], y: Option[Int])

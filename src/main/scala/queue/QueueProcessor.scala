@@ -3,13 +3,13 @@ package queue
 import java.io.{PrintWriter, StringWriter}
 import java.util.concurrent.Executors
 
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.ActorSystem
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import processing.FileProcessor
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
 class QueueProcessor(queue: Queue, fileProcessor: FileProcessor, system: ActorSystem) {

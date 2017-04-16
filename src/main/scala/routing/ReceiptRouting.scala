@@ -1,7 +1,6 @@
 package routing
 
-import java.io.{File, PrintWriter, Serializable, StringWriter}
-
+import java.io.{File, PrintWriter, StringWriter}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
@@ -11,8 +10,6 @@ import akka.http.scaladsl.server._
 import model._
 import service.{FileService, ReceiptService}
 import akka.actor.ActorSystem
-
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._

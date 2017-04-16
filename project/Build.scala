@@ -4,17 +4,18 @@ import sbt._
 import Keys._
 import scala.util.{Failure, Success, Try}
 
-
-
 //rather generic project build definition - enabling integration tests
 object MyBuildBuild extends Build {
-  lazy val root = Project(id = "root",
-    base = file(".")).
-    configs(IntegrationTest).
-    settings(Defaults.itSettings : _*).
-    settings(testOptions in IntegrationTest += Tests.Setup({_ => AppRunnerRemoteControl.start()})).
-    settings(testOptions in IntegrationTest += Tests.Cleanup({_ => AppRunnerRemoteControl.stop()})).
-    settings(parallelExecution in IntegrationTest := false)
+  lazy val root = Project(id = "root", base = file("."))
+    .configs(IntegrationTest)
+    .settings(Defaults.itSettings: _*)
+    .settings(testOptions in IntegrationTest += Tests.Setup({ _ =>
+      AppRunnerRemoteControl.start()
+    }))
+    .settings(testOptions in IntegrationTest += Tests.Cleanup({ _ =>
+      AppRunnerRemoteControl.stop()
+    }))
+    .settings(parallelExecution in IntegrationTest := false)
 }
 
 //the core part of solution - shared object
@@ -34,7 +35,9 @@ object AppRunnerRemoteControl {
     //build classpath string
     val cpStr = cp.map(_.getAbsolutePath).mkString(":")
 
-    val arguments: Seq[String] = List("-classpath", cpStr,
+    val arguments: Seq[String] = List(
+      "-classpath",
+      cpStr,
       "-Dmongodb.db=" + System.getenv("MONGODB_DB"),
       "-Dmongodb.user=" + System.getenv("MONGODB_USER"),
       "-Dmongodb.password=" + System.getenv("MONGODB_PASSWORD"),
@@ -50,10 +53,13 @@ object AppRunnerRemoteControl {
     proc = Option(Fork.java.fork(options, arguments :+ mainClass))
 
     //make sure application really started or failed before proceed to the tests
-    waitForStart().recover({case e =>
-      stop()
-      throw e
-    }).get
+    waitForStart()
+      .recover({
+        case e =>
+          stop()
+          throw e
+      })
+      .get
   }
 
   def stop(): Unit = {
@@ -65,22 +71,23 @@ object AppRunnerRemoteControl {
 
   private def waitForStart(): Try[_] = {
     val maxAttempts = 15
-    val u = new URL("http://localhost:9000")
-    val c = u.openConnection()
-    val result = (1 to maxAttempts).toStream map {i =>
+    val u           = new URL("http://localhost:9000")
+    val c           = u.openConnection()
+    val result = (1 to maxAttempts).toStream map { i =>
       log.foreach(_.info(s"connection attempt $i of $maxAttempts"))
-      Try {c.connect()}} find {
-      case Success(_) => true
+      Try { c.connect() }
+    } find {
+      case Success(_)              => true
       case Failure(e: IOException) => Thread.sleep(1000); false
-      case Failure(_) => false
+      case Failure(_)              => false
     }
-    if(result.isEmpty)
+    if (result.isEmpty)
       Failure(new RuntimeException(s"Failed to connect to application after $maxAttempts attempts"))
     else
       Success(None)
   }
 
-  var log: Option[Logger] = None
-  var cp: Seq[File] = Nil
+  var log: Option[Logger]   = None
+  var cp: Seq[File]         = Nil
   var proc: Option[Process] = None
 }

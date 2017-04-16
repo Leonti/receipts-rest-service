@@ -4,10 +4,13 @@ name := "receipts-rest-service"
 organization := "rocks.leonti"
 version := "1.0"
 scalaVersion := "2.12.1"
-scalacOptions += "-Ypartial-unification"
 test in assembly := {}
 
-scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
+scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings",
+  "-Ywarn-unused-import",
+  "-Ypartial-unification", "-encoding", "utf8")
+
+addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersion.binary)
 
 val akkaV           = "2.4.17"
 val akkaHttpV       = "10.0.5"
@@ -21,6 +24,7 @@ val scalaLoggingV   = "3.5.0"
 val logbackV        = "1.1.7"
 val diffsonV        = "2.1.2"
 val catsV           = "0.9.0"
+val freekV          = "0.6.7"
 
 val logging = Seq(
   "ch.qos.logback"             % "logback-classic"          % logbackV,
@@ -51,9 +55,10 @@ libraryDependencies ++= {
     "org.reactivemongo"     %% "reactivemongo"             % reactiveMongoV excludeAll (
       ExclusionRule(organization = "com.typesafe.akka")
     ),
-    "com.drewnoakes"  % "metadata-extractor" % "2.9.0",
-    "org.typelevel"   %% "cats"              % catsV,
-    "de.choffmeister" %% "auth-common"       % jwtAuthV excludeAll (
+    "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
+    "org.typelevel"        %% "cats"              % catsV,
+    "com.projectseptember" %% "freek"             % freekV,
+    "de.choffmeister"      %% "auth-common"       % jwtAuthV excludeAll (
       ExclusionRule(organization = "io.spray")
     ),
     "de.choffmeister" %% "auth-akka-http" % jwtAuthV excludeAll (

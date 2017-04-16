@@ -1,9 +1,7 @@
 package repository
 
 import model.PendingFile
-import model.PendingFile.PendingFileId
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.api.commands.WriteResult
 import reactivemongo.bson.BSONDocument
 
 import scala.concurrent.Future
