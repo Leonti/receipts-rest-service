@@ -1,6 +1,9 @@
+import java.io.File
+
 import cats.~>
 import interpreters.Interpreters
-import model.User
+import model.{PendingFile, User}
+import ops.FileOps.{FileOp, SubmitPendingFile, SubmitToFileQueue}
 import ops.RandomOps.{GenerateGuid, RandomOp}
 import ops.TokenOps.{GeneratePathToken, GenerateUserToken, TokenOp}
 import ops.UserOps._
@@ -40,10 +43,24 @@ object TestInterpreters {
 
   }
 
+  class FileInterpreter() extends (FileOp ~> Future) {
+
+    def apply[A](i: FileOp[A]): Future[A] = i match {
+      case SubmitPendingFile(pendingFile: PendingFile) =>
+        Future.successful(pendingFile)
+      case SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String) =>
+        Future.successful("")
+      //  case SaveFile(userId: String, file: File, ext: String) =>
+      //  case FetchFile(userId: String, fileId: String) =>
+      //  case DeleteFile(userId: String, fileId: String) =>
+    }
+  }
+
   val testInterpreters = Interpreters(
     userInterpreter = new UserInterpreter(List(), ""),
     tokenInterpreter = new TokenInterpreter(System.currentTimeMillis(), "secret"),
-    randomInterpreter = new RandomInterpreter("")
+    randomInterpreter = new RandomInterpreter(""),
+    fileInterpreter = new FileInterpreter()
   )
 
 }

@@ -4,7 +4,7 @@ import java.util.concurrent.Executors
 
 import cats.free.Free
 import freek._
-import model.{FileEntity, OcrEntity, OcrTextOnly, ReceiptEntity}
+import model._
 import ocr.model.OcrTextAnnotation
 import ops.FileOps.{FileOp, SubmitPendingFile, SubmitToFileQueue}
 import ops.RandomOps
@@ -78,24 +78,31 @@ object ReceiptService {
       receipts = unfilteredReceipts.filter(receiptEntity => receiptEntity.lastModified > lastModifiedOption.getOrElse(0l))
     } yield receipts
 
-  def createReceipt(userId: String,
-                    parsedForm: ParsedForm): Free[PRG.Cop, ReceiptEntity] = for {
-    receiptId <- RandomOps.GenerateGuid().freek[PRG]
-    tags = parsedForm.fields("tags")
-    uploadedFile = parsedForm.files("receipt")
-    receipt = ReceiptEntity(
-      id = receiptId,
-      userId = userId,
-      total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
-      description = parsedForm.fields("description"),
-      transactionTime = parsedForm.fields("transactionTime").toLong,
-      tags = if (tags.trim() == "") List() else tags.split(",").toList,
-      files = List())
-    _ <- SaveReceipt(receiptId, receipt).freek[PRG]
-    pendingFileId <- RandomOps.GenerateGuid().freek[PRG]
-    pendingFile <- SubmitPendingFile(id = pendingFileId, userId, receipt.id, uploadedFile.file, ext(uploadedFile.fileInfo.fileName)).freek[PRG]
-    _ <- SubmitToFileQueue(userId, receiptId, uploadedFile.file, ext(uploadedFile.fileInfo.fileName), pendingFile.id).freek[PRG]
-  } yield receipt
+  def createReceipt(userId: String, parsedForm: ParsedForm): Free[PRG.Cop, ReceiptEntity] =
+    for {
+      receiptId <- RandomOps.GenerateGuid().freek[PRG]
+      tags         = parsedForm.fields("tags")
+      uploadedFile = parsedForm.files("receipt")
+      receipt = ReceiptEntity(
+        id = receiptId,
+        userId = userId,
+        total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
+        description = parsedForm.fields("description"),
+        transactionTime = parsedForm.fields("transactionTime").toLong,
+        tags = if (tags.trim() == "") List() else tags.split(",").toList,
+        files = List()
+      )
+      _             <- SaveReceipt(receiptId, receipt).freek[PRG]
+      pendingFileId <- RandomOps.GenerateGuid().freek[PRG]
+      pendingFile <- SubmitPendingFile(
+        PendingFile(
+          id = pendingFileId,
+          userId = userId,
+          receiptId = receiptId
+        )
+      ).freek[PRG]
+      _ <- SubmitToFileQueue(userId, receiptId, uploadedFile.file, ext(uploadedFile.fileInfo.fileName), pendingFile.id).freek[PRG]
+    } yield receipt
 
   private def ext(fileName: String): String = fileName.split("\\.")(1)
 }

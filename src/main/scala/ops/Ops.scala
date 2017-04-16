@@ -2,15 +2,15 @@ package ops
 
 import java.io.File
 
-import akka.stream.IOResult
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+//import akka.stream.IOResult
+//import akka.stream.scaladsl.Source
+//import akka.util.ByteString
 import de.choffmeister.auth.common.OAuth2AccessTokenResponse
 import model.{FileEntity, PendingFile, ReceiptEntity, User}
 import queue.Models.JobId
 import service.{GoogleTokenInfo, TokenType}
 
-import scala.concurrent.Future
+//import scala.concurrent.Future
 
 object ReceiptOps {
   sealed trait ReceiptOp[A]
@@ -26,15 +26,12 @@ object ReceiptOps {
 object FileOps {
   sealed trait FileOp[A]
 
-  case class SubmitPendingFile(id: String, userId: String, receiptId: String, file: File, fileExt: String) extends FileOp[PendingFile]
-  case class SubmitToFileQueue(userId: String,
-                               receiptId: String,
-                               file: File,
-                               fileExt: String,
-                               pendingFileId: String) extends FileOp[JobId]
-  case class SaveFile(userId: String, file: File, ext: String) extends FileOp[Seq[FileEntity]]
-  case class FetchFile(userId: String, fileId: String)         extends FileOp[Source[ByteString, Future[IOResult]]]
-  case class DeleteFile(userId: String, fileId: String)        extends FileOp[Unit]
+  case class SubmitPendingFile(pendingFile: PendingFile) extends FileOp[PendingFile]
+  case class SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String)
+      extends FileOp[JobId]
+//  case class SaveFile(userId: String, file: File, ext: String) extends FileOp[Seq[FileEntity]]
+//  case class FetchFile(userId: String, fileId: String)         extends FileOp[Source[ByteString, Future[IOResult]]]
+//  case class DeleteFile(userId: String, fileId: String)        extends FileOp[Unit]
 }
 
 object UserOps {
