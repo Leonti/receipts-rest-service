@@ -8,17 +8,12 @@ import ReceiptTestUtils._
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
-import akka.util.ByteString
 import org.scalatest.time.{Millis, Seconds, Span}
-
-import scala.concurrent.Future
-import scala.io.BufferedSource
 
 class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtocols {
 
