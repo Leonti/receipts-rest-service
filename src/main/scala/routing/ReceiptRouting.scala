@@ -35,14 +35,15 @@ class ReceiptRouting(
 )(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
     extends JsonProtocols {
 
-  val logger = Logger(LoggerFactory.getLogger("ReceiptRouting"))
+  val logger      = Logger(LoggerFactory.getLogger("ReceiptRouting"))
+  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter
 
   def myRejectionHandler =
     RejectionHandler
       .newBuilder()
       .handle {
         case MissingFormFieldRejection(field) =>
-          complete(BadRequest -> ErrorResponse(s"Request is missing required form field '${field}'"))
+          complete(BadRequest -> ErrorResponse(s"Request is missing required form field '$field'"))
       }
       .handle {
         case AuthorizationFailedRejection =>
@@ -135,15 +136,8 @@ class ReceiptRouting(
               post {
                 uploadedFile("receipt") {
                   case (metadata: FileInfo, file: File) =>
-                    val pendingFilesFuture = receiptService
-                      .findById(receiptId)
-                      .flatMap({
-                        case Some(receiptEntity: ReceiptEntity) =>
-                          receiptFiles
-                            .submitFile(userId, receiptEntity.id, file, ext(metadata.fileName))
-                            .map(pendingFile => Some(pendingFile))
-                        case None => Future.successful(None)
-                      })
+                    val pendingFilesFuture: Future[Option[PendingFile]] =
+                      ReceiptService.addUploadedFileToReceipt(userId, receiptId, metadata, file).interpret(interpreter)
 
                     onComplete(pendingFilesFuture) { (result: Try[Option[PendingFile]]) =>
                       result match {
@@ -202,43 +196,18 @@ class ReceiptRouting(
             post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
               FileUploadDirective.uploadedFileWithFields("receipt", "total", "description", "transactionTime", "tags") {
                 (parsedForm: ParsedForm) =>
-                  /*
-                  val uploadedFile = parsedForm.files("receipt")
-                  val start        = System.currentTimeMillis()
-                  logger.info(s"Received file to upload ${uploadedFile.file.getAbsolutePath}")
-
-                  val tags = parsedForm.fields("tags")
-                  val receiptFuture: Future[ReceiptEntity] = for {
-                    receipt <- receiptService.createReceipt(
-                      userId = userId,
-                      total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
-                      description = parsedForm.fields("description"),
-                      transactionTime = parsedForm.fields("transactionTime").toLong,
-                      tags = if (tags.trim() == "") List() else tags.split(",").toList
-                    )
-                    pendingFile <- receiptFiles.submitFile(userId, receipt.id, uploadedFile.file, ext(uploadedFile.fileInfo.fileName))
-                  } yield receipt
-                   */
                   val receiptFuture = ReceiptService
                     .createReceipt(userId, parsedForm)
-                    .interpret(interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter)
+                    .interpret(interpreter)
 
-                  onComplete(receiptFuture) { receiptTry =>
-                    //   val end = System.currentTimeMillis()
-                    //   logger.info(s"Receipt created in ${(end - start) / 1000}s")
-
-                    receiptTry match {
-                      case Success(receipt: ReceiptEntity) => complete(Created -> receipt)
-                      case Failure(error) => {
-
-                        // do proper logging here
-                        val sw = new StringWriter
-                        error.printStackTrace(new PrintWriter(sw))
-                        logger.error(sw.toString)
-
-                        complete(InternalServerError -> ErrorResponse(s"Could not create a receipt"))
-                      }
-                    }
+                  onComplete(receiptFuture) {
+                    case Success(receipt: ReceiptEntity) => complete(Created -> receipt)
+                    case Failure(error)                  =>
+                      // do proper logging here
+                      val sw = new StringWriter
+                      error.printStackTrace(new PrintWriter(sw))
+                      logger.error(sw.toString)
+                      complete(InternalServerError -> ErrorResponse(s"Could not create a receipt"))
                   }
               }
             }

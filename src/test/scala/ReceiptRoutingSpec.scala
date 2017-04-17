@@ -17,6 +17,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import routing.ReceiptRouting
 import service.{FileService, ReceiptService}
+import TestInterpreters.{RandomInterpreter, ReceiptInterpreter}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
@@ -132,17 +133,21 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val interpreters   = TestInterpreters.testInterpreters
+
+    val receipt = ReceiptEntity(id = "1", userId = "123-user")
+    val interpreters = TestInterpreters.testInterpreters.copy(
+      receiptInterpreter = new ReceiptInterpreter(List(receipt), List()),
+      randomInterpreter = new RandomInterpreter("2", 0)
+    )
     val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
-    val receipt = ReceiptEntity(userId = "123-user")
     val pendingFile = PendingFile(
-      id = "1",
-      userId = "1",
+      id = "2",
+      userId = "123-user",
       receiptId = "1"
     )
-    when(receiptFiles.submitFile(any[String], any[String], any[File], any[String])).thenReturn(Future.successful(pendingFile))
-    when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
+//    when(receiptFiles.submitFile(any[String], any[String], any[File], any[String])).thenReturn(Future.successful(pendingFile))
+    //   when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
 
     val content = "file content".getBytes
     val multipartForm =

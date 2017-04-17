@@ -1,13 +1,15 @@
 package service
 
+import java.io.File
 import java.util.concurrent.Executors
 
+import akka.http.scaladsl.server.directives.FileInfo
 import cats.free.Free
 import freek._
 import model._
 import ocr.model.OcrTextAnnotation
 import ops.FileOps.{FileOp, SubmitPendingFile, SubmitToFileQueue}
-import ops.RandomOps
+import ops.{RandomOps, ReceiptOps}
 import ops.RandomOps._
 import ops.ReceiptOps._
 import repository.{OcrRepository, ReceiptRepository}
@@ -91,6 +93,19 @@ object ReceiptService {
       receipts = unfilteredReceipts.filter(receiptEntity => receiptEntity.lastModified > lastModifiedOption.getOrElse(0l))
     } yield receipts
 
+  private def submitPendingFile(userId: String, receiptId: String, file: File, fileName: String): Free[PRG.Cop, PendingFile] =
+    for {
+      pendingFileId <- RandomOps.GenerateGuid().freek[PRG]
+      pendingFile <- SubmitPendingFile(
+        PendingFile(
+          id = pendingFileId,
+          userId = userId,
+          receiptId = receiptId
+        )
+      ).freek[PRG]
+      _ <- SubmitToFileQueue(userId, receiptId, file, ext(fileName), pendingFile.id).freek[PRG]
+    } yield pendingFile
+
   def createReceipt(userId: String, parsedForm: ParsedForm): Free[PRG.Cop, ReceiptEntity] =
     for {
       receiptId         <- RandomOps.GenerateGuid().freek[PRG]
@@ -108,17 +123,19 @@ object ReceiptService {
         tags = if (tags.trim() == "") List() else tags.split(",").toList,
         files = List()
       )
-      _             <- SaveReceipt(receiptId, receipt).freek[PRG]
-      pendingFileId <- RandomOps.GenerateGuid().freek[PRG]
-      pendingFile <- SubmitPendingFile(
-        PendingFile(
-          id = pendingFileId,
-          userId = userId,
-          receiptId = receiptId
-        )
-      ).freek[PRG]
-      _ <- SubmitToFileQueue(userId, receiptId, uploadedFile.file, ext(uploadedFile.fileInfo.fileName), pendingFile.id).freek[PRG]
+      _ <- SaveReceipt(receiptId, receipt).freek[PRG]
+      _ <- submitPendingFile(userId, receiptId, uploadedFile.file, uploadedFile.fileInfo.fileName)
     } yield receipt
+
+  def addUploadedFileToReceipt(userId: String, receiptId: String, metadata: FileInfo, file: File): Free[PRG.Cop, Option[PendingFile]] =
+    for {
+      receiptOption <- ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]]
+      pendingFileOption <- if (receiptOption.isDefined) {
+        submitPendingFile(userId, receiptId, file: File, metadata.fileName).map(pf => Option(pf))
+      } else {
+        Free.pure[PRG.Cop, Option[PendingFile]](None)
+      }
+    } yield pendingFileOption
 
   private def ext(fileName: String): String = fileName.split("\\.")(1)
 }
