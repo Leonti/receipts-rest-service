@@ -42,9 +42,22 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+    val interpreters   = TestInterpreters.testInterpreters
+    val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
-    val receipt = ReceiptEntity(userId = "123-user")
+    val receipt = ReceiptEntity(
+      id = "",
+      userId = "123-user",
+      total = Some(BigDecimal(12.38)),
+      description = "some description",
+      timestamp = 0,
+      lastModified = 0,
+      transactionTime = 1480130712396l,
+      tags = List("veggies", "food"),
+      files = List()
+    )
+
+    /*
     val pendingFile = PendingFile(
       id = "1",
       userId = "1",
@@ -54,6 +67,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     when(receiptService.createReceipt("123-user", Some(BigDecimal("12.38")), "some description", 1480130712396l, List("veggies", "food")))
       .thenReturn(Future(receipt))
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
+
+     */
 
     val content = "file content".getBytes
     val multipartForm =
@@ -79,7 +94,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+    val interpreters   = TestInterpreters.testInterpreters
+    val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
     val pendingFile = PendingFile(
@@ -116,7 +132,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+    val interpreters   = TestInterpreters.testInterpreters
+    val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user")
     val pendingFile = PendingFile(
@@ -145,7 +162,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+    val interpreters   = TestInterpreters.testInterpreters
+    val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
     val fileEntity = FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetadata(fileType = "TXT", length = 11))
     val receipt    = ReceiptEntity(userId = "123-user", files = List(fileEntity))
@@ -167,7 +185,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+    val interpreters   = TestInterpreters.testInterpreters
+    val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description")
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
@@ -184,7 +203,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+    val interpreters   = TestInterpreters.testInterpreters
+    val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description")
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
@@ -218,7 +238,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+    val interpreters   = TestInterpreters.testInterpreters
+    val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
@@ -246,7 +267,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+    val interpreters   = TestInterpreters.testInterpreters
+    val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
@@ -273,7 +295,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+    val interpreters   = TestInterpreters.testInterpreters
+    val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
     when(receiptService.findById(receipt.id)).thenReturn(Future(Some(receipt)))
@@ -303,7 +326,8 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val receiptRouting = new ReceiptRouting(receiptService, fileService, receiptFiles, authentication)
+    val interpreters   = TestInterpreters.testInterpreters
+    val receiptRouting = new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authentication)
 
     val fileEntity = FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetadata(fileType = "TXT", length = 11))
     val receipt    = ReceiptEntity(userId = "123-user", files = List(fileEntity))

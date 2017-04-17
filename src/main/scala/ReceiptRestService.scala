@@ -136,11 +136,15 @@ object ReceiptRestService extends App with Service {
   val receiptFileQueue = new ReceiptFileQueue(queue)
   val receiptFiles     = new ReceiptFiles(pendingFileService, receiptFileQueue)
 
+  val receiptRepository = new ReceiptRepository()
+  val ocrRepository     = new OcrRepository()
+
   val interpreters = Interpreters(
     userInterpreter = new UserInterpreter(userRepository, googleOauthService),
     tokenInterpreter = new TokenInterpreter(),
     randomInterpreter = new RandomInterpreter(),
-    fileInterpreter = new FileInterpreter(new PendingFileRepository(), receiptFileQueue)
+    fileInterpreter = new FileInterpreter(new PendingFileRepository(), receiptFileQueue),
+    receiptInterpreter = new ReceiptInterpreter(receiptRepository, ocrRepository)
   )
 
   val authenticatorInterpreters = interpreters.userInterpreter :&: interpreters.randomInterpreter
@@ -158,7 +162,7 @@ object ReceiptRestService extends App with Service {
   println("Mongo:")
   println(config.getString("mongodb.db"))
 
-  val receiptService = new ReceiptService(new ReceiptRepository(), new OcrRepository())
+  val receiptService = new ReceiptService(receiptRepository, ocrRepository)
   val ocrService =
     if (config.getBoolean("useOcrStub"))
       new OcrServiceStub()
@@ -167,7 +171,7 @@ object ReceiptRestService extends App with Service {
 
   //override val logger = Logging(system, getClass)
   override val receiptRouting =
-    new ReceiptRouting(receiptService, fileService, receiptFiles, authenticator.bearerTokenOrCookie(acceptExpired = true))
+    new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authenticator.bearerTokenOrCookie(acceptExpired = true))
   override val pendingFileRouting = new PendingFileRouting(
     pendingFileService,
     authenticator.bearerTokenOrCookie(acceptExpired = true)

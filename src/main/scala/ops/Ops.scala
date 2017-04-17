@@ -2,6 +2,8 @@ package ops
 
 import java.io.File
 
+import model.OcrTextOnly
+
 //import akka.stream.IOResult
 //import akka.stream.scaladsl.Source
 //import akka.util.ByteString
@@ -17,9 +19,10 @@ object ReceiptOps {
 
   case class GetReceipt(id: String)                                extends ReceiptOp[Option[ReceiptEntity]]
   case class DeleteReceipt(id: String)                             extends ReceiptOp[Unit]
-  case class SaveReceipt(id: String, receipt: ReceiptEntity)       extends ReceiptOp[Unit]
-  case class FindReceipts(userId: String, query: String)           extends ReceiptOp[List[ReceiptEntity]]
-  case class UserReceipts(userId: String)                          extends ReceiptOp[List[ReceiptEntity]]
+  case class SaveReceipt(id: String, receipt: ReceiptEntity)       extends ReceiptOp[ReceiptEntity]
+  case class GetReceipts(ids: Seq[String])                         extends ReceiptOp[Seq[ReceiptEntity]]
+  case class FindOcrByText(userId: String, query: String)          extends ReceiptOp[Seq[OcrTextOnly]]
+  case class UserReceipts(userId: String)                          extends ReceiptOp[Seq[ReceiptEntity]]
   case class AddFileToReceipt(receiptId: String, file: FileEntity) extends ReceiptOp[Unit]
 }
 
@@ -63,4 +66,5 @@ object RandomOps {
   sealed trait RandomOp[A]
 
   case class GenerateGuid() extends RandomOp[String]
+  case class GetTime()      extends RandomOp[Long]
 }

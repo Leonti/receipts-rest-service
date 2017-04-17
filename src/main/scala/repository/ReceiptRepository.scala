@@ -2,7 +2,6 @@ package repository
 
 import model.{FileEntity, ReceiptEntity}
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.api.commands.WriteResult
 import reactivemongo.bson.{BSONArray, BSONDocument, BSONString}
 import scala.concurrent.Future
 
@@ -12,12 +11,12 @@ class ReceiptRepository extends MongoDao[ReceiptEntity] {
 
   def save(receiptEntity: ReceiptEntity): Future[ReceiptEntity] = save(collectionFuture, receiptEntity)
 
-  def deleteById(id: String): Future[WriteResult] = deleteById(collectionFuture, id)
+  def deleteById(id: String): Future[Unit] = deleteById(collectionFuture, id).map(_ => ())
 
   def findForUserId(userId: String): Future[List[ReceiptEntity]] =
     findList(collectionFuture, BSONDocument("userId" -> userId)).map(_.sortWith(_.timestamp > _.timestamp))
 
-  def findByIds(ids: List[String]): Future[List[ReceiptEntity]] =
+  def findByIds(ids: Seq[String]): Future[List[ReceiptEntity]] =
     findList(collectionFuture,
              BSONDocument(
                "_id" ->

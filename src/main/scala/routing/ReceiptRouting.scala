@@ -1,6 +1,7 @@
 package routing
 
 import java.io.{File, PrintWriter, StringWriter}
+
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
@@ -10,6 +11,7 @@ import akka.http.scaladsl.server._
 import model._
 import service.{FileService, ReceiptService}
 import akka.actor.ActorSystem
+
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
@@ -17,10 +19,15 @@ import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
 import spray.json._
 import gnieh.diffson.sprayJson._
+import interpreters.Interpreters
 import org.slf4j.LoggerFactory
 import processing.ReceiptFiles
 
+import freek._
+import cats.implicits._
+
 class ReceiptRouting(
+    interpreters: Interpreters,
     receiptService: ReceiptService,
     fileService: FileService,
     receiptFiles: ReceiptFiles,
@@ -182,10 +189,10 @@ class ReceiptRouting(
             } ~
             get {
               parameters("last-modified".as[Long].?, "q".as[String].?) { (lastModified: Option[Long], queryOption: Option[String]) =>
-                val userReceiptsFuture: Future[List[ReceiptEntity]] = queryOption
-                  .flatMap(query => if (query.trim.isEmpty) None else Some(query))
-                  .map(query => receiptService.findByText(userId, query))
-                  .getOrElse(receiptService.findForUserId(userId, lastModified))
+                val userReceiptsFuture: Future[Seq[ReceiptEntity]] =
+                  ReceiptService
+                    .findForUser(userId, lastModified, queryOption)
+                    .interpret(interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter)
 
                 onComplete(userReceiptsFuture) { userReceipts =>
                   complete(userReceipts)
@@ -195,6 +202,7 @@ class ReceiptRouting(
             post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
               FileUploadDirective.uploadedFileWithFields("receipt", "total", "description", "transactionTime", "tags") {
                 (parsedForm: ParsedForm) =>
+                  /*
                   val uploadedFile = parsedForm.files("receipt")
                   val start        = System.currentTimeMillis()
                   logger.info(s"Received file to upload ${uploadedFile.file.getAbsolutePath}")
@@ -210,10 +218,14 @@ class ReceiptRouting(
                     )
                     pendingFile <- receiptFiles.submitFile(userId, receipt.id, uploadedFile.file, ext(uploadedFile.fileInfo.fileName))
                   } yield receipt
+                   */
+                  val receiptFuture = ReceiptService
+                    .createReceipt(userId, parsedForm)
+                    .interpret(interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter)
 
                   onComplete(receiptFuture) { receiptTry =>
-                    val end = System.currentTimeMillis()
-                    logger.info(s"Receipt created in ${(end - start) / 1000}s")
+                    //   val end = System.currentTimeMillis()
+                    //   logger.info(s"Receipt created in ${(end - start) / 1000}s")
 
                     receiptTry match {
                       case Success(receipt: ReceiptEntity) => complete(Created -> receipt)
@@ -222,7 +234,7 @@ class ReceiptRouting(
                         // do proper logging here
                         val sw = new StringWriter
                         error.printStackTrace(new PrintWriter(sw))
-                        println(sw.toString)
+                        logger.error(sw.toString)
 
                         complete(InternalServerError -> ErrorResponse(s"Could not create a receipt"))
                       }

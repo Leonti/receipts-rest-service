@@ -8,8 +8,8 @@ import model._
 import ocr.model.OcrTextAnnotation
 import ops.FileOps.{FileOp, SubmitPendingFile, SubmitToFileQueue}
 import ops.RandomOps
-import ops.RandomOps.RandomOp
-import ops.ReceiptOps.{FindReceipts, ReceiptOp, SaveReceipt}
+import ops.RandomOps._
+import ops.ReceiptOps._
 import repository.{OcrRepository, ReceiptRepository}
 import routing.ParsedForm
 
@@ -72,15 +72,29 @@ object ReceiptService {
   type PRG = ReceiptOp :|: FileOp :|: RandomOp :|: NilDSL
   val PRG = DSL.Make[PRG]
 
-  def findForUserId(userId: String, lastModifiedOption: Option[Long] = None): Free[PRG.Cop, List[ReceiptEntity]] =
+  private def receiptsForQuery(userId: String, query: String): Free[PRG.Cop, Seq[ReceiptEntity]] = {
     for {
-      unfilteredReceipts <- FindReceipts(userId, "").freek[PRG]: Free[PRG.Cop, List[ReceiptEntity]]
+      ocrResults <- FindOcrByText(userId, query).freek[PRG]: Free[PRG.Cop, Seq[OcrTextOnly]]
+      receiptIds = ocrResults.map(_.id)
+      receipts <- GetReceipts(receiptIds).freek[PRG]: Free[PRG.Cop, Seq[ReceiptEntity]]
+    } yield receipts
+  }
+
+  def findForUser(userId: String, lastModifiedOption: Option[Long], queryOption: Option[String]): Free[PRG.Cop, Seq[ReceiptEntity]] =
+    for {
+
+      unfilteredReceipts <- queryOption
+        .flatMap(query => if (query.trim.isEmpty) None else Some(query))
+        .map(query => receiptsForQuery(userId, query))
+        .getOrElse(UserReceipts(userId).freek[PRG]: Free[PRG.Cop, Seq[ReceiptEntity]])
+
       receipts = unfilteredReceipts.filter(receiptEntity => receiptEntity.lastModified > lastModifiedOption.getOrElse(0l))
     } yield receipts
 
   def createReceipt(userId: String, parsedForm: ParsedForm): Free[PRG.Cop, ReceiptEntity] =
     for {
-      receiptId <- RandomOps.GenerateGuid().freek[PRG]
+      receiptId         <- RandomOps.GenerateGuid().freek[PRG]
+      currentTimeMillis <- RandomOps.GetTime().freek[PRG]
       tags         = parsedForm.fields("tags")
       uploadedFile = parsedForm.files("receipt")
       receipt = ReceiptEntity(
@@ -88,6 +102,8 @@ object ReceiptService {
         userId = userId,
         total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
         description = parsedForm.fields("description"),
+        timestamp = currentTimeMillis,
+        lastModified = currentTimeMillis,
         transactionTime = parsedForm.fields("transactionTime").toLong,
         tags = if (tags.trim() == "") List() else tags.split(",").toList,
         files = List()

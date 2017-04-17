@@ -2,9 +2,10 @@ import java.io.File
 
 import cats.~>
 import interpreters.Interpreters
-import model.{PendingFile, User}
+import model._
 import ops.FileOps.{FileOp, SubmitPendingFile, SubmitToFileQueue}
-import ops.RandomOps.{GenerateGuid, RandomOp}
+import ops.RandomOps.{GenerateGuid, GetTime, RandomOp}
+import ops.ReceiptOps._
 import ops.TokenOps.{GeneratePathToken, GenerateUserToken, TokenOp}
 import ops.UserOps._
 import service.{GoogleTokenInfo, JwtTokenGenerator, TokenType}
@@ -35,10 +36,11 @@ object TestInterpreters {
 
   }
 
-  class RandomInterpreter(id: String) extends (RandomOp ~> Future) {
+  class RandomInterpreter(id: String, time: Long = 0) extends (RandomOp ~> Future) {
 
     def apply[A](i: RandomOp[A]): Future[A] = i match {
       case GenerateGuid() => Future.successful(id)
+      case GetTime()      => Future.successful(time)
     }
 
   }
@@ -56,11 +58,26 @@ object TestInterpreters {
     }
   }
 
+  class ReceiptInterpreter(receipts: Seq[ReceiptEntity], ocrs: Seq[OcrTextOnly]) extends (ReceiptOp ~> Future) {
+
+    def apply[A](i: ReceiptOp[A]): Future[A] = i match {
+      case GetReceipt(id: String)                                => Future.successful(receipts.find(_.id == id))
+      case DeleteReceipt(id: String)                             => Future.successful(())
+      case SaveReceipt(id: String, receipt: ReceiptEntity)       => Future.successful(receipt)
+      case GetReceipts(ids: Seq[String])                         => Future.successful(receipts)
+      case UserReceipts(userId: String)                          => Future.successful(receipts)
+      case FindOcrByText(userId: String, query: String)          => Future.successful(ocrs)
+      case AddFileToReceipt(receiptId: String, file: FileEntity) => Future.successful(())
+    }
+
+  }
+
   val testInterpreters = Interpreters(
     userInterpreter = new UserInterpreter(List(), ""),
     tokenInterpreter = new TokenInterpreter(System.currentTimeMillis(), "secret"),
-    randomInterpreter = new RandomInterpreter(""),
-    fileInterpreter = new FileInterpreter()
+    randomInterpreter = new RandomInterpreter("", 0),
+    fileInterpreter = new FileInterpreter(),
+    receiptInterpreter = new ReceiptInterpreter(List(), List())
   )
 
 }
