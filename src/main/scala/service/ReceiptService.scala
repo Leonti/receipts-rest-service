@@ -167,12 +167,13 @@ object ReceiptService extends JsonProtocols {
   def deleteReceipt(receiptId: String): Free[PRG.Cop, Option[Unit]] =
     for {
       receiptOption <- ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]]
-      deletionResult <- if (receiptOption.isDefined) {
+      _ <- ReceiptOps.DeleteReceipt(receiptId).freek[PRG]
+      fileDeletionResult <- if (receiptOption.isDefined) {
         removeReceiptFiles(receiptOption.get.userId, receiptOption.get.files).map(_ => Some(()))
       } else {
         Free.pure[PRG.Cop, Option[Unit]](None)
       }
-    } yield deletionResult
+    } yield fileDeletionResult
 
   private def ext(fileName: String): String = fileName.split("\\.")(1)
 }

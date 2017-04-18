@@ -21,6 +21,9 @@ class FileInterpreter(pendingFileRepository: PendingFileRepository, receiptFileQ
       receiptFileQueue.submitFile(userId, receiptId, file, fileExt, pendingFileId)
     //  case SaveFile(userId: String, file: File, ext: String) =>
     //  case FetchFile(userId: String, fileId: String) =>
-    case DeleteFile(userId: String, fileId: String) => fileService.delete(userId, fileId)
+    case DeleteFile(userId: String, fileId: String) => {
+      println(s"Removing file $userId $fileId")
+      fileService.delete(userId, fileId)
+    }
   }
 }
