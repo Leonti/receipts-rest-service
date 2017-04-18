@@ -9,14 +9,17 @@ import freek._
 import model._
 import ocr.model.OcrTextAnnotation
 import ops.FileOps.{FileOp, SubmitPendingFile, SubmitToFileQueue}
-import ops.{RandomOps, ReceiptOps}
+import ops.{FileOps, RandomOps, ReceiptOps}
 import ops.RandomOps._
 import ops.ReceiptOps._
 import repository.{OcrRepository, ReceiptRepository}
 import routing.ParsedForm
+import spray.json._
+import gnieh.diffson.sprayJson._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
+import cats.implicits._
 
 class ReceiptService(receiptRepository: ReceiptRepository, ocrRepository: OcrRepository) {
 
@@ -69,7 +72,7 @@ class ReceiptService(receiptRepository: ReceiptRepository, ocrRepository: OcrRep
     } yield Unit
 }
 
-object ReceiptService {
+object ReceiptService extends JsonProtocols {
 
   type PRG = ReceiptOp :|: FileOp :|: RandomOp :|: NilDSL
   val PRG = DSL.Make[PRG]
@@ -136,6 +139,40 @@ object ReceiptService {
         Free.pure[PRG.Cop, Option[PendingFile]](None)
       }
     } yield pendingFileOption
+
+  private val applyPatch: (ReceiptEntity, String) => ReceiptEntity = (receiptEntity, jsonPatch) => {
+    val asJson: String =
+      receiptEntity.copy(total = if (receiptEntity.total.isDefined) receiptEntity.total else Some(BigDecimal("0"))).toJson.compactPrint
+    val patched: String = JsonPatch.parse(jsonPatch).apply(asJson)
+    patched.parseJson.convertTo[ReceiptEntity]
+  }
+
+  def patchReceipt(receiptId: String, jsonPatch: String): Free[PRG.Cop, Option[ReceiptEntity]] =
+    for {
+      receiptOption <- ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]]
+      patchedReceipt = receiptOption.map(r => applyPatch(r, jsonPatch))
+      _ <- if (patchedReceipt.isDefined) {
+        SaveReceipt(receiptId, patchedReceipt.get).freek[PRG]
+      } else {
+        Free.pure[PRG.Cop, Unit](())
+      }
+    } yield patchedReceipt
+
+  def findById(receiptId: String): Free[PRG.Cop, Option[ReceiptEntity]] =
+    ReceiptOps.GetReceipt(receiptId).freek[PRG]
+
+  private def removeReceiptFiles(userId: String, files: List[FileEntity]): Free[PRG.Cop, List[Unit]] =
+    files.map(file => FileOps.DeleteFile(userId, file.id).freek[PRG]).sequence
+
+  def deleteReceipt(receiptId: String): Free[PRG.Cop, Option[Unit]] =
+    for {
+      receiptOption <- ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]]
+      deletionResult <- if (receiptOption.isDefined) {
+        removeReceiptFiles(receiptOption.get.userId, receiptOption.get.files).map(_ => Some(()))
+      } else {
+        Free.pure[PRG.Cop, Option[Unit]](None)
+      }
+    } yield deletionResult
 
   private def ext(fileName: String): String = fileName.split("\\.")(1)
 }

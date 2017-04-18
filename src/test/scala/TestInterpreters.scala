@@ -3,7 +3,7 @@ import java.io.File
 import cats.~>
 import interpreters.Interpreters
 import model._
-import ops.FileOps.{FileOp, SubmitPendingFile, SubmitToFileQueue}
+import ops.FileOps.{DeleteFile, FileOp, SubmitPendingFile, SubmitToFileQueue}
 import ops.RandomOps.{GenerateGuid, GetTime, RandomOp}
 import ops.ReceiptOps._
 import ops.TokenOps.{GeneratePathToken, GenerateUserToken, TokenOp}
@@ -54,7 +54,7 @@ object TestInterpreters {
         Future.successful("")
       //  case SaveFile(userId: String, file: File, ext: String) =>
       //  case FetchFile(userId: String, fileId: String) =>
-      //  case DeleteFile(userId: String, fileId: String) =>
+      case DeleteFile(userId: String, fileId: String) => Future.successful(())
     }
   }
 

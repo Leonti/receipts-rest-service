@@ -34,7 +34,7 @@ object FileOps {
       extends FileOp[JobId]
 //  case class SaveFile(userId: String, file: File, ext: String) extends FileOp[Seq[FileEntity]]
 //  case class FetchFile(userId: String, fileId: String)         extends FileOp[Source[ByteString, Future[IOResult]]]
-//  case class DeleteFile(userId: String, fileId: String)        extends FileOp[Unit]
+  case class DeleteFile(userId: String, fileId: String) extends FileOp[Unit]
 }
 
 object UserOps {

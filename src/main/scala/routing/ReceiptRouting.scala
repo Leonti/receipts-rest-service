@@ -17,8 +17,6 @@ import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
-import spray.json._
-import gnieh.diffson.sprayJson._
 import interpreters.Interpreters
 import org.slf4j.LoggerFactory
 import processing.ReceiptFiles
@@ -51,8 +49,6 @@ class ReceiptRouting(
       }
       .result()
 
-  def ext(fileName: String): String = fileName.split("\\.")(1)
-
   val respondWithReceipt: (Future[Option[ReceiptEntity]]) => Route = (receiptFuture) => {
 
     onComplete(receiptFuture) { result: Try[Option[ReceiptEntity]] =>
@@ -67,48 +63,15 @@ class ReceiptRouting(
     }
   }
 
-  val patchAndSaveReceipt: (String, String) => Future[Option[ReceiptEntity]] = (receiptId, jsonPatch) => {
-    val patchedReceipt: Future[Option[ReceiptEntity]] = receiptService
-      .findById(receiptId)
-      .map(_.map(patchReceipt(_, jsonPatch)))
-
-    patchedReceipt.flatMap({
-      case Some(receipt) => receiptService.save(receipt).map(Some(_))
-      case None          => Future.successful(None)
-    })
-  }
-
-  val patchReceipt: (ReceiptEntity, String) => ReceiptEntity = (receiptEntity, jsonPatch) => {
-    val asJson: String =
-      receiptEntity.copy(total = if (receiptEntity.total.isDefined) receiptEntity.total else Some(BigDecimal("0"))).toJson.compactPrint
-    val patched: String = JsonPatch.parse(jsonPatch).apply(asJson)
-    patched.parseJson.convertTo[ReceiptEntity]
-  }
-
   val deleteReceipt: String => Route = (receiptId) => {
 
-    val deletion: Future[Option[Future[Unit]]] = receiptService
-      .findById(receiptId)
-      .map(_.map({ receipt =>
-        val fileFutures = receipt.files.map({ fileEntity =>
-          println(s"Calling fileService with ${receipt.userId} ${fileEntity.id}")
-          fileService.delete(receipt.userId, fileEntity.id)
-        })
+    val deletionFuture: Future[Option[Unit]] = ReceiptService.deleteReceipt(receiptId).interpret(interpreter)
 
-        Future.sequence(fileFutures).flatMap(_ => receiptService.delete(receiptId))
-      }))
-
-    onComplete(deletion) {
-      case Success(deletionOption: Option[Future[Unit]]) =>
+    onComplete(deletionFuture) {
+      case Success(deletionOption: Option[Unit]) =>
         deletionOption match {
-          case Some(deletionFuture: Future[Unit]) =>
-            onComplete(deletionFuture) { (deletionResult: Try[Unit]) =>
-              deletionResult match {
-                case Success(_) => complete(OK)
-                case Failure(t) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
-              }
-            }
-          case None => complete(NotFound -> ErrorResponse(s"Receipt $receiptId was not found"))
+          case Some(_) => complete(OK)
+          case None    => complete(NotFound -> ErrorResponse(s"Receipt $receiptId was not found"))
         }
       case Failure(t) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
     }
@@ -121,11 +84,12 @@ class ReceiptRouting(
           authorize(user.id == userId) {
             path(Segment) { receiptId: String =>
               get {
-                respondWithReceipt(receiptService.findById(receiptId))
+                respondWithReceipt(ReceiptService.findById(receiptId).interpret(interpreter))
               } ~
               patch {
                 entity(as[String]) { receiptPatch =>
-                  respondWithReceipt(patchAndSaveReceipt(receiptId, receiptPatch))
+                  val receiptFuture = ReceiptService.patchReceipt(receiptId, receiptPatch).interpret(interpreter)
+                  respondWithReceipt(receiptFuture)
                 }
               } ~
               delete {
