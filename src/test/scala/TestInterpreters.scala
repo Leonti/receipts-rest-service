@@ -1,9 +1,9 @@
-import java.io.File
-
+import java.io.{ByteArrayInputStream, File}
+import akka.stream.scaladsl.StreamConverters
 import cats.~>
 import interpreters.Interpreters
 import model._
-import ops.FileOps.{DeleteFile, FileOp, SubmitPendingFile, SubmitToFileQueue}
+import ops.FileOps._
 import ops.RandomOps.{GenerateGuid, GetTime, RandomOp}
 import ops.ReceiptOps._
 import ops.TokenOps.{GeneratePathToken, GenerateUserToken, TokenOp}
@@ -53,7 +53,9 @@ object TestInterpreters {
       case SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String) =>
         Future.successful("")
       //  case SaveFile(userId: String, file: File, ext: String) =>
-      //  case FetchFile(userId: String, fileId: String) =>
+      case FetchFile(userId: String, fileId: String) => {
+        Future.successful(StreamConverters.fromInputStream(() => new ByteArrayInputStream("some text".getBytes)))
+      }
       case DeleteFile(userId: String, fileId: String) => Future.successful(())
     }
   }

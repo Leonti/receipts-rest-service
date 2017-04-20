@@ -167,13 +167,27 @@ object ReceiptService extends JsonProtocols {
   def deleteReceipt(receiptId: String): Free[PRG.Cop, Option[Unit]] =
     for {
       receiptOption <- ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]]
-      _ <- ReceiptOps.DeleteReceipt(receiptId).freek[PRG]
+      _             <- ReceiptOps.DeleteReceipt(receiptId).freek[PRG]
       fileDeletionResult <- if (receiptOption.isDefined) {
         removeReceiptFiles(receiptOption.get.userId, receiptOption.get.files).map(_ => Some(()))
       } else {
         Free.pure[PRG.Cop, Option[Unit]](None)
       }
     } yield fileDeletionResult
+
+  def receiptFileWithExtension(receiptId: String, fileId: String): Free[PRG.Cop, Option[FileToServe]] =
+    for {
+      receiptOption <- ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]]
+      fileToServeOption <- if (receiptOption.isDefined) {
+        val extOption = receiptOption.get.files.find(_.id == fileId).map(_.ext)
+        FileOps
+          .FetchFile(receiptOption.get.userId, fileId)
+          .freek[PRG]
+          .map(source => extOption.map(ext => FileToServe(source, ext)))
+      } else {
+        Free.pure[PRG.Cop, Option[FileToServe]](None)
+      }
+    } yield fileToServeOption
 
   private def ext(fileName: String): String = fileName.split("\\.")(1)
 }

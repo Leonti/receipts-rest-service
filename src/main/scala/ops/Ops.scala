@@ -2,7 +2,12 @@ package ops
 
 import java.io.File
 
+import akka.stream.IOResult
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
 import model.OcrTextOnly
+
+import scala.concurrent.Future
 
 //import akka.stream.IOResult
 //import akka.stream.scaladsl.Source
@@ -33,7 +38,7 @@ object FileOps {
   case class SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String)
       extends FileOp[JobId]
 //  case class SaveFile(userId: String, file: File, ext: String) extends FileOp[Seq[FileEntity]]
-//  case class FetchFile(userId: String, fileId: String)         extends FileOp[Source[ByteString, Future[IOResult]]]
+  case class FetchFile(userId: String, fileId: String)  extends FileOp[Source[ByteString, Future[IOResult]]]
   case class DeleteFile(userId: String, fileId: String) extends FileOp[Unit]
 }
 

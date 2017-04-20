@@ -171,7 +171,7 @@ object ReceiptRestService extends App with Service {
 
   //override val logger = Logging(system, getClass)
   override val receiptRouting =
-    new ReceiptRouting(interpreters, receiptService, fileService, receiptFiles, authenticator.bearerTokenOrCookie(acceptExpired = true))
+    new ReceiptRouting(interpreters, authenticator.bearerTokenOrCookie(acceptExpired = true))
   override val pendingFileRouting = new PendingFileRouting(
     pendingFileService,
     authenticator.bearerTokenOrCookie(acceptExpired = true)

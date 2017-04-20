@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.PathMatchers.Segment
 import akka.http.scaladsl.server.directives.{AuthenticationDirective, ContentTypeResolver, FileInfo}
 import akka.http.scaladsl.server._
 import model._
-import service.{FileService, ReceiptService}
+import service.ReceiptService
 import akka.actor.ActorSystem
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -19,16 +19,12 @@ import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
 import interpreters.Interpreters
 import org.slf4j.LoggerFactory
-import processing.ReceiptFiles
 
 import freek._
 import cats.implicits._
 
 class ReceiptRouting(
     interpreters: Interpreters,
-    receiptService: ReceiptService,
-    fileService: FileService,
-    receiptFiles: ReceiptFiles,
     authenticaton: AuthenticationDirective[User]
 )(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
     extends JsonProtocols {
@@ -120,29 +116,20 @@ class ReceiptRouting(
               get {
                 val fileId = fileIdWithExt.split('.')(0)
 
-                val extFuture: Future[Option[String]] = receiptService
-                  .findById(receiptId)
-                  .map(receiptEntity =>
-                    receiptEntity
-                      .flatMap(_.files.find(_.id == fileId).map(_.ext)))
+                val fileToServeFuture = ReceiptService
+                  .receiptFileWithExtension(receiptId, fileId)
+                  .interpret(interpreter)
 
-                onComplete(extFuture) { (extResult: Try[Option[String]]) =>
-                  extResult match {
-                    case Success(extOption: Option[String]) =>
-                      extOption match {
-                        case Some(ext) =>
-                          val fileSource  = fileService.fetch(userId, fileId)
-                          val contentType = ContentTypeResolver.Default("file." + ext)
-
-                          println(s"contentType $contentType")
-
-                          complete(HttpResponse(entity = HttpEntity(contentType, fileSource)))
-                        case None => complete(BadRequest -> ErrorResponse(s"File $fileId was not found in receipt $receiptId"))
-                      }
-                    case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
-                  }
+                onComplete(fileToServeFuture) {
+                  case Success(fileToServeOption: Option[FileToServe]) =>
+                    fileToServeOption match {
+                      case Some(fileToServe) =>
+                        val contentType = ContentTypeResolver.Default("file." + fileToServe.ext)
+                        complete(HttpResponse(entity = HttpEntity(contentType, fileToServe.source)))
+                      case None => complete(BadRequest -> ErrorResponse(s"File $fileId was not found in receipt $receiptId"))
+                    }
+                  case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
                 }
-
               }
             } ~
             get {
