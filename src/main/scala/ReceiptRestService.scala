@@ -28,7 +28,7 @@ import service._
 import scala.concurrent.ExecutionContextExecutor
 import interpreters._
 import ocr.service.{GoogleOcrService, OcrServiceStub}
-import processing.{FileProcessor, ReceiptFiles}
+import processing.ReceiptFiles
 import queue.{Queue, QueueProcessor}
 import queue.files.ReceiptFileQueue
 import cats.implicits._
@@ -127,10 +127,11 @@ object ReceiptRestService extends App with Service {
   val googleOauthService = new GoogleOauthService()
 //  val userService        = new UserService(userRepository, googleOauthService)
 
-  val fileCachingService   = new FileCachingService()
-  val imageResizingService = new ImageResizingService()
-  val pendingFileService   = new PendingFileService(new PendingFileRepository())
-  val fileService          = FileService.s3(config, system, materializer, fileCachingService, imageResizingService)
+  val fileCachingService    = new FileCachingService()
+  val imageResizingService  = new ImageResizingService()
+  val pendingFileRepository = new PendingFileRepository()
+  val pendingFileService    = new PendingFileService(pendingFileRepository)
+  val fileService           = FileService.s3(config, system, materializer, fileCachingService, imageResizingService)
 
   val queue            = new Queue()
   val receiptFileQueue = new ReceiptFileQueue(queue)
@@ -139,12 +140,21 @@ object ReceiptRestService extends App with Service {
   val receiptRepository = new ReceiptRepository()
   val ocrRepository     = new OcrRepository()
 
+  val receiptService = new ReceiptService(receiptRepository, ocrRepository)
+  val ocrService =
+    if (config.getBoolean("useOcrStub"))
+      new OcrServiceStub()
+    else
+      new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
+
   val interpreters = Interpreters(
     userInterpreter = new UserInterpreter(userRepository, googleOauthService),
     tokenInterpreter = new TokenInterpreter(),
     randomInterpreter = new RandomInterpreter(),
     fileInterpreter = new FileInterpreter(new PendingFileRepository(), receiptFileQueue, fileService),
-    receiptInterpreter = new ReceiptInterpreter(receiptRepository, ocrRepository)
+    receiptInterpreter = new ReceiptInterpreter(receiptRepository, ocrRepository),
+    ocrInterpreter = new OcrInterpreter(ocrRepository, ocrService),
+    pendingFileInterpreter = new PendingFileInterpreter(pendingFileRepository)
   )
 
   val authenticatorInterpreters = interpreters.userInterpreter :&: interpreters.randomInterpreter
@@ -161,13 +171,6 @@ object ReceiptRestService extends App with Service {
   logger.info("Testing logging")
   println("Mongo:")
   println(config.getString("mongodb.db"))
-
-  val receiptService = new ReceiptService(receiptRepository, ocrRepository)
-  val ocrService =
-    if (config.getBoolean("useOcrStub"))
-      new OcrServiceStub()
-    else
-      new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
 
   //override val logger = Logging(system, getClass)
   override val receiptRouting =
@@ -186,16 +189,9 @@ object ReceiptRestService extends App with Service {
   override val backupRouting =
     new BackupRouting(authenticator.bearerTokenOrCookie(acceptExpired = true), pathAuthorization.authorizePath, backupService)
 
-  val fileProcessor = new FileProcessor(
-    fileService = fileService,
-    ocrService = ocrService,
-    receiptService = receiptService,
-    pendingFileService = pendingFileService
-  )
-
   val queueProcessor = new QueueProcessor(
     queue = queue,
-    fileProcessor = fileProcessor,
+    interpreters = interpreters,
     system = system
   )
 

@@ -29,9 +29,9 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
   class MockFileService extends FileService {
     implicit val mat: Materializer = materializer
 
-    override def save(userId: String, file: File, ext: String): Seq[Future[FileEntity]] = {
+    override def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]] = {
       val fileId = "1"
-      Seq(Future.successful(toFileEntity(userId, None, fileId, file, ext)))
+      Future.successful(Seq(toFileEntity(userId, None, fileId, file, ext)))
     }
 
     override def fetch(userId: String, fileId: String) =
@@ -49,15 +49,15 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
 
     val file = new File(UUID.randomUUID().toString)
 
-    val fileEntityFuture = for {
-      f          <- source.runWith(FileIO.toPath(file.toPath))
-      fileEntity <- fileService.save("userId", file, "png").head
-    } yield fileEntity
+    val fileEntitiesFuture = for {
+      _            <- source.runWith(FileIO.toPath(file.toPath))
+      fileEntities <- fileService.save("userId", file, "png")
+    } yield fileEntities
 
-    whenReady(fileEntityFuture) { fileEntity =>
+    whenReady(fileEntitiesFuture) { fileEntities =>
       file.delete
 
-      fileEntity.metaData match {
+      fileEntities.head.metaData match {
         case ImageMetadata(fileType, length, width, height) =>
           width shouldBe 50
           height shouldBe 67
@@ -74,20 +74,19 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
 
     val file = new File(UUID.randomUUID().toString)
 
-    val fileEntityFuture = for {
-      f          <- source.runWith(FileIO.toPath(file.toPath))
-      fileEntity <- fileService.save("userId", file, "txt").head
-    } yield fileEntity
+    val fileEntitiesFuture = for {
+      _            <- source.runWith(FileIO.toPath(file.toPath))
+      fileEntities <- fileService.save("userId", file, "txt")
+    } yield fileEntities
 
-    whenReady(fileEntityFuture) { fileEntity =>
+    whenReady(fileEntitiesFuture) { fileEntities =>
       file.delete
 
-      fileEntity.metaData match {
+      fileEntities.head.metaData match {
         case GenericMetadata(fileType, length) =>
           length shouldBe 9
         case _ => fail("Metadata should be of a GENERIC type!")
       }
     }
   }
-
 }

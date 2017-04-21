@@ -5,6 +5,7 @@ import java.util.concurrent.Executors
 
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.Logger
+import interpreters.Interpreters
 import org.slf4j.LoggerFactory
 import processing.FileProcessor
 
@@ -12,10 +13,18 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
-class QueueProcessor(queue: Queue, fileProcessor: FileProcessor, system: ActorSystem) {
+import freek._
+import cats.implicits._
 
-  val logger      = Logger(LoggerFactory.getLogger("QueueProcessor"))
-  implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+class QueueProcessor(queue: Queue, interpreters: Interpreters, system: ActorSystem) {
+
+  val logger              = Logger(LoggerFactory.getLogger("QueueProcessor"))
+  private implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+
+  val interpreter = interpreters.receiptInterpreter :&:
+    interpreters.fileInterpreter :&:
+    interpreters.ocrInterpreter :&:
+    interpreters.pendingFileInterpreter
 
   def reserveNextJob(): Unit = {
     logger.info("Checking for new jobs")
@@ -44,7 +53,8 @@ class QueueProcessor(queue: Queue, fileProcessor: FileProcessor, system: ActorSy
 
     job.job match {
       case (receiptFileJob: ReceiptFileJob) =>
-        fileProcessor.process(receiptFileJob).onComplete {
+        val fileProcessingResult = FileProcessor.processJob(receiptFileJob).interpret(interpreter)
+        fileProcessingResult.onComplete {
           case Success(_) =>
             logger.info(s"Job finished succesfully $job")
             queue.delete(job.id)

@@ -23,8 +23,8 @@ trait OcrService {
 
 class GoogleOcrService(credentialsFile: File, imageResizeService: ImageResizingService) extends OcrService {
 
-  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
-  val logger      = Logger(LoggerFactory.getLogger("GoogleOcrService"))
+  private implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+  val logger              = Logger(LoggerFactory.getLogger("GoogleOcrService"))
 
   def ocrImage(file: File): Future[OcrTextAnnotation] = {
     if (file.length() >= 4000000) {

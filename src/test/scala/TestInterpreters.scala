@@ -1,9 +1,13 @@
 import java.io.{ByteArrayInputStream, File}
+
 import akka.stream.scaladsl.StreamConverters
 import cats.~>
 import interpreters.Interpreters
 import model._
+import ocr.model.OcrTextAnnotation
 import ops.FileOps._
+import ops.OcrOps.{OcrImage, OcrOp, SaveOcrResult}
+import ops.PendingFileOps._
 import ops.RandomOps.{GenerateGuid, GetTime, RandomOp}
 import ops.ReceiptOps._
 import ops.TokenOps.{GeneratePathToken, GenerateUserToken, TokenOp}
@@ -52,11 +56,11 @@ object TestInterpreters {
         Future.successful(pendingFile)
       case SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String) =>
         Future.successful("")
-      //  case SaveFile(userId: String, file: File, ext: String) =>
-      case FetchFile(userId: String, fileId: String) => {
+      case SaveFile(userId: String, file: File, ext: String) => Future.successful(List())
+      case FetchFile(userId: String, fileId: String) =>
         Future.successful(StreamConverters.fromInputStream(() => new ByteArrayInputStream("some text".getBytes)))
-      }
       case DeleteFile(userId: String, fileId: String) => Future.successful(())
+      case RemoveFile(_)                              => Future.successful(())
     }
   }
 
@@ -74,12 +78,37 @@ object TestInterpreters {
 
   }
 
+  class OcrInterpreter() extends (OcrOp ~> Future) {
+
+    val testAnnotation = OcrTextAnnotation(text = "Parsed ocr text", pages = List())
+
+    def apply[A](i: OcrOp[A]): Future[A] = i match {
+      case OcrImage(file: File) => Future.successful(testAnnotation)
+      case SaveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation) =>
+        Future.successful(OcrEntity(userId = userId, id = receiptId, result = testAnnotation))
+    }
+
+  }
+
+  class PendingFileInterpreter() extends (PendingFileOp ~> Future) {
+
+    def apply[A](i: PendingFileOp[A]): Future[A] = i match {
+      case SavePendingFile(pendingFile: PendingFile) => Future.successful(pendingFile)
+      case FindPendingFileForUserId(userId: String)  => Future.successful(List())
+      case DeletePendingFileById(id: String)         => Future.successful(())
+      case DeleteAllPendingFiles()                   => Future.successful(())
+    }
+
+  }
+
   val testInterpreters = Interpreters(
     userInterpreter = new UserInterpreter(List(), ""),
     tokenInterpreter = new TokenInterpreter(System.currentTimeMillis(), "secret"),
     randomInterpreter = new RandomInterpreter("", 0),
     fileInterpreter = new FileInterpreter(),
-    receiptInterpreter = new ReceiptInterpreter(List(), List())
+    receiptInterpreter = new ReceiptInterpreter(List(), List()),
+    ocrInterpreter = new OcrInterpreter(),
+    pendingFileInterpreter = new PendingFileInterpreter()
   )
 
 }

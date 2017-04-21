@@ -20,7 +20,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait FileService {
 
-  def save(userId: String, file: File, ext: String): Seq[Future[FileEntity]]
+  def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]]
 
   def fetch(userId: String, fileId: String): Source[ByteString, Future[IOResult]]
 
@@ -56,7 +56,7 @@ class S3FileService(config: Config,
   val credentials    = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
   val amazonS3Client = new AmazonS3Client(credentials)
 
-  override def save(userId: String, file: File, ext: String): Seq[Future[FileEntity]] = {
+  override def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]] = {
     val fileId = java.util.UUID.randomUUID.toString
 
     implicit val scheduler = system.scheduler
@@ -66,7 +66,7 @@ class S3FileService(config: Config,
     val uploadResult = retry(upload(userId, fileId, file), retryIntervals)
     val fileEntity   = toFileEntity(userId, None, fileId, file, ext)
 
-    if (fileEntity.metaData.isInstanceOf[ImageMetadata]) {
+    val futures: Seq[Future[FileEntity]] = if (fileEntity.metaData.isInstanceOf[ImageMetadata]) {
       val resizedFileId = java.util.UUID.randomUUID.toString
       val resizedFileEntity: Future[FileEntity] = imageResizingService
         .resize(file, WebSize)
@@ -90,6 +90,8 @@ class S3FileService(config: Config,
         fileEntity
       }))
     }
+
+    Future.sequence(futures)
   }
 
   val upload: (String, String, File) => Future[PutObjectResult] = (userId, fileId, file) => {

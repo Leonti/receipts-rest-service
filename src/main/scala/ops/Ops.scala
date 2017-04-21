@@ -5,7 +5,8 @@ import java.io.File
 import akka.stream.IOResult
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import model.OcrTextOnly
+import model.{OcrEntity, OcrTextOnly}
+import ocr.model.OcrTextAnnotation
 
 import scala.concurrent.Future
 
@@ -31,15 +32,23 @@ object ReceiptOps {
   case class AddFileToReceipt(receiptId: String, file: FileEntity) extends ReceiptOp[Unit]
 }
 
+object OcrOps {
+  sealed trait OcrOp[A]
+
+  case class OcrImage(file: File)                                                           extends OcrOp[OcrTextAnnotation]
+  case class SaveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation) extends OcrOp[OcrEntity]
+}
+
 object FileOps {
   sealed trait FileOp[A]
 
   case class SubmitPendingFile(pendingFile: PendingFile) extends FileOp[PendingFile]
   case class SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String)
       extends FileOp[JobId]
-//  case class SaveFile(userId: String, file: File, ext: String) extends FileOp[Seq[FileEntity]]
-  case class FetchFile(userId: String, fileId: String)  extends FileOp[Source[ByteString, Future[IOResult]]]
-  case class DeleteFile(userId: String, fileId: String) extends FileOp[Unit]
+  case class SaveFile(userId: String, file: File, ext: String) extends FileOp[Seq[FileEntity]]
+  case class FetchFile(userId: String, fileId: String)         extends FileOp[Source[ByteString, Future[IOResult]]]
+  case class DeleteFile(userId: String, fileId: String)        extends FileOp[Unit]
+  case class RemoveFile(file: File)                            extends FileOp[Unit]
 }
 
 object UserOps {
