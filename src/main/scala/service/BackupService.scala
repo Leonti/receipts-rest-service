@@ -3,26 +3,30 @@ import java.io._
 import java.nio.charset.StandardCharsets
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
-import akka.{Done}
+import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, IOResult}
 import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
+import interpreters.Interpreters
 import model.{FileEntity, JsonProtocols, ReceiptEntity}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import spray.json._
+import freek._
+import cats.implicits._
 
 case class ReceiptsBackup(source: Source[ByteString, Future[IOResult]], filename: String)
 
-class BackupService(receiptService: ReceiptService, fileService: FileService)(implicit system: ActorSystem,
-                                                                              executor: ExecutionContextExecutor,
-                                                                              materializer: ActorMaterializer)
+class BackupService(interpreters: Interpreters, fileService: FileService)(implicit system: ActorSystem,
+                                                                          executor: ExecutionContextExecutor,
+                                                                          materializer: ActorMaterializer)
     extends JsonProtocols {
 
+  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter
   case class FileToZip(path: String, source: Source[ByteString, Any])
 
-  private val fetchFilesToZip: String => Future[List[FileToZip]] = userId => {
+  private val fetchFilesToZip: String => Future[Seq[FileToZip]] = userId => {
     val receiptWithMainFiles: ReceiptEntity => ReceiptEntity =
       receipt => receipt.copy(files = receipt.files.filter(_.parentId.isEmpty))
 
@@ -33,7 +37,7 @@ class BackupService(receiptService: ReceiptService, fileService: FileService)(im
           source = fileService.fetch(userId, fileEntity.id)
       )
 
-    val receiptJsonEntry: List[ReceiptEntity] => FileToZip = receipts => {
+    val receiptJsonEntry: Seq[ReceiptEntity] => FileToZip = receipts => {
       val receiptsAsJson = receipts.toJson.prettyPrint
       val byteString     = ByteString(receiptsAsJson.getBytes(StandardCharsets.UTF_8))
       FileToZip(
@@ -42,14 +46,14 @@ class BackupService(receiptService: ReceiptService, fileService: FileService)(im
       )
     }
 
-    receiptService
-      .findForUserId(userId)
+    val userReceipts: Future[Seq[ReceiptEntity]] = ReceiptService.findForUser(userId).interpret(interpreter)
+
+    userReceipts
       .map(_.map(receiptWithMainFiles))
       .map { receipts =>
-        val files: List[FileToZip] = receipts.flatMap(_.files).map(fileToZip)
-        val jsonFile: FileToZip    = receiptJsonEntry(receipts)
-
-        files.::(jsonFile)
+        val files: Seq[FileToZip] = receipts.flatMap(_.files).map(fileToZip)
+        val jsonFile: FileToZip   = receiptJsonEntry(receipts)
+        files.++(List(jsonFile))
       }
   }
 

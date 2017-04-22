@@ -1,8 +1,6 @@
 package service
 
 import java.io.File
-import java.util.concurrent.Executors
-
 import akka.http.scaladsl.server.directives.FileInfo
 import cats.free.Free
 import freek._
@@ -11,24 +9,11 @@ import ops.FileOps.{FileOp, SubmitPendingFile, SubmitToFileQueue}
 import ops.{FileOps, RandomOps, ReceiptOps}
 import ops.RandomOps._
 import ops.ReceiptOps._
-import repository.{OcrRepository, ReceiptRepository}
 import routing.ParsedForm
 import spray.json._
 import gnieh.diffson.sprayJson._
-
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import cats.implicits._
-
-class ReceiptService(receiptRepository: ReceiptRepository, ocrRepository: OcrRepository) {
-  implicit val executor: ExecutionContext = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
-
-  def findForUserId(userId: String, lastModifiedOption: Option[Long] = None): Future[List[ReceiptEntity]] = {
-    receiptRepository
-      .findForUserId(userId)
-      .map(_.filter(receiptEntity => receiptEntity.lastModified > lastModifiedOption.getOrElse(0l)))
-  }
-}
 
 object ReceiptService extends JsonProtocols {
 
@@ -43,13 +28,15 @@ object ReceiptService extends JsonProtocols {
     } yield receipts
   }
 
-  def findForUser(userId: String, lastModifiedOption: Option[Long], queryOption: Option[String]): Free[PRG.Cop, Seq[ReceiptEntity]] =
+  def findForUser(userId: String,
+                  lastModifiedOption: Option[Long] = None,
+                  queryOption: Option[String] = None): Free[PRG.Cop, Seq[ReceiptEntity]] =
     for {
 
       unfilteredReceipts <- queryOption
         .flatMap(query => if (query.trim.isEmpty) None else Some(query))
         .map(query => receiptsForQuery(userId, query))
-        .getOrElse(UserReceipts(userId).freek[PRG]: Free[PRG.Cop, Seq[ReceiptEntity]])
+        .getOrElse(ReceiptOps.UserReceipts(userId).freek[PRG]: Free[PRG.Cop, Seq[ReceiptEntity]])
 
       receipts = unfilteredReceipts.filter(receiptEntity => receiptEntity.lastModified > lastModifiedOption.getOrElse(0l))
     } yield receipts

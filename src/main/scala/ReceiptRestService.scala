@@ -125,7 +125,6 @@ object ReceiptRestService extends App with Service {
 
   val userRepository     = new UserRepository()
   val googleOauthService = new GoogleOauthService()
-//  val userService        = new UserService(userRepository, googleOauthService)
 
   val fileCachingService    = new FileCachingService()
   val imageResizingService  = new ImageResizingService()
@@ -140,7 +139,6 @@ object ReceiptRestService extends App with Service {
   val receiptRepository = new ReceiptRepository()
   val ocrRepository     = new OcrRepository()
 
-  val receiptService = new ReceiptService(receiptRepository, ocrRepository)
   val ocrService =
     if (config.getBoolean("useOcrStub"))
       new OcrServiceStub()
@@ -184,7 +182,7 @@ object ReceiptRestService extends App with Service {
   override val appConfigRouting      = new AppConfigRouting()
   override val oauthRouting          = new OauthRouting(interpreters)
 
-  val backupService = new BackupService(receiptService, fileService)
+  val backupService = new BackupService(interpreters, fileService)
 
   override val backupRouting =
     new BackupRouting(authenticator.bearerTokenOrCookie(acceptExpired = true), pathAuthorization.authorizePath, backupService)
