@@ -91,6 +91,40 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
     }
   }
 
+  it should "search for ocr results" in {
+    val username          = "ci_user_" + java.util.UUID.randomUUID()
+    val createUserRequest = CreateUserRequest(username, "password")
+
+    val receiptsFuture = for {
+      userInfo      <- createUser(createUserRequest)
+      accessToken   <- authenticateUser(userInfo)
+      requestEntity <- createImageFileContent()
+      response <- Http().singleRequest(
+        HttpRequest(
+          method = HttpMethods.POST,
+          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          entity = requestEntity,
+          headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
+        ))
+      firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
+      _                  <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.accessToken)
+      receiptsResponse <- Http().singleRequest(
+        HttpRequest(uri = s"http://localhost:9000/user/${userInfo.id}/receipt?q=ocr",
+                    headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      receiptsNoResultsResponse <- Http().singleRequest(
+        HttpRequest(uri = s"http://localhost:9000/user/${userInfo.id}/receipt?q=some_random_stuff",
+                    headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+      receipts          <- Unmarshal(receiptsResponse.entity).to[List[ReceiptEntity]]
+      receiptsNoResults <- Unmarshal(receiptsNoResultsResponse.entity).to[List[ReceiptEntity]]
+    } yield (receipts, receiptsNoResults)
+
+    whenReady(receiptsFuture) {
+      case (receipts, receiptsNoResults) =>
+        receipts.length shouldBe 1
+        receiptsNoResults.length shouldBe 0
+    }
+  }
+
   it should "add a file to existing receipt" in {
     val username          = "ci_user_" + java.util.UUID.randomUUID()
     val createUserRequest = CreateUserRequest(username, "password")

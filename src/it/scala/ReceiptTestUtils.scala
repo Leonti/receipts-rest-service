@@ -94,7 +94,7 @@ package object ReceiptTestUtils extends JsonProtocols {
     Marshal(multipartForm).to[RequestEntity]
   }
 
-  def utf8TextEntity(content: String) = {
+  private def utf8TextEntity(content: String) = {
     val bytes = ByteString(content)
     HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, bytes)
   }
