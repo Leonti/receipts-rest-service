@@ -70,7 +70,11 @@ class GoogleOcrService(credentialsFile: File, imageResizeService: ImageResizingS
       val batchResponse = annotate.execute()
 
       val response = batchResponse.getResponses.get(0)
-      OcrTextAnnotation.fromTextAnnotation(response.getFullTextAnnotation)
+
+      if (response.getFullTextAnnotation == null)
+        OcrTextAnnotation(text = "", pages = List())
+      else
+        OcrTextAnnotation.fromTextAnnotation(response.getFullTextAnnotation)
     }
   }
 }
