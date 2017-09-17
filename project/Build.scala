@@ -45,6 +45,7 @@ object AppRunnerRemoteControl {
       "-Ds3.bucket=" + System.getenv("S3_BUCKET"),
       "-Ds3.accessKey=" + System.getenv("S3_ACCESS_KEY"),
       "-Ds3.secretAccessKey=" + System.getenv("S3_SECRET_ACCESS_KEY"),
+      "-DuploadsFolder=" + System.getenv("UPLOADS_FOLDER"),
       "-DuseOcrStub=true"
     )
     //Here goes the name of the class which would be launched

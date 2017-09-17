@@ -45,6 +45,7 @@ object FileOps {
   case class SubmitPendingFile(pendingFile: PendingFile) extends FileOp[PendingFile]
   case class SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String)
       extends FileOp[JobId]
+  case class MoveFile(src: File, dst: File) extends FileOp[Unit]
   case class SaveFile(userId: String, file: File, ext: String) extends FileOp[Seq[FileEntity]]
   case class FetchFile(userId: String, fileId: String)         extends FileOp[Source[ByteString, Future[IOResult]]]
   case class DeleteFile(userId: String, fileId: String)        extends FileOp[Unit]
@@ -74,6 +75,12 @@ object TokenOps {
 
   case class GenerateUserToken(user: User)   extends TokenOp[OAuth2AccessTokenResponse]
   case class GeneratePathToken(path: String) extends TokenOp[OAuth2AccessTokenResponse]
+}
+
+object EnvOps {
+  sealed trait EnvOp[A]
+
+  case class GetEnv(key: String) extends EnvOp[String]
 }
 
 object RandomOps {

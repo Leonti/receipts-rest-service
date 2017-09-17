@@ -12,6 +12,7 @@ import ops.RandomOps.{GenerateGuid, GetTime, RandomOp}
 import ops.ReceiptOps._
 import ops.TokenOps.{GeneratePathToken, GenerateUserToken, TokenOp}
 import ops.UserOps._
+import ops.EnvOps._
 import service.{GoogleTokenInfo, JwtTokenGenerator, TokenType}
 
 import scala.concurrent.Future
@@ -52,6 +53,7 @@ object TestInterpreters {
   class FileInterpreter() extends (FileOp ~> Future) {
 
     def apply[A](i: FileOp[A]): Future[A] = i match {
+      case MoveFile(src: File, dst: File) => Future.successful((): Unit)
       case SubmitPendingFile(pendingFile: PendingFile) =>
         Future.successful(pendingFile)
       case SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String) =>
@@ -101,6 +103,13 @@ object TestInterpreters {
 
   }
 
+  class EnvInterpreter() extends (EnvOp ~> Future) {
+
+    def apply[A](i: EnvOp[A]): Future[A] = i match {
+      case GetEnv(key: String) => Future.successful("mock_value")
+    }
+  }
+
   val testInterpreters = Interpreters(
     userInterpreter = new UserInterpreter(List(), ""),
     tokenInterpreter = new TokenInterpreter(System.currentTimeMillis(), "secret"),
@@ -108,7 +117,8 @@ object TestInterpreters {
     fileInterpreter = new FileInterpreter(),
     receiptInterpreter = new ReceiptInterpreter(List(), List()),
     ocrInterpreter = new OcrInterpreter(),
-    pendingFileInterpreter = new PendingFileInterpreter()
+    pendingFileInterpreter = new PendingFileInterpreter(),
+    envInterpreter = new EnvInterpreter()
   )
 
 }

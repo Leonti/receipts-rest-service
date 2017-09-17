@@ -17,6 +17,7 @@ CMD java -jar \
     -Ds3.accessKey=$S3_ACCESS_KEY \
     -Ds3.secretAccessKey=$S3_SECRET_ACCESS_KEY \
     -DgoogleClientId=$GOOGLE_CLIENT_ID \
+    -DuploadsFolder=$UPLOADS_FOLDER \
     -DtokenSecret=$AUTH_TOKEN_SECRET \
     -DgoogleApiCredentials=$GOOGLE_API_CREDENTIALS \
      /root/receipts-rest-service-assembly.jar

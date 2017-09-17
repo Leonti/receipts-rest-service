@@ -1,23 +1,26 @@
 package service
 
 import java.io.File
+
 import akka.http.scaladsl.server.directives.FileInfo
 import cats.free.Free
 import freek._
 import model._
-import ops.FileOps.{FileOp, SubmitPendingFile, SubmitToFileQueue}
+import ops.FileOps.{FileOp, MoveFile, SubmitPendingFile, SubmitToFileQueue}
 import ops.{FileOps, RandomOps, ReceiptOps}
 import ops.RandomOps._
 import ops.ReceiptOps._
+import ops.EnvOps._
 import routing.ParsedForm
 import spray.json._
 import gnieh.diffson.sprayJson._
+
 import scala.util.Try
 import cats.implicits._
 
 object ReceiptService extends JsonProtocols {
 
-  type PRG = ReceiptOp :|: FileOp :|: RandomOp :|: NilDSL
+  type PRG = ReceiptOp :|: FileOp :|: RandomOp :|: EnvOp :|: NilDSL
   val PRG = DSL.Make[PRG]
 
   private def receiptsForQuery(userId: String, query: String): Free[PRG.Cop, Seq[ReceiptEntity]] = {
@@ -51,7 +54,10 @@ object ReceiptService extends JsonProtocols {
           receiptId = receiptId
         )
       ).freek[PRG]
-      _ <- SubmitToFileQueue(userId, receiptId, file, ext(fileName), pendingFile.id).freek[PRG]
+      uploadsLocation <- GetEnv("uploadsFolder").freek[PRG]
+      filePath <- Free.pure[PRG.Cop, File](new File(new File(uploadsLocation), pendingFileId))
+      _ <- MoveFile(file, filePath).freek[PRG]
+      _ <- SubmitToFileQueue(userId, receiptId, filePath, ext(fileName), pendingFile.id).freek[PRG]
     } yield pendingFile
 
   def createReceipt(userId: String, parsedForm: ParsedForm): Free[PRG.Cop, ReceiptEntity] =

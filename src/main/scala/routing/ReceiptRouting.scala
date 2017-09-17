@@ -30,7 +30,7 @@ class ReceiptRouting(
     extends JsonProtocols {
 
   val logger      = Logger(LoggerFactory.getLogger("ReceiptRouting"))
-  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter
+  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter :&: interpreters.envInterpreter
 
   def myRejectionHandler =
     RejectionHandler
@@ -137,7 +137,7 @@ class ReceiptRouting(
                 val userReceiptsFuture: Future[Seq[ReceiptEntity]] =
                   ReceiptService
                     .findForUser(userId, lastModified, queryOption)
-                    .interpret(interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter)
+                    .interpret(interpreter)
 
                 onComplete(userReceiptsFuture) { userReceipts =>
                   complete(userReceipts)

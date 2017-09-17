@@ -8,6 +8,7 @@ import ops.FileOps._
 import queue.files.ReceiptFileQueue
 import repository.PendingFileRepository
 import service.FileService
+import java.nio.file.{Files, StandardCopyOption}
 
 import scala.concurrent.Future
 
@@ -20,6 +21,10 @@ class FileInterpreter(pendingFileRepository: PendingFileRepository, receiptFileQ
       pendingFileRepository.save(pendingFile)
     case SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String) =>
       receiptFileQueue.submitFile(userId, receiptId, file, fileExt, pendingFileId)
+    case MoveFile(src: File, dst: File) => Future.successful {
+      Files.move(src.toPath, dst.toPath, StandardCopyOption.ATOMIC_MOVE)
+      ()
+    }
     case SaveFile(userId: String, file: File, ext: String) => fileService.save(userId, file, ext)
     case FetchFile(userId: String, fileId: String)         => Future.successful(fileService.fetch(userId, fileId))
     case DeleteFile(userId: String, fileId: String)        => fileService.delete(userId, fileId)

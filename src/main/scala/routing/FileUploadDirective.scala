@@ -52,16 +52,15 @@ object FileUploadDirective {
           }))
 
         FutureDirectives.onComplete(parsedFormFuture).flatMap {
-          case Success(parsedForm) => {
+          case Success(parsedForm) =>
             val parsedFields = parsedForm.files.keySet ++ parsedForm.fields.keySet
             val unparsed     = requiredFields.filterNot(parsedFields.contains(_))
 
-            if (unparsed.length == 0) {
+            if (unparsed.isEmpty) {
               provide(parsedForm)
             } else {
-              reject(MissingFormFieldRejection(unparsed(0)))
+              reject(MissingFormFieldRejection(unparsed.head))
             }
-          }
           case Failure(ex) => failWith(ex)
         }
       }

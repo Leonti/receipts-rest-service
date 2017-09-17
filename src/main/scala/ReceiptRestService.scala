@@ -152,7 +152,8 @@ object ReceiptRestService extends App with Service {
     fileInterpreter = new FileInterpreter(new PendingFileRepository(), receiptFileQueue, fileService),
     receiptInterpreter = new ReceiptInterpreter(receiptRepository, ocrRepository),
     ocrInterpreter = new OcrInterpreter(ocrRepository, ocrService),
-    pendingFileInterpreter = new PendingFileInterpreter(pendingFileRepository)
+    pendingFileInterpreter = new PendingFileInterpreter(pendingFileRepository),
+    envInterpreter = new EnvInterpreter(config)
   )
 
   val authenticatorInterpreters = interpreters.userInterpreter :&: interpreters.randomInterpreter
