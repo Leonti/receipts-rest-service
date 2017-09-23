@@ -149,7 +149,7 @@ object ReceiptRestService extends App with Service {
     userInterpreter = new UserInterpreter(userRepository, googleOauthService),
     tokenInterpreter = new TokenInterpreter(),
     randomInterpreter = new RandomInterpreter(),
-    fileInterpreter = new FileInterpreter(new PendingFileRepository(), receiptFileQueue, fileService),
+    fileInterpreter = new FileInterpreter(new PendingFileRepository(), receiptFileQueue, fileService)(materializer),
     receiptInterpreter = new ReceiptInterpreter(receiptRepository, ocrRepository),
     ocrInterpreter = new OcrInterpreter(ocrRepository, ocrService),
     pendingFileInterpreter = new PendingFileInterpreter(pendingFileRepository),

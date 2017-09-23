@@ -22,6 +22,8 @@ project/plugins/project/
 # Ensime
 .ensime
 .ensime_cache
+ensime-langserver.log
+pc.stdout.log
 
 curl
 run.sh

@@ -8,11 +8,11 @@ import com.typesafe.scalalogging.Logger
 import interpreters.Interpreters
 import org.slf4j.LoggerFactory
 import processing.FileProcessor
+import processing.OcrProcessor
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
-
 import freek._
 import cats.implicits._
 
@@ -21,10 +21,11 @@ class QueueProcessor(queue: Queue, interpreters: Interpreters, system: ActorSyst
   val logger              = Logger(LoggerFactory.getLogger("QueueProcessor"))
   private implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
 
-  val interpreter = interpreters.receiptInterpreter :&:
+  private val interpreter = interpreters.receiptInterpreter :&:
     interpreters.fileInterpreter :&:
     interpreters.ocrInterpreter :&:
-    interpreters.pendingFileInterpreter
+    interpreters.pendingFileInterpreter :&:
+    interpreters.randomInterpreter
 
   def reserveNextJob(): Unit = {
     logger.info("Checking for new jobs")
@@ -48,22 +49,29 @@ class QueueProcessor(queue: Queue, interpreters: Interpreters, system: ActorSyst
       }
   }
 
-  def process(job: ReservedJob) = {
+  private def handleJobResult(job: ReservedJob, childJobs: Future[List[QueueJob]]) = {
+    childJobs
+      .flatMap(jobs => Future.sequence(jobs.map(job => queue.put(job))))
+      .onComplete {
+        case Success(jobIds) =>
+          logger.info(s"Job finished succesfully $job")
+          queue.delete(job.id)
+        case Failure(e) =>
+          val sw = new StringWriter
+          e.printStackTrace(new PrintWriter(sw))
+          logger.error(s"Job failed to complete $job ${sw.toString}")
+          queue.bury(job.id)
+      }
+  }
+
+  private def process(job: ReservedJob) = {
     logger.info(s"Processing job $job")
 
     job.job match {
       case (receiptFileJob: ReceiptFileJob) =>
-        val fileProcessingResult = FileProcessor.processJob(receiptFileJob).interpret(interpreter)
-        fileProcessingResult.onComplete {
-          case Success(_) =>
-            logger.info(s"Job finished succesfully $job")
-            queue.delete(job.id)
-          case Failure(e) =>
-            val sw = new StringWriter
-            e.printStackTrace(new PrintWriter(sw))
-            logger.error(s"Job failed to complete $job ${sw.toString}")
-            queue.bury(job.id)
-        }
+        handleJobResult(job, FileProcessor.processJob(receiptFileJob).interpret(interpreter))
+      case (ocrJob: OcrJob) =>
+        handleJobResult(job, OcrProcessor.processJob(ocrJob).interpret(interpreter))
       case _ => throw new RuntimeException(s"Unknown job $job")
     }
   }

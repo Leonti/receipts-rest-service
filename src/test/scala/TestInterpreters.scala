@@ -1,6 +1,8 @@
 import java.io.{ByteArrayInputStream, File}
 
-import akka.stream.scaladsl.StreamConverters
+import akka.stream.IOResult
+import akka.stream.scaladsl.{Source, StreamConverters}
+import akka.util.ByteString
 import cats.~>
 import interpreters.Interpreters
 import model._
@@ -8,7 +10,7 @@ import ocr.model.OcrTextAnnotation
 import ops.FileOps._
 import ops.OcrOps.{OcrImage, OcrOp, SaveOcrResult}
 import ops.PendingFileOps._
-import ops.RandomOps.{GenerateGuid, GetTime, RandomOp}
+import ops.RandomOps.{GenerateGuid, GetTime, RandomOp, TmpFile}
 import ops.ReceiptOps._
 import ops.TokenOps.{GeneratePathToken, GenerateUserToken, TokenOp}
 import ops.UserOps._
@@ -41,11 +43,12 @@ object TestInterpreters {
 
   }
 
-  class RandomInterpreter(id: String, time: Long = 0) extends (RandomOp ~> Future) {
+  class RandomInterpreter(id: String, time: Long = 0, file: File = new File("")) extends (RandomOp ~> Future) {
 
     def apply[A](i: RandomOp[A]): Future[A] = i match {
       case GenerateGuid() => Future.successful(id)
       case GetTime()      => Future.successful(time)
+      case TmpFile()      => Future.successful(file)
     }
 
   }
@@ -61,8 +64,9 @@ object TestInterpreters {
       case SaveFile(userId: String, file: File, ext: String) => Future.successful(List())
       case FetchFile(userId: String, fileId: String) =>
         Future.successful(StreamConverters.fromInputStream(() => new ByteArrayInputStream("some text".getBytes)))
-      case DeleteFile(userId: String, fileId: String) => Future.successful(())
-      case RemoveFile(_)                              => Future.successful(())
+      case DeleteFile(userId: String, fileId: String)                             => Future.successful(())
+      case RemoveFile(_)                                                          => Future.successful(())
+      case SourceToFile(source: Source[ByteString, Future[IOResult]], file: File) => Future.successful(file)
     }
   }
 

@@ -45,11 +45,12 @@ object FileOps {
   case class SubmitPendingFile(pendingFile: PendingFile) extends FileOp[PendingFile]
   case class SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String)
       extends FileOp[JobId]
-  case class MoveFile(src: File, dst: File) extends FileOp[Unit]
-  case class SaveFile(userId: String, file: File, ext: String) extends FileOp[Seq[FileEntity]]
-  case class FetchFile(userId: String, fileId: String)         extends FileOp[Source[ByteString, Future[IOResult]]]
-  case class DeleteFile(userId: String, fileId: String)        extends FileOp[Unit]
-  case class RemoveFile(file: File)                            extends FileOp[Unit]
+  case class MoveFile(src: File, dst: File)                                         extends FileOp[Unit]
+  case class SaveFile(userId: String, file: File, ext: String)                      extends FileOp[Seq[FileEntity]]
+  case class FetchFile(userId: String, fileId: String)                              extends FileOp[Source[ByteString, Future[IOResult]]]
+  case class SourceToFile(source: Source[ByteString, Future[IOResult]], file: File) extends FileOp[File]
+  case class DeleteFile(userId: String, fileId: String)                             extends FileOp[Unit]
+  case class RemoveFile(file: File)                                                 extends FileOp[Unit]
 }
 
 object UserOps {
@@ -88,4 +89,5 @@ object RandomOps {
 
   case class GenerateGuid() extends RandomOp[String]
   case class GetTime()      extends RandomOp[Long]
+  case class TmpFile()      extends RandomOp[File]
 }

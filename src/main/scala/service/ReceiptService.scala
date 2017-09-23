@@ -55,9 +55,9 @@ object ReceiptService extends JsonProtocols {
         )
       ).freek[PRG]
       uploadsLocation <- GetEnv("uploadsFolder").freek[PRG]
-      filePath <- Free.pure[PRG.Cop, File](new File(new File(uploadsLocation), pendingFileId))
-      _ <- MoveFile(file, filePath).freek[PRG]
-      _ <- SubmitToFileQueue(userId, receiptId, filePath, ext(fileName), pendingFile.id).freek[PRG]
+      filePath        <- Free.pure[PRG.Cop, File](new File(new File(uploadsLocation), pendingFileId))
+      _               <- MoveFile(file, filePath).freek[PRG]
+      _               <- SubmitToFileQueue(userId, receiptId, filePath, ext(fileName), pendingFile.id).freek[PRG]
     } yield pendingFile
 
   def createReceipt(userId: String, parsedForm: ParsedForm): Free[PRG.Cop, ReceiptEntity] =
