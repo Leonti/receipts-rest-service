@@ -24,7 +24,9 @@ project/plugins/project/
 .ensime_cache
 ensime-langserver.log
 pc.stdout.log
+ensime.sbt
 
 curl
 run.sh
 src/main/scala/OcrOld.scala
+src/main/scala/OcrTest.scala
