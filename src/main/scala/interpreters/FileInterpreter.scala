@@ -8,7 +8,7 @@ import ops.FileOps._
 import queue.files.ReceiptFileQueue
 import repository.PendingFileRepository
 import service.FileService
-import java.nio.file.{Files, StandardCopyOption}
+import java.nio.file.Files
 
 import akka.stream.{ActorMaterializer, IOResult}
 import akka.stream.scaladsl.{FileIO, Source}
@@ -31,7 +31,7 @@ class FileInterpreter(
       receiptFileQueue.submitFile(userId, receiptId, file, fileExt, pendingFileId)
     case MoveFile(src: File, dst: File) =>
       Future.successful {
-        Files.move(src.toPath, dst.toPath, StandardCopyOption.ATOMIC_MOVE)
+        Files.move(src.toPath, dst.toPath)
         ()
       }
     case SaveFile(userId: String, file: File, ext: String) => fileService.save(userId, file, ext)
