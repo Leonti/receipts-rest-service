@@ -8,6 +8,7 @@ case class FileEntity(
     id: String,
     parentId: Option[String],
     ext: String,
+    md5: Option[String],
     metaData: FileMetadata,
     timestamp: Long = System.currentTimeMillis
 )
@@ -115,6 +116,7 @@ object FileEntity {
           id = doc.getAs[String]("_id").get,
           parentId = doc.getAs[String]("parentId"),
           ext = doc.getAs[String]("ext").get,
+          md5 = doc.getAs[String]("md5"),
           metaData = doc.getAs[FileMetadata]("metaData").get,
           timestamp = doc.getAs[Long]("timestamp").get
         )
@@ -128,6 +130,7 @@ object FileEntity {
         "_id"       -> fileEntity.id,
         "parentId"  -> fileEntity.parentId,
         "ext"       -> fileEntity.ext,
+        "md5"       -> fileEntity.md5,
         "metaData"  -> FileMetadataBSONWriter.write(fileEntity.metaData),
         "timestamp" -> fileEntity.timestamp
       )

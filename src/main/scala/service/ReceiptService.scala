@@ -17,11 +17,18 @@ import gnieh.diffson.sprayJson._
 
 import scala.util.Try
 import cats.implicits._
+import cats.data.EitherT
 
 object ReceiptService extends JsonProtocols {
 
+  sealed trait Error
+  final case class FileAlreadyExists()                extends Error
+  final case class ReceiptNotFound(receiptId: String) extends Error
+
   type PRG = ReceiptOp :|: FileOp :|: RandomOp :|: EnvOp :|: NilDSL
   val PRG = DSL.Make[PRG]
+
+  type ReceiptApp[A] = Free[PRG.Cop, A]
 
   private def receiptsForQuery(userId: String, query: String): Free[PRG.Cop, Seq[ReceiptEntity]] = {
     for {
@@ -60,12 +67,21 @@ object ReceiptService extends JsonProtocols {
       _               <- SubmitToFileQueue(userId, receiptId, filePath, ext(fileName), pendingFile.id).freek[PRG]
     } yield pendingFile
 
-  def createReceipt(userId: String, parsedForm: ParsedForm): Free[PRG.Cop, ReceiptEntity] =
-    for {
-      receiptId         <- RandomOps.GenerateGuid().freek[PRG]
-      currentTimeMillis <- RandomOps.GetTime().freek[PRG]
-      tags         = parsedForm.fields("tags")
+  def validateExistingFile(haveExisting: Boolean): EitherT[ReceiptApp, Error, Unit] =
+    if (haveExisting)
+      EitherT.left[ReceiptApp, Error, Unit](Free.pure[PRG.Cop, Error](FileAlreadyExists()))
+    else
+      EitherT.right[ReceiptApp, Error, Unit](Free.pure[PRG.Cop, Unit](()))
+
+  def createReceipt(userId: String, parsedForm: ParsedForm): ReceiptApp[Either[Error, ReceiptEntity]] = {
+    val eitherT: EitherT[ReceiptApp, Error, ReceiptEntity] = for {
+      md5                    <- EitherT.right[ReceiptApp, Error, String](FileOps.CalculateMd5(parsedForm.files("receipt").file).freek[PRG])
+      exitingReceiptsForFile <- EitherT.right[ReceiptApp, Error, Seq[ReceiptEntity]](ReceiptOps.FindByMd5(userId, md5).freek[PRG])
+      _                      <- validateExistingFile(exitingReceiptsForFile.nonEmpty)
+      receiptId              <- EitherT.right[ReceiptApp, Error, String](RandomOps.GenerateGuid().freek[PRG])
+      currentTimeMillis      <- EitherT.right[ReceiptApp, Error, Long](RandomOps.GetTime().freek[PRG])
       uploadedFile = parsedForm.files("receipt")
+      tags         = parsedForm.fields("tags")
       receipt = ReceiptEntity(
         id = receiptId,
         userId = userId,
@@ -77,19 +93,35 @@ object ReceiptService extends JsonProtocols {
         tags = if (tags.trim() == "") List() else tags.split(",").toList,
         files = List()
       )
-      _ <- SaveReceipt(receiptId, receipt).freek[PRG]
-      _ <- submitPendingFile(userId, receiptId, uploadedFile.file, uploadedFile.fileInfo.fileName)
+      _ <- EitherT.right[ReceiptApp, Error, ReceiptEntity](SaveReceipt(receiptId, receipt).freek[PRG])
+      _ <- EitherT.right[ReceiptApp, Error, PendingFile](
+        submitPendingFile(userId, receiptId, uploadedFile.file, uploadedFile.fileInfo.fileName))
     } yield receipt
 
-  def addUploadedFileToReceipt(userId: String, receiptId: String, metadata: FileInfo, file: File): Free[PRG.Cop, Option[PendingFile]] =
-    for {
-      receiptOption <- ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]]
-      pendingFileOption <- if (receiptOption.isDefined) {
-        submitPendingFile(userId, receiptId, file: File, metadata.fileName).map(pf => Option(pf))
+    eitherT.value
+  }
+
+  type OptionalReceipt = Option[ReceiptEntity]
+
+  def addUploadedFileToReceipt(userId: String,
+                               receiptId: String,
+                               metadata: FileInfo,
+                               file: File): ReceiptApp[Either[Error, PendingFile]] = {
+    val eitherT: EitherT[ReceiptApp, Error, PendingFile] = for {
+      md5                    <- EitherT.right[ReceiptApp, Error, String](FileOps.CalculateMd5(file).freek[PRG])
+      exitingReceiptsForFile <- EitherT.right[ReceiptApp, Error, Seq[ReceiptEntity]](ReceiptOps.FindByMd5(userId, md5).freek[PRG])
+      _                      <- validateExistingFile(exitingReceiptsForFile.nonEmpty)
+      receiptOption <- EitherT.right[ReceiptApp, Error, OptionalReceipt](
+        ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]])
+      pendingFile <- if (receiptOption.isDefined) {
+        EitherT.right[ReceiptApp, Error, PendingFile](submitPendingFile(userId, receiptId, file, metadata.fileName))
       } else {
-        Free.pure[PRG.Cop, Option[PendingFile]](None)
+        EitherT.left[ReceiptApp, Error, PendingFile](Free.pure[PRG.Cop, Error](ReceiptNotFound(receiptId)))
       }
-    } yield pendingFileOption
+    } yield pendingFile
+
+    eitherT.value
+  }
 
   private val applyPatch: (ReceiptEntity, String) => ReceiptEntity = (receiptEntity, jsonPatch) => {
     val asJson: String =

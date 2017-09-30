@@ -67,10 +67,15 @@ object TestInterpreters {
       case DeleteFile(userId: String, fileId: String)                             => Future.successful(())
       case RemoveFile(_)                                                          => Future.successful(())
       case SourceToFile(source: Source[ByteString, Future[IOResult]], file: File) => Future.successful(file)
+      case CalculateMd5(file: File)                                               => Future.successful("")
     }
   }
 
-  class ReceiptInterpreter(receipts: Seq[ReceiptEntity], ocrs: Seq[OcrTextOnly]) extends (ReceiptOp ~> Future) {
+  class ReceiptInterpreter(
+      receipts: Seq[ReceiptEntity] = List(),
+      ocrs: Seq[OcrTextOnly] = List(),
+      md5Response: Seq[ReceiptEntity] = List()
+  ) extends (ReceiptOp ~> Future) {
 
     def apply[A](i: ReceiptOp[A]): Future[A] = i match {
       case GetReceipt(id: String)                                => Future.successful(receipts.find(_.id == id))
@@ -80,6 +85,7 @@ object TestInterpreters {
       case UserReceipts(userId: String)                          => Future.successful(receipts)
       case FindOcrByText(userId: String, query: String)          => Future.successful(ocrs)
       case AddFileToReceipt(receiptId: String, file: FileEntity) => Future.successful(())
+      case FindByMd5(userId: String, md5: String)                => Future.successful(md5Response)
     }
 
   }

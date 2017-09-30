@@ -28,7 +28,7 @@ class QueueProcessor(queue: Queue, interpreters: Interpreters, system: ActorSyst
     interpreters.randomInterpreter
 
   def reserveNextJob(): Unit = {
-  //  logger.info("Checking for new jobs")
+    //  logger.info("Checking for new jobs")
     queue
       .reserve()
       .map(reservedJobOption => {

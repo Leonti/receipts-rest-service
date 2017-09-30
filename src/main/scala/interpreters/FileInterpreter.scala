@@ -43,5 +43,6 @@ class FileInterpreter(
         .to(FileIO.toPath(file.toPath))
         .run()
         .map(_ => file)
+    case CalculateMd5(file: File) => Future { fileService.md5(file) }
   }
 }

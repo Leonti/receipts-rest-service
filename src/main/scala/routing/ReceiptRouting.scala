@@ -19,7 +19,6 @@ import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
 import interpreters.Interpreters
 import org.slf4j.LoggerFactory
-
 import freek._
 import cats.implicits._
 
@@ -73,6 +72,13 @@ class ReceiptRouting(
     }
   }
 
+  val receiptServiceError: ReceiptService.Error => Route = {
+    case (ReceiptService.FileAlreadyExists()) =>
+      complete(BadRequest -> ErrorResponse("Can't create receipt with the same file"))
+    case (ReceiptService.ReceiptNotFound(receiptId: String)) =>
+      complete(BadRequest -> ErrorResponse(s"Receipt $receiptId doesn't exist"))
+  }
+
   val routes =
     handleRejections(myRejectionHandler) {
       pathPrefix("user" / Segment / "receipt") { userId: String =>
@@ -96,18 +102,16 @@ class ReceiptRouting(
               post {
                 uploadedFile("receipt") {
                   case (metadata: FileInfo, file: File) =>
-                    val pendingFilesFuture: Future[Option[PendingFile]] =
+                    val pendingFilesFuture: Future[Either[ReceiptService.Error, PendingFile]] =
                       ReceiptService.addUploadedFileToReceipt(userId, receiptId, metadata, file).interpret(interpreter)
 
-                    onComplete(pendingFilesFuture) { (result: Try[Option[PendingFile]]) =>
-                      result match {
-                        case Success(maybePendingFile: Option[PendingFile]) =>
-                          maybePendingFile match {
-                            case Some(pendingFile) => complete(Created    -> pendingFile)
-                            case None              => complete(BadRequest -> ErrorResponse(s"Receipt $receiptId doesn't exist"))
-                          }
-                        case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
-                      }
+                    onComplete(pendingFilesFuture) {
+                      case Success(pendingFileEither: Either[ReceiptService.Error, PendingFile]) =>
+                        pendingFileEither match {
+                          case Right(pendingFile: PendingFile) => complete(Created -> pendingFile)
+                          case Left(error)                     => receiptServiceError(error)
+                        }
+                      case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
                     }
                 }
               }
@@ -152,8 +156,12 @@ class ReceiptRouting(
                     .interpret(interpreter)
 
                   onComplete(receiptFuture) {
-                    case Success(receipt: ReceiptEntity) => complete(Created -> receipt)
-                    case Failure(error)                  =>
+                    case Success(receiptEither: Either[ReceiptService.Error, ReceiptEntity]) =>
+                      receiptEither match {
+                        case Right(receipt: ReceiptEntity) => complete(Created -> receipt)
+                        case Left(error)                   => receiptServiceError(error)
+                      }
+                    case Failure(error) =>
                       // do proper logging here
                       val sw = new StringWriter
                       error.printStackTrace(new PrintWriter(sw))

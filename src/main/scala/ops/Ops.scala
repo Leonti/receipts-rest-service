@@ -18,8 +18,6 @@ import model.{FileEntity, PendingFile, ReceiptEntity, User}
 import queue.Models.JobId
 import service.{GoogleTokenInfo, TokenType}
 
-//import scala.concurrent.Future
-
 object ReceiptOps {
   sealed trait ReceiptOp[A]
 
@@ -28,6 +26,7 @@ object ReceiptOps {
   case class SaveReceipt(id: String, receipt: ReceiptEntity)       extends ReceiptOp[ReceiptEntity]
   case class GetReceipts(ids: Seq[String])                         extends ReceiptOp[Seq[ReceiptEntity]]
   case class FindOcrByText(userId: String, query: String)          extends ReceiptOp[Seq[OcrTextOnly]]
+  case class FindByMd5(userId: String, md5: String)                extends ReceiptOp[Seq[ReceiptEntity]]
   case class UserReceipts(userId: String)                          extends ReceiptOp[Seq[ReceiptEntity]]
   case class AddFileToReceipt(receiptId: String, file: FileEntity) extends ReceiptOp[Unit]
 }
@@ -51,6 +50,7 @@ object FileOps {
   case class SourceToFile(source: Source[ByteString, Future[IOResult]], file: File) extends FileOp[File]
   case class DeleteFile(userId: String, fileId: String)                             extends FileOp[Unit]
   case class RemoveFile(file: File)                                                 extends FileOp[Unit]
+  case class CalculateMd5(file: File)                                               extends FileOp[String]
 }
 
 object UserOps {

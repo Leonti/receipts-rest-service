@@ -31,7 +31,7 @@ class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with Scal
 
     override def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]] = {
       val fileId = "1"
-      Future.successful(Seq(toFileEntity(userId, None, fileId, file, ext)))
+      Future.successful(Seq(toFileEntity(userId, None, fileId, file, ext, None)))
     }
 
     override def fetch(userId: String, fileId: String) =
