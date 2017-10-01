@@ -9,6 +9,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.ContentTypes._
+import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.unmarshalling.Unmarshal
@@ -62,6 +63,37 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
           height shouldBe 67
         case _ => fail("Metadata should be of an IMAGE type!")
       }
+    }
+  }
+
+  it should "reject receipt with the same file" in {
+    val username          = "ci_user_" + java.util.UUID.randomUUID()
+    val createUserRequest = CreateUserRequest(username, "password")
+
+    val errorResponseFuture = for {
+      userInfo      <- createUser(createUserRequest)
+      accessToken   <- authenticateUser(userInfo)
+      requestEntity <- createImageFileContent()
+      response <- Http().singleRequest(
+        HttpRequest(
+          method = HttpMethods.POST,
+          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          entity = requestEntity,
+          headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
+        ))
+      firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
+      _                  <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.accessToken)
+      errorResponse <- Http().singleRequest(
+        HttpRequest(
+          method = HttpMethods.POST,
+          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          entity = requestEntity,
+          headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
+        ))
+    } yield errorResponse
+
+    whenReady(errorResponseFuture) { errorResponse =>
+      errorResponse.status shouldBe BadRequest
     }
   }
 
