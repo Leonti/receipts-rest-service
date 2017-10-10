@@ -134,8 +134,9 @@ object ReceiptService extends JsonProtocols {
     for {
       receiptOption <- ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]]
       patchedReceipt = receiptOption.map(r => applyPatch(r, jsonPatch))
+      currentTime <- GetTime().freek[PRG]
       _ <- if (patchedReceipt.isDefined) {
-        SaveReceipt(receiptId, patchedReceipt.get).freek[PRG]
+        SaveReceipt(receiptId, patchedReceipt.get.copy(lastModified = currentTime)).freek[PRG]
       } else {
         Free.pure[PRG.Cop, Unit](())
       }
