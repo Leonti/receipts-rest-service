@@ -12,12 +12,13 @@ export USE_OCR_STUB=true
 
 docker-compose down
 docker-compose run test
+docker-compose run assembly
 docker-compose build app
 docker-compose run integration-tests
 docker-compose push app
 
-git tag -a v$version -m 'new version $version'
+#git tag -a v$version -m 'new version $version'
 
-git push --quiet "https://${TAG_TOKEN}@github.com/Leonti/receipts-rest-service" HEAD:master --follow-tags > /dev/null 2>&1
+#git push --quiet "https://${TAG_TOKEN}@github.com/Leonti/receipts-rest-service" HEAD:master --follow-tags > /dev/null 2>&1
 
 echo "Released version $version"
