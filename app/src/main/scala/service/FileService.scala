@@ -3,7 +3,7 @@ package service
 import java.io.File
 import java.util.concurrent.Executors
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Scheduler}
 import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.{Source, _}
 import akka.util.ByteString
@@ -14,7 +14,7 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
 import model.{FileEntity, ImageMetadata}
 import org.slf4j.LoggerFactory
-import java.security.{MessageDigest, DigestInputStream}
+import java.security.{DigestInputStream, MessageDigest}
 import java.io.{File, FileInputStream}
 
 import scala.concurrent.duration._
@@ -71,13 +71,20 @@ class S3FileService(config: Config,
   implicit val irs               = imageResizingService
   implicit val ec                = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
-  val credentials    = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
-  val amazonS3Client = new AmazonS3Client(credentials)
+  lazy val amazonS3Client: AmazonS3Client = {
+    val credentials    = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
+    val s3Client = new AmazonS3Client(credentials)
+    val customS3Endpoint = config.getString("s3.customEndpoint")
+    if (customS3Endpoint.length > 0) {
+      s3Client.setEndpoint(customS3Endpoint)
+    }
+    s3Client
+  }
 
   override def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]] = {
     val fileId = java.util.UUID.randomUUID.toString
 
-    implicit val scheduler = system.scheduler
+    implicit val scheduler: Scheduler = system.scheduler
     val retryIntervals     = Seq(1.seconds, 10.seconds, 30.seconds)
 
     logger.info(s"Uploading file ${file.getAbsolutePath}")

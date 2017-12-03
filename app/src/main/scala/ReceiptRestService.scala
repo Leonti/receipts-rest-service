@@ -140,9 +140,10 @@ object ReceiptRestService extends App with Service {
   val ocrRepository     = new OcrRepository()
 
   val ocrService =
-    if (config.getBoolean("useOcrStub"))
+    if (config.getBoolean("useOcrStub")) {
+      println("Using OCR stub")
       new OcrServiceStub()
-    else
+    } else
       new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
 
   val interpreters = Interpreters(

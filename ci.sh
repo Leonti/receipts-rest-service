@@ -3,13 +3,16 @@ set -e
 
 version=$(date +"%y.%m.%d.%H.%M")
 
-cp Dockerfile target/scala-2.12/Dockerfile
 docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-docker build -t leonti/receipts-rest-service:$version target/scala-2.12/
-docker push leonti/receipts-rest-service
+
+docker-compose down
+docker-compose run tests
+VERSION=$version docker-compose build app
+docker-compose run integration-tests
+docker-compose push app
+
 git tag -a v$version -m 'new version $version'
 
 git push --quiet "https://${TAG_TOKEN}@github.com/Leonti/receipts-rest-service" HEAD:master --follow-tags > /dev/null 2>&1
-
 
 echo "Released version $version"

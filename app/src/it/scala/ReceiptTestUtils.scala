@@ -9,6 +9,7 @@ import akka.http.scaladsl.model.{ContentTypes, _}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
+import TestConfig._
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -33,7 +34,7 @@ package object ReceiptTestUtils extends JsonProtocols {
       for {
         userPendingFilesResponse <- Http().singleRequest(
           HttpRequest(method = HttpMethods.GET,
-                      uri = s"http://localhost:9000/user/$userId/pending-file",
+                      uri = s"$appHostPort/user/$userId/pending-file",
                       headers = List(Authorization(OAuth2BearerToken(accessToken)))))
         userPendingFiles <- Unmarshal(userPendingFilesResponse.entity).to[List[PendingFile]]
       } yield userPendingFiles
@@ -43,7 +44,7 @@ package object ReceiptTestUtils extends JsonProtocols {
       for {
         response <- Http().singleRequest(
           HttpRequest(method = HttpMethods.GET,
-                      uri = s"http://localhost:9000/user/$userId/receipt/$receiptId",
+                      uri = s"$appHostPort/user/$userId/receipt/$receiptId",
                       headers = List(Authorization(OAuth2BearerToken(accessToken)))))
         receipt <- Unmarshal(response.entity).to[ReceiptEntity]
       } yield receipt
