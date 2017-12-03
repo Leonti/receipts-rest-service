@@ -28,5 +28,5 @@ ensime.sbt
 
 curl
 run.sh
-src/main/scala/OcrOld.scala
-src/main/scala/OcrTest.scala
+app/src/main/scala/OcrOld.scala
+app/src/main/scala/OcrTest.scala

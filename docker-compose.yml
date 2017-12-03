@@ -1,0 +1,67 @@
+version: '2'
+
+services:
+
+  app:
+    image: leonti/receipts-rest-service:${VERSION}
+    build:
+      context: /tmp/receipts-target
+    volumes:
+      - /tmp/receipt-uploads:/tmp/receipt-uploads
+    ports:
+      - "9000:9000"
+    environment:
+      - MONGODB_DB
+      - MONGODB_USER
+      - MONGODB_PASSWORD
+      - MONGODB_SERVER
+      - S3_BUCKET
+      - S3_ACCESS_KEY
+      - S3_SECRET_ACCESS_KEY
+      - S3_CUSTOM_ENDPOINT
+      - GOOGLE_CLIENT_ID
+      - UPLOADS_FOLDER
+      - AUTH_TOKEN_SECRET
+      - GOOGLE_API_CREDENTIALS
+      - USE_OCR_STUB
+
+  assembly:
+    image: kperson/alpine-java-8:latest
+    working_dir: /app
+    volumes:
+      - ./app/src:/app/src
+      - ./app/project:/app/project
+      - ./app/build.sbt:/app/build.sbt
+      - /tmp/receipts-target:/app/target
+      - ./app/Dockerfile:/app/Dockerfile
+      - $HOME/.ivy2:/root/.ivy2
+      - $HOME/.sbt:/root/.sbt
+    command: bash -c "sbt assembly && cp Dockerfile /app/target && cp /app/target/scala-2.12/receipts-rest-service-assembly-1.0.jar /app/target/receipts.jar"
+
+  test:
+    image: kperson/alpine-java-8:latest
+    working_dir: /app
+    volumes:
+      - ./app/src:/app/src
+      - ./app/project:/app/project
+      - ./app/build.sbt:/app/build.sbt
+      - /tmp/receipts-target:/app/target
+      - $HOME/.ivy2:/root/.ivy2
+      - $HOME/.sbt:/root/.sbt
+    command: sbt test
+
+  integration-tests:
+    image: kperson/alpine-java-8:latest
+    environment:
+      - APP_HOST_PORT=http://app:9000
+    depends_on:
+      - app
+    working_dir: /app
+    volumes:
+      - ./app/src:/app/src
+      - ./app/project:/app/project
+      - ./app/build.sbt:/app/build.sbt
+      - /tmp/receipts-target:/app/target
+      - $HOME/.ivy2:/root/.ivy2
+      - $HOME/.sbt:/root/.sbt
+    command: sbt it:test

@@ -5,6 +5,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import scala.concurrent.ExecutionContext.Implicits.global
 import UserTestUtils._
 import ReceiptTestUtils._
+import TestConfig._
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
@@ -34,7 +35,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
@@ -77,7 +78,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
@@ -86,7 +87,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       errorResponse <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
@@ -108,12 +109,12 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
       receiptsResponse <- Http().singleRequest(
-        HttpRequest(uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+        HttpRequest(uri = s"$appHostPort/user/${userInfo.id}/receipt",
                     headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
       receipts <- Unmarshal(receiptsResponse.entity).to[List[ReceiptEntity]]
     } yield receipts
@@ -134,17 +135,17 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
       firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
       _                  <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.accessToken)
       receiptsResponse <- Http().singleRequest(
-        HttpRequest(uri = s"http://localhost:9000/user/${userInfo.id}/receipt?q=ocr",
+        HttpRequest(uri = s"$appHostPort/user/${userInfo.id}/receipt?q=ocr",
                     headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
       receiptsNoResultsResponse <- Http().singleRequest(
-        HttpRequest(uri = s"http://localhost:9000/user/${userInfo.id}/receipt?q=some_random_stuff",
+        HttpRequest(uri = s"$appHostPort/user/${userInfo.id}/receipt?q=some_random_stuff",
                     headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
       receipts          <- Unmarshal(receiptsResponse.entity).to[List[ReceiptEntity]]
       receiptsNoResults <- Unmarshal(receiptsNoResultsResponse.entity).to[List[ReceiptEntity]]
@@ -168,7 +169,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = firstFileEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
@@ -178,7 +179,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       addFilePendingFile <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt/${receiptEntity.id}/file",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt/${receiptEntity.id}/file",
           entity = secondFileEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
@@ -202,7 +203,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = firstFileEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
@@ -219,7 +220,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
         Http().singleRequest(
           HttpRequest(
             method = HttpMethods.PATCH,
-            uri = s"http://localhost:9000/user/${userInfo.id}/receipt/${receiptEntity.id}",
+            uri = s"$appHostPort/user/${userInfo.id}/receipt/${receiptEntity.id}",
             entity = HttpEntity(`application/json`, patch),
             headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
           ))
@@ -228,7 +229,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       secondResponse <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.GET,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt/${receiptEntity.id}",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt/${receiptEntity.id}",
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
       updatedReceipt <- Unmarshal(secondResponse.entity).to[ReceiptEntity]
@@ -250,7 +251,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
@@ -259,7 +260,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       fileResponse <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.GET,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt/${receiptEntity.id}/file/${receiptEntity.files(0).id}",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt/${receiptEntity.id}/file/${receiptEntity.files(0).id}",
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
       file <- Unmarshal(fileResponse.entity).to[String]
@@ -281,24 +282,24 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
       initialReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
       receiptEntity        <- getProcessedReceipt(userInfo.id, initialReceiptEntity.id, accessToken.accessToken)
       receiptsBeforeDeleteResponse <- Http().singleRequest(
-        HttpRequest(uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+        HttpRequest(uri = s"$appHostPort/user/${userInfo.id}/receipt",
                     headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
       receiptsBeforeDelete <- Unmarshal(receiptsBeforeDeleteResponse.entity).to[List[ReceiptEntity]]
       _ <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.DELETE,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt/${receiptEntity.id}",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt/${receiptEntity.id}",
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
       receiptsResponse <- Http().singleRequest(
-        HttpRequest(uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+        HttpRequest(uri = s"$appHostPort/user/${userInfo.id}/receipt",
                     headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
       receipts <- Unmarshal(receiptsResponse.entity).to[List[ReceiptEntity]]
     } yield (receiptsBeforeDelete, receipts)

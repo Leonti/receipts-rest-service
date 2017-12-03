@@ -1,14 +1,5 @@
 language: scala
-jdk: oraclejdk8
 sudo: false
-
-addons:
-  apt:
-    packages:
-      - imagemagick
-
-scala:
-   - 2.12.1
 
 services:
   - docker
@@ -27,4 +18,4 @@ before_cache:
   - find $HOME/.ivy2/cache -name "ivydata-*.properties" -print -delete
   - find $HOME/.sbt        -name "*.lock"               -print -delete
 
-script: sbt test && sbt integrate && sbt assembly && bash publish.sh
+script: bash ci.sh

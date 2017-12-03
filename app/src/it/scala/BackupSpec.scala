@@ -3,6 +3,7 @@ import java.util.zip.{ZipEntry, ZipInputStream}
 
 import ReceiptTestUtils._
 import UserTestUtils._
+import TestConfig._
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
@@ -38,7 +39,7 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProto
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"http://localhost:9000/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
@@ -47,13 +48,13 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProto
       backupToken <- Http()
         .singleRequest(HttpRequest(
           method = HttpMethods.GET,
-          uri = s"http://localhost:9000/user/${userInfo.id}/backup/token",
+          uri = s"$appHostPort/user/${userInfo.id}/backup/token",
           headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
         ))
         .flatMap(response => Unmarshal(response.entity).to[OAuth2AccessTokenResponse])
       backupResponse: HttpResponse <- Http().singleRequest(
         HttpRequest(method = HttpMethods.GET,
-                    uri = s"http://localhost:9000/user/${userInfo.id}/backup/download?access_token=${backupToken.accessToken}",
+                    uri = s"$appHostPort/user/${userInfo.id}/backup/download?access_token=${backupToken.accessToken}",
                     entity = requestEntity))
       backupBytes <- responseToBytes(backupResponse)
       zipEntries  <- Future.successful(toZipEntries(backupBytes))
@@ -62,7 +63,7 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProto
     whenReady(zipEntriesFuture) { (zipEntries: List[ZipEntry]) =>
       zipEntries.length shouldBe 2
     }
-
+    
   }
 
   def responseToBytes(httpResponse: HttpResponse): Future[Array[Byte]] = {

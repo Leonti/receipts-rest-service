@@ -39,12 +39,11 @@ val logging = Seq(
   "com.typesafe.akka"          %% "akka-slf4j"              % akkaV
 )
 
-val EndToEndTest = config("e2e") extend (Test)
-val e2eSettings =
-  inConfig(EndToEndTest)(Defaults.testSettings) ++
-    Seq(fork in EndToEndTest := false,
-        parallelExecution in EndToEndTest := false,
-        scalaSource in EndToEndTest := baseDirectory.value / "src/e2e/scala")
+lazy val root = (project in file("."))
+  .configs(IntegrationTest)
+  .settings(
+    Defaults.itSettings
+  )
 
 libraryDependencies ++= {
   Seq(
@@ -91,22 +90,7 @@ resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositor
 
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
 
-//val userHome = System.getProperty("user.home")
-//javaOptions +=  s"-Dconfig.file=${userHome}/.receipts-rest-service/service.conf"
 
-Revolver.settings
+//Revolver.settings
 
-lazy val integrate = taskKey[Unit]("Starts REST API server and runs integration tests")
-
-lazy val preIntegrationTests = taskKey[Unit]("Starts REST API server and runs integration tests")
-
-preIntegrationTests := {
-  val cp: Seq[File] = (fullClasspath in IntegrationTest).value.files
-  AppRunnerRemoteControl.setClassPath(cp)
-  AppRunnerRemoteControl.setLog(streams.value.log)
-}
-
-integrate := {
-  preIntegrationTests.value
-  (test in IntegrationTest).value
-}
+mainClass in assembly := Some("ReceiptRestService")

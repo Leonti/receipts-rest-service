@@ -1,12 +1,10 @@
-FROM java:8
+FROM kperson/alpine-java-8:latest
 
-RUN apt-get update && apt-get install -yq imagemagick
+RUN apk update && apk add imagemagick
 
-COPY receipts-rest-service-assembly-1.0.jar /root/receipts-rest-service-assembly.jar
+WORKDIR /app
 
-WORKDIR /root
-
-EXPOSE  9000
+COPY receipts.jar /app
 
 CMD java -jar \
     -Dmongodb.db=$MONGODB_DB \
@@ -16,8 +14,10 @@ CMD java -jar \
     -Ds3.bucket=$S3_BUCKET \
     -Ds3.accessKey=$S3_ACCESS_KEY \
     -Ds3.secretAccessKey=$S3_SECRET_ACCESS_KEY \
+    -Ds3.customEndpoint=$S3_CUSTOM_ENDPOINT \
     -DgoogleClientId=$GOOGLE_CLIENT_ID \
     -DuploadsFolder=$UPLOADS_FOLDER \
     -DtokenSecret=$AUTH_TOKEN_SECRET \
     -DgoogleApiCredentials=$GOOGLE_API_CREDENTIALS \
-     /root/receipts-rest-service-assembly.jar
+    -DuseOcrStub=$USE_OCR_STUB \
+     receipts.jar

@@ -8,6 +8,7 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import de.choffmeister.auth.common.OAuth2AccessTokenResponse
 import model.{CreateUserRequest, JsonProtocols, UserInfo}
+import TestConfig._
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -21,7 +22,7 @@ package object UserTestUtils extends JsonProtocols {
     for {
       request <- Marshal(createUserRequest).to[RequestEntity]
       response <- Http().singleRequest(
-        HttpRequest(method = HttpMethods.POST, uri = s"http://localhost:9000/user/create", entity = request))
+        HttpRequest(method = HttpMethods.POST, uri = s"$appHostPort/user/create", entity = request))
       userInfo <- Unmarshal(response.entity).to[UserInfo]
     } yield userInfo
   }
@@ -29,7 +30,7 @@ package object UserTestUtils extends JsonProtocols {
   def authenticateUser(userInfo: UserInfo): Future[OAuth2AccessTokenResponse] = {
     for {
       response <- Http().singleRequest(
-        HttpRequest(uri = s"http://localhost:9000/token/create",
+        HttpRequest(uri = s"$appHostPort/token/create",
                     headers = List(Authorization(BasicHttpCredentials(userInfo.userName, "password")))))
       accessToken <- Unmarshal(response.entity).to[OAuth2AccessTokenResponse]
     } yield accessToken

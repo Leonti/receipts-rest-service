@@ -9,6 +9,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import UserTestUtils._
+import TestConfig._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import org.scalatest.time.{Millis, Seconds, Span}
 
@@ -44,7 +45,7 @@ class UserSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtoco
       userInfo    <- createUser(createUserRequest)
       accessToken <- authenticateUser(userInfo)
       response <- Http().singleRequest(
-        HttpRequest(uri = s"http://localhost:9000/token/renew",
+        HttpRequest(uri = s"$appHostPort/token/renew",
                     headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
       renewedToken <- Unmarshal(response.entity).to[OAuth2AccessTokenResponse]
     } yield renewedToken
@@ -62,7 +63,7 @@ class UserSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtoco
       userInfo    <- createUser(createUserRequest)
       accessToken <- authenticateUser(userInfo)
       response <- Http().singleRequest(
-        HttpRequest(uri = s"http://localhost:9000/user/info", headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+        HttpRequest(uri = s"$appHostPort/user/info", headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
       userInfo <- Unmarshal(response.entity).to[UserInfo]
     } yield userInfo
 
