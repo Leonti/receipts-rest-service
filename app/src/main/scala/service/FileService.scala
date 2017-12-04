@@ -72,8 +72,8 @@ class S3FileService(config: Config,
   implicit val ec                = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
   lazy val amazonS3Client: AmazonS3Client = {
-    val credentials    = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
-    val s3Client = new AmazonS3Client(credentials)
+    val credentials      = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
+    val s3Client         = new AmazonS3Client(credentials)
     val customS3Endpoint = config.getString("s3.customEndpoint")
     if (customS3Endpoint.length > 0) {
       s3Client.setEndpoint(customS3Endpoint)
@@ -85,7 +85,7 @@ class S3FileService(config: Config,
     val fileId = java.util.UUID.randomUUID.toString
 
     implicit val scheduler: Scheduler = system.scheduler
-    val retryIntervals     = Seq(1.seconds, 10.seconds, 30.seconds)
+    val retryIntervals                = Seq(1.seconds, 10.seconds, 30.seconds)
 
     logger.info(s"Uploading file ${file.getAbsolutePath}")
     val uploadResult = retry(upload(userId, fileId, file), retryIntervals)

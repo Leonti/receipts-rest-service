@@ -1,9 +1,9 @@
-enablePlugins(JavaAppPackaging)
+//enablePlugins(JavaAppPackaging)
 
 name := "receipts-rest-service"
 organization := "rocks.leonti"
 version := "1.0"
-scalaVersion := "2.12.1"
+scalaVersion := "2.12.4"
 test in assembly := {}
 
 scalacOptions := Seq("-unchecked",
@@ -89,7 +89,6 @@ resolvers += Resolver.bintrayRepo("leonti", "maven")
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
-
 
 //Revolver.settings
 

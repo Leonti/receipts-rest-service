@@ -41,16 +41,15 @@ object OcrOps {
 object FileOps {
   sealed trait FileOp[A]
 
-  case class SubmitPendingFile(pendingFile: PendingFile) extends FileOp[PendingFile]
-  case class SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String)
-      extends FileOp[JobId]
-  case class MoveFile(src: File, dst: File)                                         extends FileOp[Unit]
-  case class SaveFile(userId: String, file: File, ext: String)                      extends FileOp[Seq[FileEntity]]
-  case class FetchFile(userId: String, fileId: String)                              extends FileOp[Source[ByteString, Future[IOResult]]]
-  case class SourceToFile(source: Source[ByteString, Future[IOResult]], file: File) extends FileOp[File]
-  case class DeleteFile(userId: String, fileId: String)                             extends FileOp[Unit]
-  case class RemoveFile(file: File)                                                 extends FileOp[Unit]
-  case class CalculateMd5(file: File)                                               extends FileOp[String]
+  case class SubmitPendingFile(pendingFile: PendingFile)                                                              extends FileOp[PendingFile]
+  case class SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String) extends FileOp[JobId]
+  case class MoveFile(src: File, dst: File)                                                                           extends FileOp[Unit]
+  case class SaveFile(userId: String, file: File, ext: String)                                                        extends FileOp[Seq[FileEntity]]
+  case class FetchFile(userId: String, fileId: String)                                                                extends FileOp[Source[ByteString, Future[IOResult]]]
+  case class SourceToFile(source: Source[ByteString, Future[IOResult]], file: File)                                   extends FileOp[File]
+  case class DeleteFile(userId: String, fileId: String)                                                               extends FileOp[Unit]
+  case class RemoveFile(file: File)                                                                                   extends FileOp[Unit]
+  case class CalculateMd5(file: File)                                                                                 extends FileOp[String]
 }
 
 object UserOps {

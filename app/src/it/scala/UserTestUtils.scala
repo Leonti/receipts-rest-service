@@ -20,9 +20,8 @@ package object UserTestUtils extends JsonProtocols {
 
   def createUser(createUserRequest: CreateUserRequest): Future[UserInfo] = {
     for {
-      request <- Marshal(createUserRequest).to[RequestEntity]
-      response <- Http().singleRequest(
-        HttpRequest(method = HttpMethods.POST, uri = s"$appHostPort/user/create", entity = request))
+      request  <- Marshal(createUserRequest).to[RequestEntity]
+      response <- Http().singleRequest(HttpRequest(method = HttpMethods.POST, uri = s"$appHostPort/user/create", entity = request))
       userInfo <- Unmarshal(response.entity).to[UserInfo]
     } yield userInfo
   }

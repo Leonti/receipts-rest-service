@@ -46,11 +46,12 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProto
       firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
       receiptEntity      <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.accessToken)
       backupToken <- Http()
-        .singleRequest(HttpRequest(
-          method = HttpMethods.GET,
-          uri = s"$appHostPort/user/${userInfo.id}/backup/token",
-          headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
-        ))
+        .singleRequest(
+          HttpRequest(
+            method = HttpMethods.GET,
+            uri = s"$appHostPort/user/${userInfo.id}/backup/token",
+            headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
+          ))
         .flatMap(response => Unmarshal(response.entity).to[OAuth2AccessTokenResponse])
       backupResponse: HttpResponse <- Http().singleRequest(
         HttpRequest(method = HttpMethods.GET,
@@ -63,7 +64,7 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProto
     whenReady(zipEntriesFuture) { (zipEntries: List[ZipEntry]) =>
       zipEntries.length shouldBe 2
     }
-    
+
   }
 
   def responseToBytes(httpResponse: HttpResponse): Future[Array[Byte]] = {

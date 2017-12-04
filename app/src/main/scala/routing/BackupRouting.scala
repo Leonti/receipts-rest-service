@@ -16,10 +16,10 @@ import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.ExecutionContextExecutor
 
-class BackupRouting(
-    authenticaton: AuthenticationDirective[User],
-    authorizePath: PathAuthorizationDirective,
-    backupService: BackupService)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
+class BackupRouting(authenticaton: AuthenticationDirective[User], authorizePath: PathAuthorizationDirective, backupService: BackupService)(
+    implicit system: ActorSystem,
+    executor: ExecutionContextExecutor,
+    materializer: ActorMaterializer)
     extends JsonProtocols {
 
   private val config                         = ConfigFactory.load()

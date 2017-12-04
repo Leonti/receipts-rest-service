@@ -19,8 +19,9 @@ import cats.implicits._
 
 case class GoogleToken(token: String)
 
-class OauthRouting(
-    interpreters: Interpreters)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
+class OauthRouting(interpreters: Interpreters)(implicit system: ActorSystem,
+                                               executor: ExecutionContextExecutor,
+                                               materializer: ActorMaterializer)
     extends JsonProtocols {
 
   private implicit val googleTokenFormat = jsonFormat1(GoogleToken)

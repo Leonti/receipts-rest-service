@@ -45,8 +45,7 @@ class UserSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtoco
       userInfo    <- createUser(createUserRequest)
       accessToken <- authenticateUser(userInfo)
       response <- Http().singleRequest(
-        HttpRequest(uri = s"$appHostPort/token/renew",
-                    headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
+        HttpRequest(uri = s"$appHostPort/token/renew", headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))))
       renewedToken <- Unmarshal(response.entity).to[OAuth2AccessTokenResponse]
     } yield renewedToken
 
