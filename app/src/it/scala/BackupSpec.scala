@@ -24,7 +24,7 @@ import scala.concurrent.Future
 
 class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtocols {
   implicit val defaultPatience =
-    PatienceConfig(timeout = Span(30, Seconds), interval = Span(500, Millis))
+    PatienceConfig(timeout = Span(60, Seconds), interval = Span(500, Millis))
   implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
