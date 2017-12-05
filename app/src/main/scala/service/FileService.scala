@@ -2,20 +2,20 @@ package service
 
 import java.io.File
 import java.util.concurrent.Executors
-
+import java.security.{DigestInputStream, MessageDigest}
+import java.io.{File, FileInputStream}
 import akka.actor.{ActorSystem, Scheduler}
 import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.{Source, _}
 import akka.util.ByteString
-import com.amazonaws.auth.BasicAWSCredentials
-import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
+import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.{PutObjectRequest, PutObjectResult}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
 import model.{FileEntity, ImageMetadata}
 import org.slf4j.LoggerFactory
-import java.security.{DigestInputStream, MessageDigest}
-import java.io.{File, FileInputStream}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -71,14 +71,17 @@ class S3FileService(config: Config,
   implicit val irs               = imageResizingService
   implicit val ec                = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
-  lazy val amazonS3Client: AmazonS3Client = {
+  lazy val amazonS3Client = {
     val credentials      = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
-    val s3Client         = new AmazonS3Client(credentials)
+
+    val amazonS3ClientBuilder = AmazonS3ClientBuilder.standard()
+      .withCredentials(new AWSStaticCredentialsProvider(credentials))
     val customS3Endpoint = config.getString("s3.customEndpoint")
     if (customS3Endpoint.length > 0) {
-      s3Client.setEndpoint(customS3Endpoint)
+      amazonS3ClientBuilder.withEndpointConfiguration(new EndpointConfiguration(customS3Endpoint, "us-west-1")).build()
+    } else {
+      amazonS3ClientBuilder.build()
     }
-    s3Client
   }
 
   override def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]] = {

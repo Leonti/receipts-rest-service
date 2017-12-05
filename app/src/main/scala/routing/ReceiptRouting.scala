@@ -79,6 +79,9 @@ class ReceiptRouting(
       complete(BadRequest -> ErrorResponse(s"Receipt $receiptId doesn't exist"))
   }
 
+  val toTempFile : FileInfo => File = fileInfo =>
+    File.createTempFile(fileInfo.fileName, ".tmp")
+
   val routes =
     handleRejections(myRejectionHandler) {
       pathPrefix("user" / Segment / "receipt") { userId: String =>
@@ -100,7 +103,7 @@ class ReceiptRouting(
             } ~
             path(Segment / "file") { receiptId: String =>
               post {
-                uploadedFile("receipt") {
+                storeUploadedFile("receipt", toTempFile) {
                   case (metadata: FileInfo, file: File) =>
                     val pendingFilesFuture: Future[Either[ReceiptService.Error, PendingFile]] =
                       ReceiptService.addUploadedFileToReceipt(userId, receiptId, metadata, file).interpret(interpreter)

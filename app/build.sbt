@@ -17,11 +17,11 @@ scalacOptions := Seq("-unchecked",
 
 addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersion.binary)
 
-val akkaV           = "2.4.17"
-val akkaHttpV       = "10.0.5"
-val amazonS3V       = "1.10.68"
-val scalaTestV      = "3.0.1"
-val reactiveMongoV  = "0.12.1"
+val akkaV           = "2.4.20"
+val akkaHttpV       = "10.0.11"
+val amazonS3V       = "1.11.241"
+val scalaTestV      = "3.0.4"
+val reactiveMongoV  = "0.12.6"
 val jwtAuthV        = "0.3.0-1-g71ae99b"
 val visionApiV      = "v1-rev346-1.22.0"
 val googleApiClient = "1.22.0"
@@ -70,8 +70,8 @@ libraryDependencies ++= {
       ExclusionRule(organization = "io.spray")
     ),
     "org.gnieh"     %% "diffson-spray-json" % diffsonV,
-    "org.scalatest" %% "scalatest"          % scalaTestV % "it,test",
-    "org.mockito"   % "mockito-all"         % "1.10.19" % "test"
+    "org.scalatest" %% "scalatest"          % scalaTestV % "it,test"//,
+//    "org.mockito"   % "mockito-all"         % "1.10.19" % "test"
   )
 }
 
@@ -89,6 +89,7 @@ resolvers += Resolver.bintrayRepo("leonti", "maven")
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
+
 
 //Revolver.settings
 
