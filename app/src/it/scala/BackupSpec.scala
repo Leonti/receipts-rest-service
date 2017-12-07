@@ -21,7 +21,6 @@ import akka.util.ByteString
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
 
 class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtocols {
   implicit val defaultPatience =
