@@ -6,8 +6,8 @@ export VERSION=$version
 
 docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 
-mkdir /tmp/receipts-target
-mkdir /tmp/receipts-target-tests
+mkdir -p /tmp/receipts-target
+mkdir -p /tmp/receipts-target-tests
 
 export AUTH_TOKEN_SECRET="anything"
 export USE_OCR_STUB=true
