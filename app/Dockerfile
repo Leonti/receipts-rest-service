@@ -1,4 +1,4 @@
-FROM kperson/alpine-java-8:latest
+FROM leonti/sbt_1.0.4_openjdk8-alpine3.7:1.0
 
 RUN apk update && apk add imagemagick
 
