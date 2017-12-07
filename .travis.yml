@@ -12,6 +12,8 @@ cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt
+    - /tmp/receipts-target
+    - /tmp/receipts-target-tests
 
 before_cache:
   # Cleanup the cached directories to avoid unnecessary cache updates

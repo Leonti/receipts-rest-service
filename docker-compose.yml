@@ -26,7 +26,7 @@ services:
       - USE_OCR_STUB
 
   assembly:
-    image: kperson/alpine-java-8:latest
+    image: leonti/sbt_1.0.4_openjdk8-alpine3.7:1.0
     working_dir: /app
     volumes:
       - ./app/src:/app/src
@@ -39,21 +39,24 @@ services:
     command: bash -c "sbt assembly && cp Dockerfile /app/target && cp /app/target/scala-2.12/receipts-rest-service-assembly-1.0.jar /app/target/receipts.jar"
 
   test:
-    image: kperson/alpine-java-8:latest
+    image: leonti/sbt_1.0.4_openjdk8-alpine3.7:1.0
     working_dir: /app
     volumes:
       - ./app/src:/app/src
       - ./app/project:/app/project
       - ./app/build.sbt:/app/build.sbt
-      - /tmp/receipts-target:/app/target
+      - /tmp/receipts-target-tests:/app/target
       - $HOME/.ivy2:/root/.ivy2
       - $HOME/.sbt:/root/.sbt
     command: sbt test
 
   integration-tests:
-    image: kperson/alpine-java-8:latest
+    image: leonti/sbt_1.0.4_openjdk8-alpine3.7:1.0
     environment:
       - APP_HOST_PORT=http://app:9000
+      - WAIT_EXPRESSION=[ $$(curl --write-out %{http_code} --silent --output /dev/null "$$APP_HOST_PORT/config") = 200 ]
+      - WAIT_SLEEP=2
+      - WAIT_LOOPS=60
     depends_on:
       - app
     working_dir: /app
@@ -61,7 +64,7 @@ services:
       - ./app/src:/app/src
       - ./app/project:/app/project
       - ./app/build.sbt:/app/build.sbt
-      - /tmp/receipts-target:/app/target
+      - /tmp/receipts-target-tests:/app/target
       - $HOME/.ivy2:/root/.ivy2
       - $HOME/.sbt:/root/.sbt
     command: sbt it:test
