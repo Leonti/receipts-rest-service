@@ -6,6 +6,8 @@ export VERSION=$version
 
 docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 
+rm -rf /tmp/receipts-target
+rm -rf /tmp/receipts-target-tests
 mkdir -p /tmp/receipts-target
 mkdir -p /tmp/receipts-target-tests
 
@@ -27,6 +29,7 @@ docker-compose run integration-tests
 if [ $? -ne 0 ]
 then
   echo "Integrtion tests failed"
+  docker-compose logs app
   exit 1
 fi
 set -e
