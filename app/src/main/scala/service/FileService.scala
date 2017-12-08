@@ -11,7 +11,6 @@ import akka.stream.scaladsl.{Source, _}
 import akka.util.ByteString
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
-import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.{PutObjectRequest, PutObjectResult}
 import com.typesafe.config.Config
