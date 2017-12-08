@@ -19,6 +19,7 @@ services:
       - S3_ACCESS_KEY
       - S3_SECRET_ACCESS_KEY
       - S3_CUSTOM_ENDPOINT
+      - S3_REGION
       - GOOGLE_CLIENT_ID
       - UPLOADS_FOLDER
       - AUTH_TOKEN_SECRET
