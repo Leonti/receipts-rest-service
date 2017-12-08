@@ -13,6 +13,7 @@ CMD java -jar \
     -Dmongodb.servers.0=$MONGODB_SERVER \
     -Ds3.bucket=$S3_BUCKET \
     -Ds3.accessKey=$S3_ACCESS_KEY \
+    -Ds3.region=$S3_REGION \
     -Ds3.secretAccessKey=$S3_SECRET_ACCESS_KEY \
     -Ds3.customEndpoint=$S3_CUSTOM_ENDPOINT \
     -DgoogleClientId=$GOOGLE_CLIENT_ID \

@@ -80,9 +80,9 @@ class S3FileService(config: Config,
       .withCredentials(new AWSStaticCredentialsProvider(credentials))
     val customS3Endpoint = config.getString("s3.customEndpoint")
     if (customS3Endpoint.length > 0) {
-      amazonS3ClientBuilder.withEndpointConfiguration(new EndpointConfiguration(customS3Endpoint, "us-west-1")).build()
+      amazonS3ClientBuilder.withEndpointConfiguration(new EndpointConfiguration(customS3Endpoint, config.getString("s3.region"))).build()
     } else {
-      amazonS3ClientBuilder.withRegion(Regions.AP_SOUTHEAST_2).build()
+      amazonS3ClientBuilder.withRegion(config.getString("s3.region")).build()
     }
   }
 
