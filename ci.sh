@@ -13,19 +13,25 @@ export AUTH_TOKEN_SECRET="anything"
 export USE_OCR_STUB=true
 
 docker-compose down
+
+echo "==== Unit tests ===="
 docker-compose run test
+echo "==== Assembly ===="
 docker-compose run assembly
+echo "==== Build docker image ===="
 docker-compose build app
-docker-compose run integration-tests | true
 
-retn=${PIPESTATUS[0]}
-if (( $retn != 0 ))
+echo "==== Integration tests ===="
+set +e
+docker-compose run integration-tests
+if [ $? -ne 0 ]
 then
-    echo "Integration tests failed with return code $retn"
-    docker-compose logs app
-    exit 1
+  echo "Integrtion tests failed"
+  exit 1
 fi
+set -e
 
+echo "==== Push docker image to repository ===="
 docker-compose push app
 
 git tag -a v$version -m 'new version $version'
