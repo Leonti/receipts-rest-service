@@ -16,9 +16,15 @@ docker-compose down
 docker-compose run test
 docker-compose run assembly
 docker-compose build app
-docker-compose run integration-tests # || true
+docker-compose run integration-tests | true
 
-#docker-compose logs app
+retn=${PIPESTATUS[0]}
+if (( $retn != 0 ))
+then
+    echo "Integration tests failed with return code $retn"
+    docker-compose logs app
+    exit 1
+fi
 
 docker-compose push app
 
