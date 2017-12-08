@@ -20,7 +20,7 @@ import org.scalatest.time.{Millis, Seconds, Span}
 class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtocols {
 
   implicit val defaultPatience =
-    PatienceConfig(timeout = Span(180, Seconds), interval = Span(1000, Millis))
+    PatienceConfig(timeout = Span(60, Seconds), interval = Span(1000, Millis))
   implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()
 

@@ -4,12 +4,14 @@ import java.io.File
 import java.util.concurrent.Executors
 import java.security.{DigestInputStream, MessageDigest}
 import java.io.{File, FileInputStream}
+
 import akka.actor.{ActorSystem, Scheduler}
 import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.{Source, _}
 import akka.util.ByteString
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
+import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.{PutObjectRequest, PutObjectResult}
 import com.typesafe.config.Config
@@ -80,7 +82,7 @@ class S3FileService(config: Config,
     if (customS3Endpoint.length > 0) {
       amazonS3ClientBuilder.withEndpointConfiguration(new EndpointConfiguration(customS3Endpoint, "us-west-1")).build()
     } else {
-      amazonS3ClientBuilder.build()
+      amazonS3ClientBuilder.withRegion(Regions.AP_SOUTHEAST_2).build()
     }
   }
 
