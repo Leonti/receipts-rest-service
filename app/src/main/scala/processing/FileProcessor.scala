@@ -23,6 +23,7 @@ object FileProcessor {
         .SaveFile(receiptFileJob.userId, new File(receiptFileJob.filePath), receiptFileJob.fileExt)
         .freek[PRG]: Free[PRG.Cop, Seq[FileEntity]]
       _ <- fileEntities
+        .filter(_.md5.isDefined)
         .map(
           fileEntity =>
             FileOps
