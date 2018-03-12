@@ -53,7 +53,9 @@ object TestInterpreters {
 
   }
 
-  class FileInterpreter() extends (FileOp ~> Future) {
+  class FileInterpreter(
+      md5Response: Seq[StoredFile] = List()
+  ) extends (FileOp ~> Future) {
 
     def apply[A](i: FileOp[A]): Future[A] = i match {
       case MoveFile(src: File, dst: File) => Future.successful((): Unit)
@@ -68,13 +70,15 @@ object TestInterpreters {
       case RemoveFile(_)                                                          => Future.successful(())
       case SourceToFile(source: Source[ByteString, Future[IOResult]], file: File) => Future.successful(file)
       case CalculateMd5(file: File)                                               => Future.successful("")
+      case SaveStoredFile(storedFile: StoredFile)                                 => Future.successful(())
+      case FindByMd5(userId: String, md5: String)                                 => Future.successful(md5Response)
+      case DeleteStoredFile(storedFileId: String)                                 => Future.successful(())
     }
   }
 
   class ReceiptInterpreter(
       receipts: Seq[ReceiptEntity] = List(),
-      ocrs: Seq[OcrTextOnly] = List(),
-      md5Response: Seq[ReceiptEntity] = List()
+      ocrs: Seq[OcrTextOnly] = List()
   ) extends (ReceiptOp ~> Future) {
 
     def apply[A](i: ReceiptOp[A]): Future[A] = i match {
@@ -85,7 +89,6 @@ object TestInterpreters {
       case UserReceipts(userId: String)                          => Future.successful(receipts)
       case FindOcrByText(userId: String, query: String)          => Future.successful(ocrs)
       case AddFileToReceipt(receiptId: String, file: FileEntity) => Future.successful(())
-      case FindByMd5(userId: String, md5: String)                => Future.successful(md5Response)
     }
 
   }

@@ -4,7 +4,7 @@ import java.io.File
 
 import cats.free.Free
 import freek._
-import model.FileEntity
+import model.{FileEntity, StoredFile}
 import ops.FileOps.FileOp
 import ops.ReceiptOps.ReceiptOp
 import ops.{FileOps, ReceiptOps}
@@ -22,6 +22,14 @@ object FileProcessor {
       fileEntities <- FileOps
         .SaveFile(receiptFileJob.userId, new File(receiptFileJob.filePath), receiptFileJob.fileExt)
         .freek[PRG]: Free[PRG.Cop, Seq[FileEntity]]
+      _ <- fileEntities
+        .map(
+          fileEntity =>
+            FileOps
+              .SaveStoredFile(StoredFile(receiptFileJob.userId, fileEntity.id, fileEntity.md5.get, fileEntity.metaData.length))
+              .freek[PRG])
+        .toList
+        .sequence
       _ <- fileEntities.map(fileEntity => ReceiptOps.AddFileToReceipt(receiptFileJob.receiptId, fileEntity).freek[PRG]).toList.sequence
       _ <- FileOps.RemoveFile(new File(receiptFileJob.filePath)).freek[PRG]
     } yield

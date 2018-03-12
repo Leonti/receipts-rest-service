@@ -13,6 +13,13 @@ case class FileEntity(
     timestamp: Long = System.currentTimeMillis
 )
 
+case class StoredFile(
+    userId: String,
+    id: String,
+    md5: String,
+    size: Long
+) extends WithId
+
 sealed trait FileMetadata {
   def fileType: String
   def length: Long
@@ -133,6 +140,34 @@ object FileEntity {
         "md5"       -> fileEntity.md5,
         "metaData"  -> FileMetadataBSONWriter.write(fileEntity.metaData),
         "timestamp" -> fileEntity.timestamp
+      )
+    }
+  }
+}
+
+object StoredFile {
+  implicit object StoredFileBSONReader extends BSONDocumentReader[StoredFile] {
+
+    def read(doc: BSONDocument): StoredFile =
+      Serialization.deserialize(
+        doc,
+        StoredFile(
+          id = doc.getAs[String]("_id").get,
+          userId = doc.getAs[String]("userId").get,
+          md5 = doc.getAs[String]("md5").get,
+          size = doc.getAs[Long]("size").get,
+        )
+      )
+  }
+
+  implicit object StoredFileBSONWriter extends BSONDocumentWriter[StoredFile] {
+
+    def write(storedFile: StoredFile): BSONDocument = {
+      BSONDocument(
+        "_id"    -> storedFile.id,
+        "userId" -> storedFile.userId,
+        "md5"    -> storedFile.md5,
+        "size"   -> storedFile.size
       )
     }
   }

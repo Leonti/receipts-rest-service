@@ -21,7 +21,7 @@ import authorization.PathAuthorization
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import model._
-import repository.{OcrRepository, PendingFileRepository, ReceiptRepository, UserRepository}
+import repository._
 import routing._
 import service._
 
@@ -150,7 +150,8 @@ object ReceiptRestService extends App with Service {
     userInterpreter = new UserInterpreter(userRepository, googleOauthService),
     tokenInterpreter = new TokenInterpreter(),
     randomInterpreter = new RandomInterpreter(),
-    fileInterpreter = new FileInterpreter(new PendingFileRepository(), receiptFileQueue, fileService)(materializer),
+    fileInterpreter =
+      new FileInterpreter(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer),
     receiptInterpreter = new ReceiptInterpreter(receiptRepository, ocrRepository),
     ocrInterpreter = new OcrInterpreter(ocrRepository, ocrService),
     pendingFileInterpreter = new PendingFileInterpreter(pendingFileRepository),

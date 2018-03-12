@@ -73,9 +73,10 @@ class S3FileService(config: Config,
   implicit val ec                = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
   lazy val amazonS3Client = {
-    val credentials      = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
+    val credentials = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
 
-    val amazonS3ClientBuilder = AmazonS3ClientBuilder.standard()
+    val amazonS3ClientBuilder = AmazonS3ClientBuilder
+      .standard()
       .withCredentials(new AWSStaticCredentialsProvider(credentials))
     val customS3Endpoint = config.getString("s3.customEndpoint")
     if (customS3Endpoint.length > 0) {

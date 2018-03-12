@@ -3,10 +3,10 @@ package interpreters
 import java.io.File
 
 import cats.~>
-import model.PendingFile
+import model.{PendingFile, StoredFile}
 import ops.FileOps._
 import queue.files.ReceiptFileQueue
-import repository.PendingFileRepository
+import repository.{PendingFileRepository, StoredFileRepository}
 import service.FileService
 import java.nio.file.Files
 
@@ -17,6 +17,7 @@ import akka.util.ByteString
 import scala.concurrent.Future
 
 class FileInterpreter(
+    storedFileRepository: StoredFileRepository,
     pendingFileRepository: PendingFileRepository,
     receiptFileQueue: ReceiptFileQueue,
     fileService: FileService
@@ -38,6 +39,9 @@ class FileInterpreter(
     case FetchFile(userId: String, fileId: String)         => Future.successful(fileService.fetch(userId, fileId))
     case DeleteFile(userId: String, fileId: String)        => fileService.delete(userId, fileId)
     case RemoveFile(file: File)                            => Future { file.delete }.map(_ => ())
+    case SaveStoredFile(storedFile: StoredFile)            => storedFileRepository.save(storedFile).map(_ => ())
+    case FindByMd5(userId: String, md5: String)            => storedFileRepository.findForUserIdAndMd5(userId, md5)
+    case DeleteStoredFile(storedFileId: String)            => storedFileRepository.deleteById(storedFileId)
     case SourceToFile(source: Source[ByteString, Future[IOResult]], file: File) =>
       source
         .to(FileIO.toPath(file.toPath))

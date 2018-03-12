@@ -5,7 +5,7 @@ import java.io.File
 import akka.stream.IOResult
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import model.{OcrEntity, OcrTextOnly}
+import model.{OcrEntity, OcrTextOnly, StoredFile}
 import ocr.model.OcrTextAnnotation
 
 import scala.concurrent.Future
@@ -26,7 +26,6 @@ object ReceiptOps {
   case class SaveReceipt(id: String, receipt: ReceiptEntity)       extends ReceiptOp[ReceiptEntity]
   case class GetReceipts(ids: Seq[String])                         extends ReceiptOp[Seq[ReceiptEntity]]
   case class FindOcrByText(userId: String, query: String)          extends ReceiptOp[Seq[OcrTextOnly]]
-  case class FindByMd5(userId: String, md5: String)                extends ReceiptOp[Seq[ReceiptEntity]]
   case class UserReceipts(userId: String)                          extends ReceiptOp[Seq[ReceiptEntity]]
   case class AddFileToReceipt(receiptId: String, file: FileEntity) extends ReceiptOp[Unit]
 }
@@ -45,6 +44,9 @@ object FileOps {
   case class SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String) extends FileOp[JobId]
   case class MoveFile(src: File, dst: File)                                                                           extends FileOp[Unit]
   case class SaveFile(userId: String, file: File, ext: String)                                                        extends FileOp[Seq[FileEntity]]
+  case class SaveStoredFile(storedFile: StoredFile)                                                                   extends FileOp[Unit]
+  case class FindByMd5(userId: String, md5: String)                                                                   extends FileOp[Seq[StoredFile]]
+  case class DeleteStoredFile(storedFileId: String)                                                                   extends FileOp[Unit]
   case class FetchFile(userId: String, fileId: String)                                                                extends FileOp[Source[ByteString, Future[IOResult]]]
   case class SourceToFile(source: Source[ByteString, Future[IOResult]], file: File)                                   extends FileOp[File]
   case class DeleteFile(userId: String, fileId: String)                                                               extends FileOp[Unit]

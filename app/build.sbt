@@ -90,7 +90,6 @@ resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositor
 
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
 
-
 //Revolver.settings
 
 mainClass in assembly := Some("ReceiptRestService")

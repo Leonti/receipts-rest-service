@@ -75,11 +75,11 @@ object ReceiptService extends JsonProtocols {
 
   def createReceipt(userId: String, parsedForm: ParsedForm): ReceiptApp[Either[Error, ReceiptEntity]] = {
     val eitherT: EitherT[ReceiptApp, Error, ReceiptEntity] = for {
-      md5                    <- EitherT.right[ReceiptApp, Error, String](FileOps.CalculateMd5(parsedForm.files("receipt").file).freek[PRG])
-      exitingReceiptsForFile <- EitherT.right[ReceiptApp, Error, Seq[ReceiptEntity]](ReceiptOps.FindByMd5(userId, md5).freek[PRG])
-      _                      <- validateExistingFile(exitingReceiptsForFile.nonEmpty)
-      receiptId              <- EitherT.right[ReceiptApp, Error, String](RandomOps.GenerateGuid().freek[PRG])
-      currentTimeMillis      <- EitherT.right[ReceiptApp, Error, Long](RandomOps.GetTime().freek[PRG])
+      md5                     <- EitherT.right[ReceiptApp, Error, String](FileOps.CalculateMd5(parsedForm.files("receipt").file).freek[PRG])
+      exitingFilesWithSameMd5 <- EitherT.right[ReceiptApp, Error, Seq[StoredFile]](FileOps.FindByMd5(userId, md5).freek[PRG])
+      _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
+      receiptId               <- EitherT.right[ReceiptApp, Error, String](RandomOps.GenerateGuid().freek[PRG])
+      currentTimeMillis       <- EitherT.right[ReceiptApp, Error, Long](RandomOps.GetTime().freek[PRG])
       uploadedFile = parsedForm.files("receipt")
       tags         = parsedForm.fields("tags")
       receipt = ReceiptEntity(
@@ -108,9 +108,9 @@ object ReceiptService extends JsonProtocols {
                                metadata: FileInfo,
                                file: File): ReceiptApp[Either[Error, PendingFile]] = {
     val eitherT: EitherT[ReceiptApp, Error, PendingFile] = for {
-      md5                    <- EitherT.right[ReceiptApp, Error, String](FileOps.CalculateMd5(file).freek[PRG])
-      exitingReceiptsForFile <- EitherT.right[ReceiptApp, Error, Seq[ReceiptEntity]](ReceiptOps.FindByMd5(userId, md5).freek[PRG])
-      _                      <- validateExistingFile(exitingReceiptsForFile.nonEmpty)
+      md5                     <- EitherT.right[ReceiptApp, Error, String](FileOps.CalculateMd5(file).freek[PRG])
+      exitingFilesWithSameMd5 <- EitherT.right[ReceiptApp, Error, Seq[StoredFile]](FileOps.FindByMd5(userId, md5).freek[PRG])
+      _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
       receiptOption <- EitherT.right[ReceiptApp, Error, OptionalReceipt](
         ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]])
       pendingFile <- if (receiptOption.isDefined) {
@@ -146,7 +146,13 @@ object ReceiptService extends JsonProtocols {
     ReceiptOps.GetReceipt(receiptId).freek[PRG]
 
   private def removeReceiptFiles(userId: String, files: List[FileEntity]): Free[PRG.Cop, List[Unit]] =
-    files.map(file => FileOps.DeleteFile(userId, file.id).freek[PRG]).sequence
+    files
+      .map(file =>
+        for {
+          _ <- FileOps.DeleteFile(userId, file.id).freek[PRG]
+          r <- FileOps.DeleteStoredFile(file.id).freek[PRG]
+        } yield r)
+      .sequence
 
   def deleteReceipt(receiptId: String): Free[PRG.Cop, Option[Unit]] =
     for {

@@ -16,13 +16,6 @@ class ReceiptRepository extends MongoDao[ReceiptEntity] {
   def findForUserId(userId: String): Future[List[ReceiptEntity]] =
     findList(collectionFuture, BSONDocument("userId" -> userId)).map(_.sortWith(_.timestamp > _.timestamp))
 
-  def findForUserIdAndMd5(userId: String, md5: String): Future[List[ReceiptEntity]] =
-    findList(collectionFuture,
-             BSONDocument(
-               "userId"    -> userId,
-               "files.md5" -> md5
-             )).map(_.sortWith(_.timestamp > _.timestamp))
-
   def findByIds(ids: Seq[String]): Future[List[ReceiptEntity]] =
     findList(collectionFuture,
              BSONDocument(

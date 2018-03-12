@@ -10,7 +10,8 @@ import org.scalatest.{FlatSpec, Matchers}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import routing.ReceiptRouting
-import TestInterpreters.{RandomInterpreter, ReceiptInterpreter}
+import TestInterpreters.{FileInterpreter, RandomInterpreter, ReceiptInterpreter}
+
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import akka.testkit._
@@ -81,7 +82,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     )
 
     val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(md5Response = List(receipt))
+      fileInterpreter = new FileInterpreter(md5Response = List(StoredFile("123-user", "fileId", "md5", 42)))
     )
     val receiptRouting = new ReceiptRouting(interpreters, authentication)
 
@@ -172,8 +173,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
     val receipt = ReceiptEntity(id = "1", userId = "123-user")
     val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(receipts = List(receipt), ocrs = List(), md5Response = List(receipt)),
-      randomInterpreter = new RandomInterpreter("2", 0)
+      receiptInterpreter = new ReceiptInterpreter(receipts = List(receipt), ocrs = List()),
+      randomInterpreter = new RandomInterpreter("2", 0),
+      fileInterpreter = new FileInterpreter(md5Response = List(StoredFile("123-user", "fileId", "md5", 42)))
     )
     val receiptRouting = new ReceiptRouting(interpreters, authentication)
 

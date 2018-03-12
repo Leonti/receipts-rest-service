@@ -79,8 +79,7 @@ class ReceiptRouting(
       complete(BadRequest -> ErrorResponse(s"Receipt $receiptId doesn't exist"))
   }
 
-  val toTempFile : FileInfo => File = fileInfo =>
-    File.createTempFile(fileInfo.fileName, ".tmp")
+  val toTempFile: FileInfo => File = fileInfo => File.createTempFile(fileInfo.fileName, ".tmp")
 
   val routes =
     handleRejections(myRejectionHandler) {
