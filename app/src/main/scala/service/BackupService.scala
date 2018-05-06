@@ -23,7 +23,7 @@ class BackupService(interpreters: Interpreters, fileService: FileService)(implic
                                                                           materializer: ActorMaterializer)
     extends JsonProtocols {
 
-  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter :&: interpreters.envInterpreter
+  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter :&: interpreters.ocrInterpreter :&: interpreters.envInterpreter
   case class FileToZip(path: String, source: Source[ByteString, Any])
 
   private val fetchFilesToZip: String => Future[Seq[FileToZip]] = userId => {

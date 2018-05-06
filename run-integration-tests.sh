@@ -19,7 +19,7 @@ set +e
 docker-compose run integration-tests
 if [ $? -ne 0 ]
 then
-  echo "Integrtion tests failed"
+  echo "Integration tests failed"
   docker-compose logs app
   exit 1
 fi

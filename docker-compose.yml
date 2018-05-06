@@ -25,6 +25,8 @@ services:
       - AUTH_TOKEN_SECRET
       - GOOGLE_API_CREDENTIALS
       - USE_OCR_STUB
+      - OCR_SEARCH_HOST
+      - OCR_SEARCH_API_KEY
 
   assembly:
     image: leonti/sbt_1.0.4_openjdk8-alpine3.7:1.0
@@ -68,4 +70,4 @@ services:
       - /tmp/receipts-target-tests:/app/target
       - $HOME/.ivy2:/root/.ivy2
       - $HOME/.sbt:/root/.sbt
-    command: sbt it:test
+    command: bash -c "rm -rf /app/target/* && sbt clean && sbt it:test"

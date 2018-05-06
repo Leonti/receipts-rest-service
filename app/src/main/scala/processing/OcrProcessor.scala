@@ -2,12 +2,13 @@ package processing
 
 import cats.free.Free
 import freek._
+import model.OcrText
 import ops.FileOps.FileOp
 import ops.ReceiptOps.ReceiptOp
 import ops.RandomOps.RandomOp
 import ops._
 import queue._
-import ops.OcrOps.OcrOp
+import ops.OcrOps.{AddOcrToIndex, OcrOp}
 import ops.PendingFileOps.PendingFileOp
 
 object OcrProcessor {
@@ -22,6 +23,7 @@ object OcrProcessor {
       _          <- FileOps.SourceToFile(fileSource, tmpFile).freek[PRG]
       ocrResult  <- OcrOps.OcrImage(tmpFile).freek[PRG]
       _          <- OcrOps.SaveOcrResult(ocrJob.userId, ocrJob.receiptId, ocrResult).freek[PRG]
+      _          <- AddOcrToIndex(ocrJob.userId, ocrJob.receiptId, OcrText(ocrResult.text)).freek[PRG]
       _          <- FileOps.RemoveFile(tmpFile).freek[PRG]
       _          <- PendingFileOps.DeletePendingFileById(ocrJob.pendingFileId).freek[PRG]
     } yield List()

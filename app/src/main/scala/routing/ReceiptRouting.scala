@@ -29,7 +29,7 @@ class ReceiptRouting(
     extends JsonProtocols {
 
   val logger      = Logger(LoggerFactory.getLogger("ReceiptRouting"))
-  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter :&: interpreters.envInterpreter
+  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter :&: interpreters.envInterpreter :&: interpreters.ocrInterpreter
 
   def myRejectionHandler =
     RejectionHandler

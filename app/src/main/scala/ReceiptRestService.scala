@@ -153,7 +153,8 @@ object ReceiptRestService extends App with Service {
     fileInterpreter =
       new FileInterpreter(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer),
     receiptInterpreter = new ReceiptInterpreter(receiptRepository, ocrRepository),
-    ocrInterpreter = new OcrInterpreter(ocrRepository, ocrService),
+    ocrInterpreter =
+      new OcrInterpreter(ocrRepository, ocrService, OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY"))),
     pendingFileInterpreter = new PendingFileInterpreter(pendingFileRepository),
     envInterpreter = new EnvInterpreter(config)
   )

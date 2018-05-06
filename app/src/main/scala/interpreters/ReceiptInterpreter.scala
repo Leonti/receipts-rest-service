@@ -15,7 +15,6 @@ class ReceiptInterpreter(receiptRepository: ReceiptRepository, ocrRepository: Oc
     case SaveReceipt(id: String, receipt: ReceiptEntity)       => receiptRepository.save(receipt)
     case GetReceipts(ids: Seq[String])                         => receiptRepository.findByIds(ids)
     case UserReceipts(userId: String)                          => receiptRepository.findForUserId(userId)
-    case FindOcrByText(userId: String, query: String)          => ocrRepository.findTextOnlyForUserId(userId, query)
     case AddFileToReceipt(receiptId: String, file: FileEntity) => receiptRepository.addFileToReceipt(receiptId, file)
   }
 

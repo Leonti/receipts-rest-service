@@ -18,6 +18,7 @@ import gnieh.diffson.sprayJson._
 import scala.util.Try
 import cats.implicits._
 import cats.data.EitherT
+import ops.OcrOps.{FindIdsByText, OcrOp}
 
 object ReceiptService extends JsonProtocols {
 
@@ -25,16 +26,15 @@ object ReceiptService extends JsonProtocols {
   final case class FileAlreadyExists()                extends Error
   final case class ReceiptNotFound(receiptId: String) extends Error
 
-  type PRG = ReceiptOp :|: FileOp :|: RandomOp :|: EnvOp :|: NilDSL
+  type PRG = ReceiptOp :|: FileOp :|: RandomOp :|: OcrOp :|: EnvOp :|: NilDSL
   val PRG = DSL.Make[PRG]
 
   type ReceiptApp[A] = Free[PRG.Cop, A]
 
   private def receiptsForQuery(userId: String, query: String): Free[PRG.Cop, Seq[ReceiptEntity]] = {
     for {
-      ocrResults <- FindOcrByText(userId, query).freek[PRG]: Free[PRG.Cop, Seq[OcrTextOnly]]
-      receiptIds = ocrResults.map(_.id)
-      receipts <- GetReceipts(receiptIds).freek[PRG]: Free[PRG.Cop, Seq[ReceiptEntity]]
+      receiptIds <- FindIdsByText(userId, query).freek[PRG]: Free[PRG.Cop, Seq[String]]
+      receipts   <- GetReceipts(receiptIds).freek[PRG]: Free[PRG.Cop, Seq[ReceiptEntity]]
     } yield receipts
   }
 

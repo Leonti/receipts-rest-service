@@ -8,11 +8,11 @@ import interpreters.Interpreters
 import model._
 import ocr.model.OcrTextAnnotation
 import ops.FileOps._
-import ops.OcrOps.{OcrImage, OcrOp, SaveOcrResult}
+import ops.OcrOps._
 import ops.PendingFileOps._
-import ops.RandomOps.{GenerateGuid, GetTime, RandomOp, TmpFile}
+import ops.RandomOps._
 import ops.ReceiptOps._
-import ops.TokenOps.{GeneratePathToken, GenerateUserToken, TokenOp}
+import ops.TokenOps._
 import ops.UserOps._
 import ops.EnvOps._
 import service.{GoogleTokenInfo, JwtTokenGenerator, TokenType}
@@ -87,7 +87,6 @@ object TestInterpreters {
       case SaveReceipt(id: String, receipt: ReceiptEntity)       => Future.successful(receipt)
       case GetReceipts(ids: Seq[String])                         => Future.successful(receipts)
       case UserReceipts(userId: String)                          => Future.successful(receipts)
-      case FindOcrByText(userId: String, query: String)          => Future.successful(ocrs)
       case AddFileToReceipt(receiptId: String, file: FileEntity) => Future.successful(())
     }
 
@@ -101,6 +100,8 @@ object TestInterpreters {
       case OcrImage(file: File) => Future.successful(testAnnotation)
       case SaveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation) =>
         Future.successful(OcrEntity(userId = userId, id = receiptId, result = testAnnotation))
+      case AddOcrToIndex(userId: String, receiptId: String, ocrText: OcrText) => Future.successful(())
+      case FindIdsByText(userId: String, query: String)                       => Future.successful(Seq())
     }
 
   }

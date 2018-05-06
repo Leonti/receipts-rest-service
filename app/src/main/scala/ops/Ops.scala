@@ -5,7 +5,7 @@ import java.io.File
 import akka.stream.IOResult
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import model.{OcrEntity, OcrTextOnly, StoredFile}
+import model.{OcrEntity, OcrText, StoredFile}
 import ocr.model.OcrTextAnnotation
 
 import scala.concurrent.Future
@@ -25,7 +25,6 @@ object ReceiptOps {
   case class DeleteReceipt(id: String)                             extends ReceiptOp[Unit]
   case class SaveReceipt(id: String, receipt: ReceiptEntity)       extends ReceiptOp[ReceiptEntity]
   case class GetReceipts(ids: Seq[String])                         extends ReceiptOp[Seq[ReceiptEntity]]
-  case class FindOcrByText(userId: String, query: String)          extends ReceiptOp[Seq[OcrTextOnly]]
   case class UserReceipts(userId: String)                          extends ReceiptOp[Seq[ReceiptEntity]]
   case class AddFileToReceipt(receiptId: String, file: FileEntity) extends ReceiptOp[Unit]
 }
@@ -35,6 +34,8 @@ object OcrOps {
 
   case class OcrImage(file: File)                                                           extends OcrOp[OcrTextAnnotation]
   case class SaveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation) extends OcrOp[OcrEntity]
+  case class AddOcrToIndex(userId: String, receiptId: String, ocrText: OcrText)             extends OcrOp[Unit]
+  case class FindIdsByText(userId: String, query: String)                                   extends OcrOp[Seq[String]]
 }
 
 object FileOps {
