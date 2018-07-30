@@ -30,6 +30,7 @@ val logbackV        = "1.1.7"
 val diffsonV        = "2.1.2"
 val catsV           = "0.9.0"
 val freekV          = "0.6.7"
+val circeVersion = "0.9.3"
 
 val logging = Seq(
   "ch.qos.logback"             % "logback-classic"          % logbackV,
@@ -74,7 +75,13 @@ libraryDependencies ++= {
     "org.mockito"   % "mockito-all"         % "1.10.19" % "test"
   )
 }
-
+/*
+libraryDependencies ++= Seq(
+  "io.circe" %% "circe-core",
+  "io.circe" %% "circe-generic",
+  "io.circe" %% "circe-parser"
+).map(_ % circeVersion)
+*/
 libraryDependencies ++= logging
 
 resolvers ++= Seq(

@@ -10,7 +10,6 @@ import ops.FileOps.{FileOp, MoveFile, SubmitPendingFile, SubmitToFileQueue}
 import ops.{FileOps, RandomOps, ReceiptOps}
 import ops.RandomOps._
 import ops.ReceiptOps._
-import ops.EnvOps._
 import routing.ParsedForm
 import spray.json._
 import gnieh.diffson.sprayJson._
@@ -26,7 +25,7 @@ object ReceiptService extends JsonProtocols {
   final case class FileAlreadyExists()                extends Error
   final case class ReceiptNotFound(receiptId: String) extends Error
 
-  type PRG = ReceiptOp :|: FileOp :|: RandomOp :|: OcrOp :|: EnvOp :|: NilDSL
+  type PRG = ReceiptOp :|: FileOp :|: RandomOp :|: OcrOp :|: NilDSL
   val PRG = DSL.Make[PRG]
 
   type ReceiptApp[A] = Free[PRG.Cop, A]
@@ -51,7 +50,7 @@ object ReceiptService extends JsonProtocols {
       receipts = unfilteredReceipts.filter(receiptEntity => receiptEntity.lastModified > lastModifiedOption.getOrElse(0l))
     } yield receipts
 
-  private def submitPendingFile(userId: String, receiptId: String, file: File, fileName: String): Free[PRG.Cop, PendingFile] =
+  private def submitPendingFile(uploadsLocation: String, userId: String, receiptId: String, file: File, fileName: String): Free[PRG.Cop, PendingFile] =
     for {
       pendingFileId <- RandomOps.GenerateGuid().freek[PRG]
       pendingFile <- SubmitPendingFile(
@@ -61,7 +60,6 @@ object ReceiptService extends JsonProtocols {
           receiptId = receiptId
         )
       ).freek[PRG]
-      uploadsLocation <- GetEnv("uploadsFolder").freek[PRG]
       filePath        <- Free.pure[PRG.Cop, File](new File(new File(uploadsLocation), pendingFileId))
       _               <- MoveFile(file, filePath).freek[PRG]
       _               <- SubmitToFileQueue(userId, receiptId, filePath, ext(fileName), pendingFile.id).freek[PRG]
@@ -73,7 +71,7 @@ object ReceiptService extends JsonProtocols {
     else
       EitherT.right[ReceiptApp, Error, Unit](Free.pure[PRG.Cop, Unit](()))
 
-  def createReceipt(userId: String, parsedForm: ParsedForm): ReceiptApp[Either[Error, ReceiptEntity]] = {
+  def createReceipt(uploadsLocation: String, userId: String, parsedForm: ParsedForm): ReceiptApp[Either[Error, ReceiptEntity]] = {
     val eitherT: EitherT[ReceiptApp, Error, ReceiptEntity] = for {
       md5                     <- EitherT.right[ReceiptApp, Error, String](FileOps.CalculateMd5(parsedForm.files("receipt").file).freek[PRG])
       exitingFilesWithSameMd5 <- EitherT.right[ReceiptApp, Error, Seq[StoredFile]](FileOps.FindByMd5(userId, md5).freek[PRG])
@@ -95,7 +93,7 @@ object ReceiptService extends JsonProtocols {
       )
       _ <- EitherT.right[ReceiptApp, Error, ReceiptEntity](SaveReceipt(receiptId, receipt).freek[PRG])
       _ <- EitherT.right[ReceiptApp, Error, PendingFile](
-        submitPendingFile(userId, receiptId, uploadedFile.file, uploadedFile.fileInfo.fileName))
+        submitPendingFile(uploadsLocation, userId, receiptId, uploadedFile.file, uploadedFile.fileInfo.fileName))
     } yield receipt
 
     eitherT.value
@@ -103,7 +101,8 @@ object ReceiptService extends JsonProtocols {
 
   type OptionalReceipt = Option[ReceiptEntity]
 
-  def addUploadedFileToReceipt(userId: String,
+  def addUploadedFileToReceipt(uploadsLocation: String,
+                                userId: String,
                                receiptId: String,
                                metadata: FileInfo,
                                file: File): ReceiptApp[Either[Error, PendingFile]] = {
@@ -114,7 +113,7 @@ object ReceiptService extends JsonProtocols {
       receiptOption <- EitherT.right[ReceiptApp, Error, OptionalReceipt](
         ReceiptOps.GetReceipt(receiptId).freek[PRG]: Free[PRG.Cop, Option[ReceiptEntity]])
       pendingFile <- if (receiptOption.isDefined) {
-        EitherT.right[ReceiptApp, Error, PendingFile](submitPendingFile(userId, receiptId, file, metadata.fileName))
+        EitherT.right[ReceiptApp, Error, PendingFile](submitPendingFile(uploadsLocation, userId, receiptId, file, metadata.fileName))
       } else {
         EitherT.left[ReceiptApp, Error, PendingFile](Free.pure[PRG.Cop, Error](ReceiptNotFound(receiptId)))
       }

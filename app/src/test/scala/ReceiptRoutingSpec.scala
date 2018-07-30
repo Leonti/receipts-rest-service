@@ -56,7 +56,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
         Multipart.FormData.BodyPart.Strict("tags", utf8TextEntity("veggies,food"))
       )
 
-    Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes ~> check {
+    Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe Created
       contentType shouldBe `application/json`
       responseAs[ReceiptEntity] shouldBe receipt
@@ -96,7 +96,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
         Multipart.FormData.BodyPart.Strict("tags", utf8TextEntity("veggies,food"))
       )
 
-    Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes ~> check {
+    Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe BadRequest
       contentType shouldBe `application/json`
       val errorResponse = responseAs[ErrorResponse]
@@ -125,7 +125,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
         Multipart.FormData.BodyPart.Strict("tags", utf8TextEntity("veggies,food"))
       )
 
-    Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes ~> check {
+    Post("/user/123-user/receipt", multipartForm) ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe BadRequest
       contentType shouldBe `application/json`
       responseAs[ErrorResponse] shouldEqual ErrorResponse("Request is missing required form field 'receipt'")
@@ -157,7 +157,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Multipart.FormData(
         Multipart.FormData.BodyPart.Strict("receipt", HttpEntity(`application/octet-stream`, content), Map("filename" -> "receipt.png")))
 
-    Post(s"/user/123-user/receipt/${receipt.id}/file", multipartForm) ~> receiptRouting.routes ~> check {
+    Post(s"/user/123-user/receipt/${receipt.id}/file", multipartForm) ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe Created
       contentType shouldBe `application/json`
       responseAs[PendingFile] shouldBe pendingFile
@@ -190,7 +190,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Multipart.FormData(
         Multipart.FormData.BodyPart.Strict("receipt", HttpEntity(`application/octet-stream`, content), Map("filename" -> "receipt.png")))
 
-    Post(s"/user/123-user/receipt/${receipt.id}/file", multipartForm) ~> receiptRouting.routes ~> check {
+    Post(s"/user/123-user/receipt/${receipt.id}/file", multipartForm) ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe BadRequest
       contentType shouldBe `application/json`
       val errorResponse = responseAs[ErrorResponse]
@@ -214,7 +214,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
     val receiptRouting = new ReceiptRouting(interpreters, authentication)
 
-    Get(s"/user/123-user/receipt/${receipt.id}/file/${fileEntity.id}.txt") ~> receiptRouting.routes ~> check {
+    Get(s"/user/123-user/receipt/${receipt.id}/file/${fileEntity.id}.txt") ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe OK
       contentType shouldBe `text/plain(UTF-8)`
       responseAs[String] should include("some text")
@@ -233,7 +233,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     )
     val receiptRouting = new ReceiptRouting(interpreters, authentication)
 
-    Get(s"/user/123-user/receipt/${receipt.id}") ~> receiptRouting.routes ~> check {
+    Get(s"/user/123-user/receipt/${receipt.id}") ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe OK
       contentType shouldBe `application/json`
       responseAs[ReceiptEntity].description shouldBe "some description"
@@ -265,7 +265,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
                   |  }
                   |]""".stripMargin
 
-    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes ~> check {
+    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe OK
       contentType shouldBe `application/json`
       responseAs[ReceiptEntity].description shouldBe "some new description"
@@ -293,7 +293,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
                   |  }
                   |]""".stripMargin
 
-    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes ~> check {
+    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe OK
       contentType shouldBe `application/json`
       responseAs[ReceiptEntity].total shouldBe None
@@ -319,7 +319,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
                   |  }
                   |]""".stripMargin
 
-    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes ~> check {
+    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe OK
       contentType shouldBe `application/json`
       responseAs[ReceiptEntity].total shouldBe None
@@ -346,7 +346,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
                   |  }
                   |]""".stripMargin
 
-    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes ~> check {
+    Patch(s"/user/123-user/receipt/${receipt.id}", HttpEntity(`application/json`, patch)) ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe OK
       contentType shouldBe `application/json`
       responseAs[ReceiptEntity].tags shouldBe List("vegetables", "food")
@@ -368,7 +368,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     )
     val receiptRouting = new ReceiptRouting(interpreters, authentication)
 
-    Delete(s"/user/123-user/receipt/${receipt.id}") ~> receiptRouting.routes ~> check {
+    Delete(s"/user/123-user/receipt/${receipt.id}") ~> receiptRouting.routes("testLocation") ~> check {
       println(responseAs[String])
       status shouldBe OK
     }

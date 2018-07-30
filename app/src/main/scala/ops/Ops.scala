@@ -80,12 +80,6 @@ object TokenOps {
   case class GeneratePathToken(path: String) extends TokenOp[OAuth2AccessTokenResponse]
 }
 
-object EnvOps {
-  sealed trait EnvOp[A]
-
-  case class GetEnv(key: String) extends EnvOp[String]
-}
-
 object RandomOps {
   sealed trait RandomOp[A]
 

@@ -14,7 +14,6 @@ import ops.RandomOps._
 import ops.ReceiptOps._
 import ops.TokenOps._
 import ops.UserOps._
-import ops.EnvOps._
 import service.{GoogleTokenInfo, JwtTokenGenerator, TokenType}
 
 import scala.concurrent.Future
@@ -117,13 +116,6 @@ object TestInterpreters {
 
   }
 
-  class EnvInterpreter() extends (EnvOp ~> Future) {
-
-    def apply[A](i: EnvOp[A]): Future[A] = i match {
-      case GetEnv(key: String) => Future.successful("mock_value")
-    }
-  }
-
   val testInterpreters = Interpreters(
     userInterpreter = new UserInterpreter(List(), ""),
     tokenInterpreter = new TokenInterpreter(System.currentTimeMillis(), "secret"),
@@ -131,8 +123,7 @@ object TestInterpreters {
     fileInterpreter = new FileInterpreter(),
     receiptInterpreter = new ReceiptInterpreter(List(), List()),
     ocrInterpreter = new OcrInterpreter(),
-    pendingFileInterpreter = new PendingFileInterpreter(),
-    envInterpreter = new EnvInterpreter()
+    pendingFileInterpreter = new PendingFileInterpreter()
   )
 
 }

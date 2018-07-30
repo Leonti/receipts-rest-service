@@ -8,7 +8,6 @@ import ops.RandomOps.RandomOp
 import ops.ReceiptOps.ReceiptOp
 import ops.TokenOps.TokenOp
 import ops.UserOps.UserOp
-import ops.EnvOps.EnvOp
 
 import scala.concurrent.Future
 
@@ -19,6 +18,5 @@ case class Interpreters(
     fileInterpreter: (FileOp ~> Future),
     receiptInterpreter: (ReceiptOp ~> Future),
     ocrInterpreter: (OcrOp ~> Future),
-    pendingFileInterpreter: (PendingFileOp ~> Future),
-    envInterpreter: (EnvOp ~> Future)
+    pendingFileInterpreter: (PendingFileOp ~> Future)
 )

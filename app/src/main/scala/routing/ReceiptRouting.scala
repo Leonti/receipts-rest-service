@@ -29,7 +29,7 @@ class ReceiptRouting(
     extends JsonProtocols {
 
   val logger      = Logger(LoggerFactory.getLogger("ReceiptRouting"))
-  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter :&: interpreters.envInterpreter :&: interpreters.ocrInterpreter
+  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter :&: interpreters.ocrInterpreter
 
   def myRejectionHandler =
     RejectionHandler
@@ -81,7 +81,7 @@ class ReceiptRouting(
 
   val toTempFile: FileInfo => File = fileInfo => File.createTempFile(fileInfo.fileName, ".tmp")
 
-  val routes =
+  def routes(uploadsLocation: String): Route =
     handleRejections(myRejectionHandler) {
       pathPrefix("user" / Segment / "receipt") { userId: String =>
         authenticaton { user =>
@@ -105,7 +105,7 @@ class ReceiptRouting(
                 storeUploadedFile("receipt", toTempFile) {
                   case (metadata: FileInfo, file: File) =>
                     val pendingFilesFuture: Future[Either[ReceiptService.Error, PendingFile]] =
-                      ReceiptService.addUploadedFileToReceipt(userId, receiptId, metadata, file).interpret(interpreter)
+                      ReceiptService.addUploadedFileToReceipt(uploadsLocation, userId, receiptId, metadata, file).interpret(interpreter)
 
                     onComplete(pendingFilesFuture) {
                       case Success(pendingFileEither: Either[ReceiptService.Error, PendingFile]) =>
@@ -154,7 +154,7 @@ class ReceiptRouting(
               FileUploadDirective.uploadedFileWithFields("receipt", "total", "description", "transactionTime", "tags") {
                 (parsedForm: ParsedForm) =>
                   val receiptFuture = ReceiptService
-                    .createReceipt(userId, parsedForm)
+                    .createReceipt(uploadsLocation, userId, parsedForm)
                     .interpret(interpreter)
 
                   onComplete(receiptFuture) {

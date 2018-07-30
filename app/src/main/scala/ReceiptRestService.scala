@@ -89,13 +89,13 @@ trait Service extends JsonProtocols with CorsSupport {
       }
       .result()
 
-  val routes = {
+  def routes(config: Config) = {
     //logRequest("receipt-rest-service") {
     // logRequestResult("receipt-rest-service") {
     handleRejections(myRejectionHandler) {
       cors {
         userRouting.routes ~
-        receiptRouting.routes ~
+        receiptRouting.routes(config.getString("uploadsFolder")) ~
         pendingFileRouting.routes ~
         authenticationRouting.routes ~
         appConfigRouting.routes ~
@@ -155,8 +155,7 @@ object ReceiptRestService extends App with Service {
     receiptInterpreter = new ReceiptInterpreter(receiptRepository, ocrRepository),
     ocrInterpreter =
       new OcrInterpreter(ocrRepository, ocrService, OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY"))),
-    pendingFileInterpreter = new PendingFileInterpreter(pendingFileRepository),
-    envInterpreter = new EnvInterpreter(config)
+    pendingFileInterpreter = new PendingFileInterpreter(pendingFileRepository)
   )
 
   val authenticatorInterpreters = interpreters.userInterpreter :&: interpreters.randomInterpreter
@@ -199,5 +198,5 @@ object ReceiptRestService extends App with Service {
 
   queueProcessor.reserveNextJob()
 
-  Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
+  Http().bindAndHandle(routes(config), config.getString("http.interface"), config.getInt("http.port"))
 }
