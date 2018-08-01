@@ -1,3 +1,5 @@
+package algebras
+
 import java.io.File
 
 import akka.stream.IOResult
@@ -58,17 +60,17 @@ trait PendingFileAlg[F[_]] {
 }
 
 trait TokenAlg[F[_]] {
-  def GenerateUserToken(user: User): F[OAuth2AccessTokenResponse]
-  def GeneratePathToken(path: String): F[OAuth2AccessTokenResponse]
+  def generateUserToken(user: User): F[OAuth2AccessTokenResponse]
+  def generatePathToken(path: String): F[OAuth2AccessTokenResponse]
 }
 
 trait EnvAlg[F[_]] {
-  def GetEnv(key: String): F[String]
+  def getEnv(key: String): F[String]
 }
 
 trait RandomAlg[F[_]] {
-  def GenerateGuid(): F[String]
-  def GetTime(): F[Long]
-  def TmpFile(): F[File]
+  def generateGuid(): F[String]
+  def getTime(): F[Long]
+  def tmpFile(): F[File]
 }
 

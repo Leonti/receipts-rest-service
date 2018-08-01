@@ -3,6 +3,8 @@ package service
 import java.io.File
 
 import akka.http.scaladsl.server.directives.FileInfo
+import algebras.{FileAlg, OcrAlg, RandomAlg, ReceiptAlg}
+import cats.Monad
 import cats.free.Free
 import freek._
 import model._
@@ -18,6 +20,12 @@ import scala.util.Try
 import cats.implicits._
 import cats.data.EitherT
 import ops.OcrOps.{FindIdsByText, OcrOp}
+
+import scala.language.higherKinds
+
+class ReceiptPrograms[F[_]: Monad](receptAlg: ReceiptAlg[F], fileAlg: FileAlg[F], randomAlg: RandomAlg[F], ocrAlg: OcrAlg[F]) {
+
+}
 
 object ReceiptService extends JsonProtocols {
 
