@@ -43,8 +43,6 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
   it should "respond with appropriate error if user already exist" in {
 
     val createUserRequest = CreateUserRequest(userName = "userName", password = "password")
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      userInterpreter = new UserInterpreter(List(User(userName = "userName", passwordHash = "hash")), ""))
 
     val userRouting = new UserRouting(new UserPrograms(
       new UserInterpreterTagless(List(User(userName = "userName", passwordHash = "hash")), ""),

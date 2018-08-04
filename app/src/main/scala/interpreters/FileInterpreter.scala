@@ -2,9 +2,7 @@ package interpreters
 
 import java.io.File
 
-import cats.~>
 import model.{FileEntity, PendingFile, StoredFile}
-import ops.FileOps._
 import algebras.FileAlg
 import queue.files.ReceiptFileQueue
 import repository.{PendingFileRepository, StoredFileRepository}
@@ -17,41 +15,6 @@ import akka.util.ByteString
 import queue.Models.JobId
 
 import scala.concurrent.Future
-
-class FileInterpreter(
-    storedFileRepository: StoredFileRepository,
-    pendingFileRepository: PendingFileRepository,
-    receiptFileQueue: ReceiptFileQueue,
-    fileService: FileService
-)(implicit materializer: ActorMaterializer)
-    extends (FileOp ~> Future) {
-  import scala.concurrent.ExecutionContext.Implicits.global
-
-  def apply[A](i: FileOp[A]): Future[A] = i match {
-    case SubmitPendingFile(pendingFile: PendingFile) =>
-      pendingFileRepository.save(pendingFile)
-    case SubmitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String) =>
-      receiptFileQueue.submitFile(userId, receiptId, file, fileExt, pendingFileId)
-    case MoveFile(src: File, dst: File) =>
-      Future.successful {
-        Files.move(src.toPath, dst.toPath)
-        ()
-      }
-    case SaveFile(userId: String, file: File, ext: String) => fileService.save(userId, file, ext)
-    case FetchFile(userId: String, fileId: String)         => Future.successful(fileService.fetch(userId, fileId))
-    case DeleteFile(userId: String, fileId: String)        => fileService.delete(userId, fileId)
-    case RemoveFile(file: File)                            => Future { file.delete }.map(_ => ())
-    case SaveStoredFile(storedFile: StoredFile)            => storedFileRepository.save(storedFile).map(_ => ())
-    case FindByMd5(userId: String, md5: String)            => storedFileRepository.findForUserIdAndMd5(userId, md5)
-    case DeleteStoredFile(storedFileId: String)            => storedFileRepository.deleteById(storedFileId)
-    case SourceToFile(source: Source[ByteString, Future[IOResult]], file: File) =>
-      source
-        .to(FileIO.toPath(file.toPath))
-        .run()
-        .map(_ => file)
-    case CalculateMd5(file: File) => Future { fileService.md5(file) }
-  }
-}
 
 class FileInterpreterTagless(
                               storedFileRepository: StoredFileRepository,

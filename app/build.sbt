@@ -29,7 +29,6 @@ val scalaLoggingV   = "3.5.0"
 val logbackV        = "1.1.7"
 val diffsonV        = "2.1.2"
 val catsV           = "0.9.0"
-val freekV          = "0.6.7"
 val circeVersion = "0.9.3"
 
 val logging = Seq(
@@ -62,7 +61,6 @@ libraryDependencies ++= {
     ),
     "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
     "org.typelevel"        %% "cats"              % catsV,
-    "com.projectseptember" %% "freek"             % freekV,
     "de.choffmeister"      %% "auth-common"       % jwtAuthV excludeAll (
       ExclusionRule(organization = "io.spray")
     ),
