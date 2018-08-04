@@ -28,7 +28,7 @@ val googleApiClient = "1.22.0"
 val scalaLoggingV   = "3.5.0"
 val logbackV        = "1.1.7"
 val diffsonV        = "2.1.2"
-val catsV           = "0.9.0"
+val catsV           = "1.2.0"
 val circeVersion = "0.9.3"
 
 val logging = Seq(
@@ -60,7 +60,7 @@ libraryDependencies ++= {
       ExclusionRule(organization = "com.typesafe.akka")
     ),
     "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
-    "org.typelevel"        %% "cats"              % catsV,
+    "org.typelevel"        %% "cats-core"              % catsV,
     "de.choffmeister"      %% "auth-common"       % jwtAuthV excludeAll (
       ExclusionRule(organization = "io.spray")
     ),
@@ -86,7 +86,7 @@ resolvers ++= Seq(
   Resolver.bintrayRepo("dwhjames", "maven")
 )
 
-resolvers += Resolver.bintrayRepo("projectseptemberinc", "maven")
+//resolvers += Resolver.bintrayRepo("projectseptemberinc", "maven")
 
 // auth-utils is published there
 resolvers += Resolver.bintrayRepo("leonti", "maven")

@@ -72,17 +72,17 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
 
   private def validateExistingFile(haveExisting: Boolean): EitherT[F, Error, Unit] =
     if (haveExisting)
-      EitherT.left[F, Error, Unit](Monad[F].pure(FileAlreadyExists()))
+      EitherT.left[Unit](Monad[F].pure(FileAlreadyExists()))
     else
-      EitherT.right[F, Error, Unit](Monad[F].pure(()))
+      EitherT.right[Error](Monad[F].pure(()))
 
   def createReceipt(uploadsLocation: String, userId: String, parsedForm: ParsedForm): F[Either[Error, ReceiptEntity]] = {
     val eitherT: EitherT[F, Error, ReceiptEntity] = for {
-      md5                     <- EitherT.right[F, Error, String](calculateMd5(parsedForm.files("receipt").file))
-      exitingFilesWithSameMd5 <- EitherT.right[F, Error, Seq[StoredFile]](findByMd5(userId, md5))
+      md5                     <- EitherT.right[Error](calculateMd5(parsedForm.files("receipt").file))
+      exitingFilesWithSameMd5 <- EitherT.right[Error](findByMd5(userId, md5))
       _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
-      receiptId               <- EitherT.right[F, Error, String](generateGuid())
-      currentTimeMillis       <- EitherT.right[F, Error, Long](getTime())
+      receiptId               <- EitherT.right[Error](generateGuid())
+      currentTimeMillis       <- EitherT.right[Error](getTime())
       uploadedFile = parsedForm.files("receipt")
       tags         = parsedForm.fields("tags")
       receipt = ReceiptEntity(
@@ -96,8 +96,8 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
         tags = if (tags.trim() == "") List() else tags.split(",").toList,
         files = List()
       )
-      _ <- EitherT.right[F, Error, ReceiptEntity](saveReceipt(receiptId, receipt))
-      _ <- EitherT.right[F, Error, PendingFile](
+      _ <- EitherT.right[Error](saveReceipt(receiptId, receipt))
+      _ <- EitherT.right[Error](
         submitPF(uploadsLocation, userId, receiptId, uploadedFile.file, uploadedFile.fileInfo.fileName))
     } yield receipt
 
@@ -112,14 +112,14 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
                                metadata: FileInfo,
                                file: File): F[Either[Error, PendingFile]] = {
     val eitherT: EitherT[F, Error, PendingFile] = for {
-      md5                     <- EitherT.right[F, Error, String](calculateMd5(file))
-      exitingFilesWithSameMd5 <- EitherT.right[F, Error, Seq[StoredFile]](findByMd5(userId, md5))
+      md5                     <- EitherT.right[Error](calculateMd5(file))
+      exitingFilesWithSameMd5 <- EitherT.right[Error](findByMd5(userId, md5))
       _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
-      receiptOption <- EitherT.right[F, Error, OptionalReceipt](getReceipt(receiptId))
-      pendingFile <- if (receiptOption.isDefined) {
-        EitherT.right[F, Error, PendingFile](submitPF(uploadsLocation, userId, receiptId, file, metadata.fileName))
+      receiptOption <- EitherT.right[Error](getReceipt(receiptId))
+      pendingFile <- if (receiptOption.isDefined) { // TODO remove `if` if possible
+        EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, file, metadata.fileName)): EitherT[F, Error, PendingFile]
       } else {
-        EitherT.left[F, Error, PendingFile](Monad[F].pure(ReceiptNotFound(receiptId)))
+        EitherT.left[PendingFile](Monad[F].pure(ReceiptNotFound(receiptId))): EitherT[F, Error, PendingFile]
       }
     } yield pendingFile
 
