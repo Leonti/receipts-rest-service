@@ -9,17 +9,13 @@ import service._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import interpreters.Interpreters
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
-import freek._
-import cats.implicits._
-
 case class GoogleToken(token: String)
 
-class OauthRouting(interpreters: Interpreters)(implicit system: ActorSystem,
+class OauthRouting(userPrograms: UserPrograms[Future])(implicit system: ActorSystem,
                                                executor: ExecutionContextExecutor,
                                                materializer: ActorMaterializer)
     extends JsonProtocols {
@@ -27,8 +23,7 @@ class OauthRouting(interpreters: Interpreters)(implicit system: ActorSystem,
   private implicit val googleTokenFormat = jsonFormat1(GoogleToken)
 
   private val validateTokenWithUserCreation: (GoogleToken, TokenType) => Route = (googleToken, tokenType) => {
-    val interpreter                                    = interpreters.userInterpreter :&: interpreters.tokenInterpreter
-    val tokenFuture: Future[OAuth2AccessTokenResponse] = UserService.validateGoogleUser(googleToken, tokenType).interpret(interpreter)
+    val tokenFuture: Future[OAuth2AccessTokenResponse] = userPrograms.validateGoogleUser(googleToken, tokenType)
 
     onComplete(tokenFuture) { (tokenResult: Try[OAuth2AccessTokenResponse]) =>
       tokenResult match {

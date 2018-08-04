@@ -8,22 +8,18 @@ import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, IOResult}
 import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
-import interpreters.Interpreters
 import model.{FileEntity, JsonProtocols, ReceiptEntity}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import spray.json._
-import freek._
-import cats.implicits._
 
 case class ReceiptsBackup(source: Source[ByteString, Future[IOResult]], filename: String)
 
-class BackupService(interpreters: Interpreters, fileService: FileService)(implicit system: ActorSystem,
+class BackupService(receiptPrograms: ReceiptPrograms[Future], fileService: FileService)(implicit system: ActorSystem,
                                                                           executor: ExecutionContextExecutor,
                                                                           materializer: ActorMaterializer)
     extends JsonProtocols {
 
-  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter :&: interpreters.ocrInterpreter
   case class FileToZip(path: String, source: Source[ByteString, Any])
 
   private val fetchFilesToZip: String => Future[Seq[FileToZip]] = userId => {
@@ -46,7 +42,7 @@ class BackupService(interpreters: Interpreters, fileService: FileService)(implic
       )
     }
 
-    val userReceipts: Future[Seq[ReceiptEntity]] = ReceiptService.findForUser(userId).interpret(interpreter)
+    val userReceipts: Future[Seq[ReceiptEntity]] = receiptPrograms.findForUser(userId)
 
     userReceipts
       .map(_.map(receiptWithMainFiles))

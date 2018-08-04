@@ -10,11 +10,13 @@ import org.scalatest.{FlatSpec, Matchers}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import routing.ReceiptRouting
-import TestInterpreters.{FileInterpreter, RandomInterpreter, ReceiptInterpreter}
+import TestInterpreters._
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import akka.testkit._
+import service.ReceiptPrograms
+import cats.implicits._
 
 class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with JsonProtocols {
 
@@ -25,14 +27,18 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, bytes)
   }
 
+  val receiptInt = new ReceiptInterpreterTagless(List(), List())
+  val fileInt = new FileInterpreterTagless()
+  val randomInt = new RandomInterpreterTagless("", 0)
+  val ocrInt = new OcrInterpreterTagless()
+
   it should "create receipt from file upload" in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val interpreters   = TestInterpreters.testInterpreters
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(receiptInt, fileInt, randomInt, ocrInt), authentication)
 
     val receipt = ReceiptEntity(
       id = "",
@@ -81,10 +87,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       files = List()
     )
 
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      fileInterpreter = new FileInterpreter(md5Response = List(StoredFile("123-user", "fileId", "md5", 42)))
-    )
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(receiptInt, new FileInterpreterTagless(md5Response = List(StoredFile("123-user", "fileId", "md5", 42))), randomInt, ocrInt), authentication)
 
     val content = "file content".getBytes
     val multipartForm =
@@ -110,8 +113,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-    val interpreters   = TestInterpreters.testInterpreters
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(receiptInt, fileInt, randomInt, ocrInt), authentication)
 
     val content = "file content".getBytes
     val multipartForm =
@@ -140,11 +142,10 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     val receipt = ReceiptEntity(id = "1", userId = "123-user")
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(List(receipt), List()),
-      randomInterpreter = new RandomInterpreter("2", 0)
-    )
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(
+      new ReceiptInterpreterTagless(List(receipt), List()), fileInt,
+      new RandomInterpreterTagless("2", 0),
+      ocrInt), authentication)
 
     val pendingFile = PendingFile(
       id = "2",
@@ -172,12 +173,11 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     val receipt = ReceiptEntity(id = "1", userId = "123-user")
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(receipts = List(receipt), ocrs = List()),
-      randomInterpreter = new RandomInterpreter("2", 0),
-      fileInterpreter = new FileInterpreter(md5Response = List(StoredFile("123-user", "fileId", "md5", 42)))
-    )
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(
+      new ReceiptInterpreterTagless(receipts = List(receipt), ocrs = List()),
+      new FileInterpreterTagless(md5Response = List(StoredFile("123-user", "fileId", "md5", 42))),
+      new RandomInterpreterTagless("2", 0),
+      ocrInt), authentication)
 
     val pendingFile = PendingFile(
       id = "2",
@@ -208,11 +208,10 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val fileEntity =
       FileEntity(id = "1", parentId = None, ext = "txt", md5 = None, metaData = GenericMetadata(fileType = "TXT", length = 11))
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(List(receipt), List())
-    )
 
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(
+      new ReceiptInterpreterTagless(List(receipt), List()),
+      fileInt, randomInt, ocrInt), authentication)
 
     Get(s"/user/123-user/receipt/${receipt.id}/file/${fileEntity.id}.txt") ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe OK
@@ -228,10 +227,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(), description = "some description")
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(List(receipt), List())
-    )
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(
+      new ReceiptInterpreterTagless(List(receipt), List()),
+      fileInt, randomInt, ocrInt), authentication)
 
     Get(s"/user/123-user/receipt/${receipt.id}") ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe OK
@@ -247,10 +245,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     val receipt = ReceiptEntity(id = "1", userId = "123-user", files = List(), description = "some description")
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(List(receipt), List())
-    )
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(
+      new ReceiptInterpreterTagless(List(receipt), List()),
+      fileInt, randomInt, ocrInt), authentication)
 
     val patch = """[
                   |  {
@@ -280,10 +277,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(List(receipt), List())
-    )
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(
+      new ReceiptInterpreterTagless(List(receipt), List()),
+      fileInt, randomInt, ocrInt), authentication)
 
     val patch = """[
                   |  {
@@ -307,10 +303,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(List(receipt), List())
-    )
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(
+      new ReceiptInterpreterTagless(List(receipt), List()),
+      fileInt, randomInt, ocrInt), authentication)
 
     val patch = """[
                   |  {
@@ -333,10 +328,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(List(receipt), List())
-    )
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(
+      new ReceiptInterpreterTagless(List(receipt), List()),
+      fileInt, randomInt, ocrInt), authentication)
 
     val patch = """[
                   |  {
@@ -363,10 +357,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     val fileEntity =
       FileEntity(id = "1", parentId = None, ext = "txt", md5 = None, metaData = GenericMetadata(fileType = "TXT", length = 11))
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      receiptInterpreter = new ReceiptInterpreter(List(receipt), List())
-    )
-    val receiptRouting = new ReceiptRouting(interpreters, authentication)
+    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(
+      new ReceiptInterpreterTagless(List(receipt), List()),
+      fileInt, randomInt, ocrInt), authentication)
 
     Delete(s"/user/123-user/receipt/${receipt.id}") ~> receiptRouting.routes("testLocation") ~> check {
       println(responseAs[String])

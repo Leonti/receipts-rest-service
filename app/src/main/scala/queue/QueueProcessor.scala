@@ -5,27 +5,17 @@ import java.util.concurrent.Executors
 
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.Logger
-import interpreters.Interpreters
 import org.slf4j.LoggerFactory
-import processing.FileProcessor
-import processing.OcrProcessor
+import processing.{FileProcessorTagless, OcrProcessorTagless}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
-import freek._
-import cats.implicits._
 
-class QueueProcessor(queue: Queue, interpreters: Interpreters, system: ActorSystem) {
+class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[Future], ocrProcessor: OcrProcessorTagless[Future], system: ActorSystem) {
 
   val logger              = Logger(LoggerFactory.getLogger("QueueProcessor"))
   private implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
-
-  private val interpreter = interpreters.receiptInterpreter :&:
-    interpreters.fileInterpreter :&:
-    interpreters.ocrInterpreter :&:
-    interpreters.pendingFileInterpreter :&:
-    interpreters.randomInterpreter
 
   def reserveNextJob(): Unit = {
     //  logger.info("Checking for new jobs")
@@ -69,9 +59,9 @@ class QueueProcessor(queue: Queue, interpreters: Interpreters, system: ActorSyst
 
     job.job match {
       case (receiptFileJob: ReceiptFileJob) =>
-        handleJobResult(job, FileProcessor.processJob(receiptFileJob).interpret(interpreter))
+        handleJobResult(job, fileProcessor.processJob(receiptFileJob))
       case (ocrJob: OcrJob) =>
-        handleJobResult(job, OcrProcessor.processJob(ocrJob).interpret(interpreter))
+        handleJobResult(job, ocrProcessor.processJob(ocrJob))
       case _ => throw new RuntimeException(s"Unknown job $job")
     }
   }
