@@ -116,11 +116,9 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
       exitingFilesWithSameMd5 <- EitherT.right[Error](findByMd5(userId, md5))
       _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
       receiptOption <- EitherT.right[Error](getReceipt(receiptId))
-      pendingFile <- if (receiptOption.isDefined) { // TODO remove `if` if possible
-        EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, file, metadata.fileName)): EitherT[F, Error, PendingFile]
-      } else {
-        EitherT.left[PendingFile](Monad[F].pure(ReceiptNotFound(receiptId))): EitherT[F, Error, PendingFile]
-      }
+      pendingFile <- receiptOption
+        .fold(EitherT.left[PendingFile](Monad[F].pure(ReceiptNotFound(receiptId))): EitherT[F, Error, PendingFile]) (_
+          => EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, file, metadata.fileName)))
     } yield pendingFile
 
     eitherT.value
