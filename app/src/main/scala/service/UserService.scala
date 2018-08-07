@@ -3,7 +3,8 @@ package service
 import algebras._
 import cats.Monad
 import cats.implicits._
-import de.choffmeister.auth.common.{OAuth2AccessTokenResponse, PBKDF2, PasswordHasher, Plain}
+import authentication.OAuth2AccessTokenResponse
+import de.choffmeister.auth.common.{PBKDF2, PasswordHasher, Plain}
 import model.{CreateUserRequest, User}
 import routing.GoogleToken
 import scala.util.Right
@@ -23,11 +24,11 @@ class UserPrograms[F[_]: Monad](userAlg: UserAlg[F], randomAlg: RandomAlg[F], to
         Monad[F].pure(Left("User already exists"))
       } else {
         saveUser(
-            User(
-              id = guid,
-              userName = createUserRequest.userName,
-              passwordHash = hasher.hash(createUserRequest.password)
-            ))
+          User(
+            id = guid,
+            userName = createUserRequest.userName,
+            passwordHash = hasher.hash(createUserRequest.password)
+          ))
           .map(user => Right(user))
       }
     } yield result

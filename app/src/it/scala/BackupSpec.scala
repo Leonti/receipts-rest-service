@@ -10,7 +10,7 @@ import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
-import de.choffmeister.auth.common.OAuth2AccessTokenResponse
+import authentication.OAuth2AccessTokenResponse
 import model.{CreateUserRequest, JsonProtocols, ReceiptEntity}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}

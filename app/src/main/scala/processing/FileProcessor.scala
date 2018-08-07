@@ -17,7 +17,8 @@ class FileProcessorTagless[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: File
       fileEntities <- saveFile(receiptFileJob.userId, new File(receiptFileJob.filePath), receiptFileJob.fileExt)
       _ <- fileEntities
         .filter(_.md5.isDefined)
-        .map(fileEntity => saveStoredFile(StoredFile(receiptFileJob.userId, fileEntity.id, fileEntity.md5.get, fileEntity.metaData.length)))
+        .map(fileEntity =>
+          saveStoredFile(StoredFile(receiptFileJob.userId, fileEntity.id, fileEntity.md5.get, fileEntity.metaData.length)))
         .toList
         .sequence
       _ <- fileEntities.map(fileEntity => addFileToReceipt(receiptFileJob.receiptId, fileEntity)).toList.sequence

@@ -42,9 +42,7 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
     } yield receipts
   }
 
-  def findForUser(userId: String,
-                  lastModifiedOption: Option[Long] = None,
-                  queryOption: Option[String] = None): F[Seq[ReceiptEntity]] =
+  def findForUser(userId: String, lastModifiedOption: Option[Long] = None, queryOption: Option[String] = None): F[Seq[ReceiptEntity]] =
     for {
 
       unfilteredReceipts <- queryOption
@@ -66,8 +64,8 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
           receiptId = receiptId
         )
       )
-      _               <- moveFile(file, new File(new File(uploadsLocation), pendingFileId))// TODO remove new File duplication
-      _               <- submitToFileQueue(userId, receiptId, new File(new File(uploadsLocation), pendingFileId), ext(fileName), pendingFile.id)
+      _ <- moveFile(file, new File(new File(uploadsLocation), pendingFileId)) // TODO remove new File duplication
+      _ <- submitToFileQueue(userId, receiptId, new File(new File(uploadsLocation), pendingFileId), ext(fileName), pendingFile.id)
     } yield pendingFile
 
   private def validateExistingFile(haveExisting: Boolean): EitherT[F, Error, Unit] =
@@ -97,8 +95,7 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
         files = List()
       )
       _ <- EitherT.right[Error](saveReceipt(receiptId, receipt))
-      _ <- EitherT.right[Error](
-        submitPF(uploadsLocation, userId, receiptId, uploadedFile.file, uploadedFile.fileInfo.fileName))
+      _ <- EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, uploadedFile.file, uploadedFile.fileInfo.fileName))
     } yield receipt
 
     eitherT.value
@@ -115,10 +112,10 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
       md5                     <- EitherT.right[Error](calculateMd5(file))
       exitingFilesWithSameMd5 <- EitherT.right[Error](findByMd5(userId, md5))
       _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
-      receiptOption <- EitherT.right[Error](getReceipt(receiptId))
+      receiptOption           <- EitherT.right[Error](getReceipt(receiptId))
       pendingFile <- receiptOption
-        .fold(EitherT.left[PendingFile](Monad[F].pure(ReceiptNotFound(receiptId))): EitherT[F, Error, PendingFile]) (_
-          => EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, file, metadata.fileName)))
+        .fold(EitherT.left[PendingFile](Monad[F].pure(ReceiptNotFound(receiptId))): EitherT[F, Error, PendingFile])(_ =>
+          EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, file, metadata.fileName)))
     } yield pendingFile
 
     eitherT.value

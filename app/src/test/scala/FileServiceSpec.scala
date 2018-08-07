@@ -7,7 +7,6 @@ import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.ByteString
 import model.{FileEntity, GenericMetadata, ImageMetadata}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.mockito.MockitoSugar
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FlatSpec, Matchers}
 import service.{FileService, ImageResizingService}
@@ -16,7 +15,7 @@ import scala.concurrent.Future
 import scala.io.BufferedSource
 import akka.stream.scaladsl.{Source, _}
 
-class FileServiceSpec extends FlatSpec with Matchers with MockitoSugar with ScalaFutures {
+class FileServiceSpec extends FlatSpec with Matchers with ScalaFutures {
 
   implicit val defaultPatience =
     PatienceConfig(timeout = Span(5, Seconds), interval = Span(500, Millis))

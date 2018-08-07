@@ -1,9 +1,11 @@
 package service
 
 import java.time.Instant
-import de.choffmeister.auth.common.{JsonWebToken, OAuth2AccessTokenResponse}
+
+import authentication.OAuth2AccessTokenResponse
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
 import model.User
-import spray.json.JsString
 
 import scala.concurrent.duration._
 
@@ -13,25 +15,27 @@ object JwtTokenGenerator {
 
   val generateToken: (User, Long, Array[Byte]) => OAuth2AccessTokenResponse = (user, currentTimeMillis, bearerTokenSecret) => {
 
-    val token = JsonWebToken(
-      expiresAt = Instant.ofEpochSecond(currentTimeMillis / 1000L + bearerTokenLifetime.toSeconds),
-      claims = Map("sub" -> JsString(user.id.toString()), "name" -> JsString(user.userName))
-    )
-    val tokenStr = JsonWebToken.write(token, bearerTokenSecret)
+    val algorithmHS = Algorithm.HMAC256(bearerTokenSecret)
+    val token = JWT.create()
+      .withIssuer("self")
+      .withClaim("sub", s"${user.id}")
+      .withClaim("name", user.userName)
+      .withExpiresAt(java.util.Date.from(Instant.ofEpochSecond(currentTimeMillis / 1000L + bearerTokenLifetime.toSeconds)))
+      .sign(algorithmHS)
 
-    OAuth2AccessTokenResponse("bearer", tokenStr, bearerTokenLifetime.toMillis)
+    OAuth2AccessTokenResponse("bearer", token, bearerTokenLifetime.toMillis)
   }
 
   val generatePathToken: (String, Long, Array[Byte]) => OAuth2AccessTokenResponse = (path, currentTimeMillis, bearerTokenSecret) => {
-    val now = System.currentTimeMillis / 1000L * 1000L
 
-    val token = JsonWebToken(
-      expiresAt = Instant.ofEpochSecond(currentTimeMillis / 1000L + bearerPathTokenLifetime.toSeconds),
-      claims = Map("sub" -> JsString(path))
-    )
-    val tokenStr = JsonWebToken.write(token, bearerTokenSecret)
+    val algorithmHS = Algorithm.HMAC256(bearerTokenSecret)
+    val token = JWT.create()
+      .withIssuer("self")
+      .withClaim("sub", path)
+      .withExpiresAt(java.util.Date.from(Instant.ofEpochSecond(currentTimeMillis / 1000L + bearerPathTokenLifetime.toSeconds)))
+      .sign(algorithmHS)
 
-    OAuth2AccessTokenResponse("bearer", tokenStr, bearerPathTokenLifetime.toSeconds)
+    OAuth2AccessTokenResponse("bearer", token, bearerPathTokenLifetime.toSeconds)
   }
 
 }

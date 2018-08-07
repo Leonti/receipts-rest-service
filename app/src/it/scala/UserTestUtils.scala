@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, RequestEntity}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
-import de.choffmeister.auth.common.OAuth2AccessTokenResponse
+import authentication.OAuth2AccessTokenResponse
 import model.{CreateUserRequest, JsonProtocols, UserInfo}
 import TestConfig._
 

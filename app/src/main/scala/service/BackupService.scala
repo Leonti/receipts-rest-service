@@ -16,8 +16,8 @@ import spray.json._
 case class ReceiptsBackup(source: Source[ByteString, Future[IOResult]], filename: String)
 
 class BackupService(receiptPrograms: ReceiptPrograms[Future], fileService: FileService)(implicit system: ActorSystem,
-                                                                          executor: ExecutionContextExecutor,
-                                                                          materializer: ActorMaterializer)
+                                                                                        executor: ExecutionContextExecutor,
+                                                                                        materializer: ActorMaterializer)
     extends JsonProtocols {
 
   case class FileToZip(path: String, source: Source[ByteString, Any])

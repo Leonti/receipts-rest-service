@@ -69,8 +69,9 @@ libraryDependencies ++= {
       ExclusionRule(organization = "io.spray")
     ),
     "org.gnieh"     %% "diffson-spray-json" % diffsonV,
-    "org.scalatest" %% "scalatest"          % scalaTestV % "it,test",
-    "org.mockito"   % "mockito-all"         % "1.10.19" % "test"
+    "com.auth0" % "java-jwt" % "3.4.0",
+    "com.auth0" % "jwks-rsa" % "0.6.0",
+    "org.scalatest" %% "scalatest"          % scalaTestV % "it,test"
   )
 }
 /*

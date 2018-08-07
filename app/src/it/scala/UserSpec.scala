@@ -2,7 +2,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import de.choffmeister.auth.common.OAuth2AccessTokenResponse
+import authentication.OAuth2AccessTokenResponse
 import model.{CreateUserRequest, JsonProtocols, UserInfo}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FlatSpec, Matchers}

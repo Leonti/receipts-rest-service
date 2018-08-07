@@ -25,10 +25,10 @@ object OcrIntepreter {
 }
 
 class OcrInterpreterTagless(ocrRepository: OcrRepository, ocrService: OcrService, ocrConfig: OcrIntepreter.OcrConfig)(
-  implicit system: ActorSystem,
-  executor: ExecutionContextExecutor,
-  materializer: ActorMaterializer)
-  extends OcrAlg[Future]
+    implicit system: ActorSystem,
+    executor: ExecutionContextExecutor,
+    materializer: ActorMaterializer)
+    extends OcrAlg[Future]
     with DefaultJsonProtocol {
 
   implicit val ocrSearchResultFormat = jsonFormat1(OcrSearchResult.apply)
@@ -57,13 +57,10 @@ class OcrInterpreterTagless(ocrRepository: OcrRepository, ocrService: OcrService
     } yield ()
 
   override def ocrImage(file: File): Future[OcrTextAnnotation] = ocrService.ocrImage(file)
-  override def saveOcrResult(userId: String,
-                             receiptId: String,
-                             ocrResult: OcrTextAnnotation): Future[OcrEntity] = ocrRepository.save(OcrEntity(userId = userId, id = receiptId, result = ocrResult))
-  override def addOcrToIndex(userId: String,
-                             receiptId: String,
-                             ocrText: OcrText): Future[Unit] = addOcrToIndex(userId, receiptId, ocrText.text)
-  override def findIdsByText(userId: String,
-                             query: String): Future[Seq[String]] =
+  override def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): Future[OcrEntity] =
+    ocrRepository.save(OcrEntity(userId = userId, id = receiptId, result = ocrResult))
+  override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): Future[Unit] =
+    addOcrToIndex(userId, receiptId, ocrText.text)
+  override def findIdsByText(userId: String, query: String): Future[Seq[String]] =
     getOcrResults(userId, query)
 }

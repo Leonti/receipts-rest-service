@@ -26,7 +26,7 @@ class ReceiptRouting(
 )(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
     extends JsonProtocols {
 
-  val logger      = Logger(LoggerFactory.getLogger("ReceiptRouting"))
+  val logger = Logger(LoggerFactory.getLogger("ReceiptRouting"))
 
   def myRejectionHandler =
     RejectionHandler

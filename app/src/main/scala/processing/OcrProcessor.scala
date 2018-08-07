@@ -8,7 +8,10 @@ import algebras._
 
 import scala.language.higherKinds
 
-class OcrProcessorTagless[F[_]: Monad](fileAlg: FileAlg[F], ocrAlg: OcrAlg[F], randomAlg: RandomAlg[F], pendingFileAlg: PendingFileAlg[F]) {
+class OcrProcessorTagless[F[_]: Monad](fileAlg: FileAlg[F],
+                                       ocrAlg: OcrAlg[F],
+                                       randomAlg: RandomAlg[F],
+                                       pendingFileAlg: PendingFileAlg[F]) {
   import fileAlg._, ocrAlg._, randomAlg._, pendingFileAlg._
 
   def processJob(ocrJob: OcrJob): F[List[QueueJob]] =

@@ -10,7 +10,8 @@ import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.server.directives.AuthenticationDirective
 
-class UserRouting(userPrograms: UserPrograms[Future], authenticaton: AuthenticationDirective[User])(implicit executor: ExecutionContextExecutor)
+class UserRouting(userPrograms: UserPrograms[Future], authenticaton: AuthenticationDirective[User])(
+    implicit executor: ExecutionContextExecutor)
     extends JsonProtocols {
 
   val routes = pathPrefix("user" / "create") {

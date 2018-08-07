@@ -7,7 +7,12 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpMethods}
 import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`, `Access-Control-Max-Age`}
+import akka.http.scaladsl.model.headers.{
+  `Access-Control-Allow-Credentials`,
+  `Access-Control-Allow-Headers`,
+  `Access-Control-Allow-Methods`,
+  `Access-Control-Max-Age`
+}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.stream.{ActorMaterializer, Materializer}
@@ -140,24 +145,25 @@ object ReceiptRestService extends App with Service {
     } else
       new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
 
-  val userInterpreter = new UserInterpreterTagless(userRepository, googleOauthService)
-  val tokenInterpreter = new TokenInterpreterTagless()
+  val userInterpreter   = new UserInterpreterTagless(userRepository, googleOauthService)
+  val tokenInterpreter  = new TokenInterpreterTagless()
   val randomInterpreter = new RandomInterpreterTagless()
   val fileInterpreter =
     new FileInterpreterTagless(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer)
   val receiptInterpreter = new ReceiptInterpreterTagless(receiptRepository, ocrRepository)
   val ocrInterpreter =
-    new OcrInterpreterTagless(ocrRepository, ocrService, OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY")))
+    new OcrInterpreterTagless(ocrRepository,
+                              ocrService,
+                              OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY")))
   val pendingFileInterpreter = new PendingFileInterpreterTagless(pendingFileRepository)
 
   val userPrograms = new UserPrograms(userInterpreter, randomInterpreter, tokenInterpreter)
 
   val authenticator = new JwtAuthenticator[User](
+    new JwtVerificationInterpreter(config.getString("tokenSecret").getBytes),
     realm = "Example realm",
-    bearerTokenSecret = config.getString("tokenSecret").getBytes,
-    fromBearerToken = token => userPrograms.findById(token.claimAsString("sub").right.get),
-    fromUsernamePassword = (userName: String, password: String) =>
-      userPrograms.findByUserNameWithPassword(userName, password)
+    fromBearerTokenClaim = subClaim => userPrograms.findById(subClaim.value),
+    fromUsernamePassword = (userName: String, password: String) => userPrograms.findByUserNameWithPassword(userName, password)
   )
 
   val pathAuthorization = new PathAuthorization(bearerTokenSecret = config.getString("tokenSecret").getBytes)
@@ -189,8 +195,8 @@ object ReceiptRestService extends App with Service {
   override val backupRouting =
     new BackupRouting(authenticator.bearerTokenOrCookie(acceptExpired = true), pathAuthorization.authorizePath, backupService)
 
-  val fileProcessor = new FileProcessorTagless(receiptInterpreter, fileInterpreter)
-  val ocrProcessor = new OcrProcessorTagless(fileInterpreter, ocrInterpreter, randomInterpreter, pendingFileInterpreter)
+  val fileProcessor  = new FileProcessorTagless(receiptInterpreter, fileInterpreter)
+  val ocrProcessor   = new OcrProcessorTagless(fileInterpreter, ocrInterpreter, randomInterpreter, pendingFileInterpreter)
   val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor, system)
 
   queueProcessor.reserveNextJob()

@@ -4,7 +4,7 @@ import akka.stream.IOResult
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import algebras._
-import de.choffmeister.auth.common.OAuth2AccessTokenResponse
+import authentication.OAuth2AccessTokenResponse
 import model._
 import ocr.model.OcrTextAnnotation
 import queue.Models.JobId

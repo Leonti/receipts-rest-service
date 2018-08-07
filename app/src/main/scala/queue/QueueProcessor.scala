@@ -12,7 +12,10 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[Future], ocrProcessor: OcrProcessorTagless[Future], system: ActorSystem) {
+class QueueProcessor(queue: Queue,
+                     fileProcessor: FileProcessorTagless[Future],
+                     ocrProcessor: OcrProcessorTagless[Future],
+                     system: ActorSystem) {
 
   val logger              = Logger(LoggerFactory.getLogger("QueueProcessor"))
   private implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
