@@ -1,4 +1,4 @@
-FROM leonti/sbt_1.0.4_openjdk8-alpine3.7:1.0
+FROM leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
 
 RUN apk update && apk add imagemagick
 
