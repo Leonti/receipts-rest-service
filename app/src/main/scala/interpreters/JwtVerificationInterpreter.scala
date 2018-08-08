@@ -15,6 +15,6 @@ class JwtVerificationInterpreter(bearerTokenSecret: Array[Byte]) extends JwtVeri
       .build()
     val jwtTry = Try(verifier.verify(token))
 
-    jwtTry.toEither.left.map(_.getMessage).map(t => SubClaim(t.getClaim("sub").toString))
+    jwtTry.toEither.left.map(_.getMessage).map(t => SubClaim(t.getClaim("sub").asString()))
   }
 }
