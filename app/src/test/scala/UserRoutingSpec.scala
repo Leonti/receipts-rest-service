@@ -1,4 +1,4 @@
-import TestInterpreters.{RandomInterpreter, UserInterpreter}
+import TestInterpreters._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import model.{CreateUserRequest, JsonProtocols, User, UserInfo}
 import org.scalatest.{FlatSpec, Matchers}
@@ -10,8 +10,14 @@ import scala.concurrent.Future
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.headers.{HttpChallenge, HttpCredentials}
 import akka.http.scaladsl.server.directives.{AuthenticationResult, SecurityDirectives}
+import service.UserPrograms
+import cats.implicits._
 
 class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with JsonProtocols {
+
+  val userInterpreter = new UserInterpreterTagless(List(), "")
+  val randomInterpreter = new RandomInterpreterTagless("", 0)
+  val tokenInterpreter = new TokenInterpreterTagless(System.currentTimeMillis(), "secret")
 
   def createAuthentication(user: User) = {
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
@@ -25,9 +31,7 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
     val createUserRequest = CreateUserRequest(userName = "userName", password = "password")
     val user              = User(id = "123-user-id", userName = "userName", passwordHash = "hash")
 
-    val interpreters = TestInterpreters.testInterpreters.copy(randomInterpreter = new RandomInterpreter(user.id))
-
-    val userRouting = new UserRouting(interpreters, createAuthentication(user))
+    val userRouting = new UserRouting(new UserPrograms(userInterpreter, new RandomInterpreterTagless(user.id), tokenInterpreter), createAuthentication(user))
 
     Post("/user/create", createUserRequest) ~> userRouting.routes ~> check {
       status shouldBe Created
@@ -39,10 +43,11 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
   it should "respond with appropriate error if user already exist" in {
 
     val createUserRequest = CreateUserRequest(userName = "userName", password = "password")
-    val interpreters = TestInterpreters.testInterpreters.copy(
-      userInterpreter = new UserInterpreter(List(User(userName = "userName", passwordHash = "hash")), ""))
 
-    val userRouting = new UserRouting(interpreters, createAuthentication(User(id = "123-user", userName = "name", passwordHash = "hash")))
+    val userRouting = new UserRouting(new UserPrograms(
+      new UserInterpreterTagless(List(User(userName = "userName", passwordHash = "hash")), ""),
+      randomInterpreter,
+      tokenInterpreter), createAuthentication(User(id = "123-user", userName = "name", passwordHash = "hash")))
 
     Post("/user/create", createUserRequest) ~> userRouting.routes ~> check {
       status shouldBe Conflict
@@ -51,26 +56,10 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest wit
     }
   }
 
-  /*
-  it should "respond with InternalServerError on failure" in {
-
-    val userService       = mock[UserService]
-    val createUserRequest = CreateUserRequest(userName = "userName", password = "password")
-    when(userService.createUser(createUserRequest)).thenReturn(Future.failed(new RuntimeException("test exception")))
-
-    val userRouting = new UserRouting(userService, createAuthentication(User(id = "123-user", userName = "name", passwordHash = "hash")))
-    Post("/user/create", createUserRequest) ~> userRouting.routes ~> check {
-      status shouldBe InternalServerError
-      contentType shouldBe `application/json`
-      responseAs[String] should include("server failure")
-    }
-  }
-   */
-
   it should "should show user info" in {
     val user = User(id = "123-user", userName = "name", passwordHash = "hash")
 
-    val userRouting = new UserRouting(TestInterpreters.testInterpreters, createAuthentication(user))
+    val userRouting = new UserRouting(new UserPrograms(userInterpreter, randomInterpreter, tokenInterpreter), createAuthentication(user))
     Get("/user/info") ~> userRouting.routes ~> check {
       status shouldBe OK
       contentType shouldBe `application/json`

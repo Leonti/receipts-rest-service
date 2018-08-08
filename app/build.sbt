@@ -28,8 +28,8 @@ val googleApiClient = "1.22.0"
 val scalaLoggingV   = "3.5.0"
 val logbackV        = "1.1.7"
 val diffsonV        = "2.1.2"
-val catsV           = "0.9.0"
-val freekV          = "0.6.7"
+val catsV           = "1.2.0"
+val circeVersion = "0.9.3"
 
 val logging = Seq(
   "ch.qos.logback"             % "logback-classic"          % logbackV,
@@ -54,14 +54,17 @@ libraryDependencies ++= {
     "com.typesafe.akka"     %% "akka-http-spray-json"      % akkaHttpV,
     "com.typesafe.akka"     %% "akka-http-testkit"         % akkaHttpV,
     "com.amazonaws"         % "aws-java-sdk-s3"            % amazonS3V,
-    "com.google.apis"       % "google-api-services-vision" % visionApiV,
-    "com.google.api-client" % "google-api-client"          % googleApiClient,
+    "com.google.apis"       % "google-api-services-vision" % visionApiV excludeAll (
+      ExclusionRule(organization="com.google.guava", name="guava-jdk5")
+      ),
+    "com.google.api-client" % "google-api-client"          % googleApiClient excludeAll (
+      ExclusionRule(organization="com.google.guava", name="guava-jdk5")
+      ),
     "org.reactivemongo"     %% "reactivemongo"             % reactiveMongoV excludeAll (
       ExclusionRule(organization = "com.typesafe.akka")
     ),
     "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
-    "org.typelevel"        %% "cats"              % catsV,
-    "com.projectseptember" %% "freek"             % freekV,
+    "org.typelevel"        %% "cats-core"              % catsV,
     "de.choffmeister"      %% "auth-common"       % jwtAuthV excludeAll (
       ExclusionRule(organization = "io.spray")
     ),
@@ -70,18 +73,25 @@ libraryDependencies ++= {
       ExclusionRule(organization = "io.spray")
     ),
     "org.gnieh"     %% "diffson-spray-json" % diffsonV,
-    "org.scalatest" %% "scalatest"          % scalaTestV % "it,test",
-    "org.mockito"   % "mockito-all"         % "1.10.19" % "test"
+    "com.auth0" % "java-jwt" % "3.4.0",
+    "com.auth0" % "jwks-rsa" % "0.6.0",
+    "org.scalatest" %% "scalatest"          % scalaTestV % "it,test"
   )
 }
-
+/*
+libraryDependencies ++= Seq(
+  "io.circe" %% "circe-core",
+  "io.circe" %% "circe-generic",
+  "io.circe" %% "circe-parser"
+).map(_ % circeVersion)
+*/
 libraryDependencies ++= logging
 
 resolvers ++= Seq(
   Resolver.bintrayRepo("dwhjames", "maven")
 )
 
-resolvers += Resolver.bintrayRepo("projectseptemberinc", "maven")
+//resolvers += Resolver.bintrayRepo("projectseptemberinc", "maven")
 
 // auth-utils is published there
 resolvers += Resolver.bintrayRepo("leonti", "maven")

@@ -4,7 +4,10 @@ import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.BasicDirectives._
 import akka.http.scaladsl.server.directives.SecurityDirectives._
 import akka.http.scaladsl.server.directives.ParameterDirectives._
-import de.choffmeister.auth.common.JsonWebToken
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
+
+import scala.util.{Failure, Success, Try}
 
 class PathAuthorization(bearerTokenSecret: Array[Byte]) {
 
@@ -13,9 +16,14 @@ class PathAuthorization(bearerTokenSecret: Array[Byte]) {
       parameter('access_token).flatMap { accessToken =>
         println(s"Checking if uri is correct: ${ctx.request.uri.path}")
 
-        JsonWebToken.read(accessToken, bearerTokenSecret) match {
-          case Right(token) => authorize(token.claimAsString("sub").right.get == ctx.request.uri.path.toString())
-          case Left(_)      => authorize(false)
+        val algorithmHS = Algorithm.HMAC256(bearerTokenSecret)
+        val verifier = JWT.require(algorithmHS)
+          .build()
+        val jwtTry = Try(verifier.verify(accessToken))
+
+        jwtTry match {
+          case Success(token) => authorize(token.getClaim("sub").asString == ctx.request.uri.path.toString) // FIXME can be null
+          case Failure(_)      => authorize(false)
         }
       }
     }

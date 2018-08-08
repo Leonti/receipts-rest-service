@@ -6,4 +6,4 @@ addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.6")
 
 addSbtPlugin("com.geirsson" % "sbt-scalafmt" % "1.5.1")
 
-addSbtPlugin("org.ensime" % "sbt-ensime" % "2.5.1")
+//addSbtPlugin("org.ensime" % "sbt-ensime" % "2.5.1")

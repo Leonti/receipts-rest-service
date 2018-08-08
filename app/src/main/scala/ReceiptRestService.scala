@@ -25,14 +25,13 @@ import repository._
 import routing._
 import service._
 
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import interpreters._
 import ocr.service.{GoogleOcrService, OcrServiceStub}
-import processing.ReceiptFiles
+import processing.{FileProcessorTagless, OcrProcessorTagless, ReceiptFiles}
 import queue.{Queue, QueueProcessor}
 import queue.files.ReceiptFileQueue
 import cats.implicits._
-import freek._
 // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
 
 trait Service extends JsonProtocols with CorsSupport {
@@ -89,13 +88,13 @@ trait Service extends JsonProtocols with CorsSupport {
       }
       .result()
 
-  val routes = {
+  def routes(config: Config) = {
     //logRequest("receipt-rest-service") {
     // logRequestResult("receipt-rest-service") {
     handleRejections(myRejectionHandler) {
       cors {
         userRouting.routes ~
-        receiptRouting.routes ~
+        receiptRouting.routes(config.getString("uploadsFolder")) ~
         pendingFileRouting.routes ~
         authenticationRouting.routes ~
         appConfigRouting.routes ~
@@ -146,26 +145,25 @@ object ReceiptRestService extends App with Service {
     } else
       new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
 
-  val interpreters = Interpreters(
-    userInterpreter = new UserInterpreter(userRepository, googleOauthService),
-    tokenInterpreter = new TokenInterpreter(),
-    randomInterpreter = new RandomInterpreter(),
-    fileInterpreter =
-      new FileInterpreter(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer),
-    receiptInterpreter = new ReceiptInterpreter(receiptRepository, ocrRepository),
-    ocrInterpreter =
-      new OcrInterpreter(ocrRepository, ocrService, OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY"))),
-    pendingFileInterpreter = new PendingFileInterpreter(pendingFileRepository),
-    envInterpreter = new EnvInterpreter(config)
-  )
+  val userInterpreter   = new UserInterpreterTagless(userRepository, googleOauthService)
+  val tokenInterpreter  = new TokenInterpreterTagless()
+  val randomInterpreter = new RandomInterpreterTagless()
+  val fileInterpreter =
+    new FileInterpreterTagless(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer)
+  val receiptInterpreter = new ReceiptInterpreterTagless(receiptRepository, ocrRepository)
+  val ocrInterpreter =
+    new OcrInterpreterTagless(ocrRepository,
+                              ocrService,
+                              OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY")))
+  val pendingFileInterpreter = new PendingFileInterpreterTagless(pendingFileRepository)
 
-  val authenticatorInterpreters = interpreters.userInterpreter :&: interpreters.randomInterpreter
+  val userPrograms = new UserPrograms(userInterpreter, randomInterpreter, tokenInterpreter)
+
   val authenticator = new JwtAuthenticator[User](
+    new JwtVerificationInterpreter(config.getString("tokenSecret").getBytes),
     realm = "Example realm",
-    bearerTokenSecret = config.getString("tokenSecret").getBytes,
-    fromBearerToken = token => UserService.findById(token.claimAsString("sub").right.get).interpret(authenticatorInterpreters),
-    fromUsernamePassword = (userName: String, password: String) =>
-      UserService.findByUserNameWithPassword(userName, password).interpret(authenticatorInterpreters)
+    fromBearerTokenClaim = subClaim => userPrograms.findById(subClaim.value),
+    fromUsernamePassword = (userName: String, password: String) => userPrograms.findByUserNameWithPassword(userName, password)
   )
 
   val pathAuthorization = new PathAuthorization(bearerTokenSecret = config.getString("tokenSecret").getBytes)
@@ -174,30 +172,34 @@ object ReceiptRestService extends App with Service {
   println("Mongo:")
   println(config.getString("mongodb.db"))
 
-  //override val logger = Logging(system, getClass)
+  val receiptPrograms = new ReceiptPrograms[Future](
+    receiptInterpreter,
+    fileInterpreter,
+    randomInterpreter,
+    ocrInterpreter
+  )
   override val receiptRouting =
-    new ReceiptRouting(interpreters, authenticator.bearerTokenOrCookie(acceptExpired = true))
+    new ReceiptRouting(receiptPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
   override val pendingFileRouting = new PendingFileRouting(
     pendingFileService,
     authenticator.bearerTokenOrCookie(acceptExpired = true)
   )
-  override val userRouting           = new UserRouting(interpreters, authenticator.bearerTokenOrCookie(acceptExpired = true))
+
+  override val userRouting           = new UserRouting(userPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
   override val authenticationRouting = new AuthenticationRouting(authenticator)
   override val appConfigRouting      = new AppConfigRouting()
-  override val oauthRouting          = new OauthRouting(interpreters)
+  override val oauthRouting          = new OauthRouting(userPrograms)
 
-  val backupService = new BackupService(interpreters, fileService)
+  val backupService = new BackupService(receiptPrograms, fileService)
 
   override val backupRouting =
     new BackupRouting(authenticator.bearerTokenOrCookie(acceptExpired = true), pathAuthorization.authorizePath, backupService)
 
-  val queueProcessor = new QueueProcessor(
-    queue = queue,
-    interpreters = interpreters,
-    system = system
-  )
+  val fileProcessor  = new FileProcessorTagless(receiptInterpreter, fileInterpreter)
+  val ocrProcessor   = new OcrProcessorTagless(fileInterpreter, ocrInterpreter, randomInterpreter, pendingFileInterpreter)
+  val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor, system)
 
   queueProcessor.reserveNextJob()
 
-  Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
+  Http().bindAndHandle(routes(config), config.getString("http.interface"), config.getInt("http.port"))
 }

@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.PathMatchers.Segment
 import akka.http.scaladsl.server.directives.{AuthenticationDirective, ContentTypeResolver, FileInfo}
 import akka.http.scaladsl.server._
 import model._
-import service.ReceiptService
+import service.{ReceiptErrors, ReceiptPrograms}
 import akka.actor.ActorSystem
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -17,19 +17,16 @@ import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
-import interpreters.Interpreters
 import org.slf4j.LoggerFactory
-import freek._
 import cats.implicits._
 
 class ReceiptRouting(
-    interpreters: Interpreters,
+    receiptPrograms: ReceiptPrograms[Future],
     authenticaton: AuthenticationDirective[User]
 )(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
     extends JsonProtocols {
 
-  val logger      = Logger(LoggerFactory.getLogger("ReceiptRouting"))
-  val interpreter = interpreters.receiptInterpreter :&: interpreters.fileInterpreter :&: interpreters.randomInterpreter :&: interpreters.envInterpreter :&: interpreters.ocrInterpreter
+  val logger = Logger(LoggerFactory.getLogger("ReceiptRouting"))
 
   def myRejectionHandler =
     RejectionHandler
@@ -60,7 +57,7 @@ class ReceiptRouting(
 
   val deleteReceipt: String => Route = (receiptId) => {
 
-    val deletionFuture: Future[Option[Unit]] = ReceiptService.deleteReceipt(receiptId).interpret(interpreter)
+    val deletionFuture: Future[Option[Unit]] = receiptPrograms.removeReceipt(receiptId)
 
     onComplete(deletionFuture) {
       case Success(deletionOption: Option[Unit]) =>
@@ -72,27 +69,27 @@ class ReceiptRouting(
     }
   }
 
-  val receiptServiceError: ReceiptService.Error => Route = {
-    case (ReceiptService.FileAlreadyExists()) =>
+  val receiptServiceError: ReceiptErrors.Error => Route = {
+    case ReceiptErrors.FileAlreadyExists() =>
       complete(BadRequest -> ErrorResponse("Can't create receipt with the same file"))
-    case (ReceiptService.ReceiptNotFound(receiptId: String)) =>
+    case ReceiptErrors.ReceiptNotFound(receiptId: String) =>
       complete(BadRequest -> ErrorResponse(s"Receipt $receiptId doesn't exist"))
   }
 
   val toTempFile: FileInfo => File = fileInfo => File.createTempFile(fileInfo.fileName, ".tmp")
 
-  val routes =
+  def routes(uploadsLocation: String): Route =
     handleRejections(myRejectionHandler) {
       pathPrefix("user" / Segment / "receipt") { userId: String =>
         authenticaton { user =>
           authorize(user.id == userId) {
             path(Segment) { receiptId: String =>
               get {
-                respondWithReceipt(ReceiptService.findById(receiptId).interpret(interpreter))
+                respondWithReceipt(receiptPrograms.findById(receiptId))
               } ~
               patch {
                 entity(as[String]) { receiptPatch =>
-                  val receiptFuture = ReceiptService.patchReceipt(receiptId, receiptPatch).interpret(interpreter)
+                  val receiptFuture = receiptPrograms.patchReceipt(receiptId, receiptPatch)
                   respondWithReceipt(receiptFuture)
                 }
               } ~
@@ -104,11 +101,11 @@ class ReceiptRouting(
               post {
                 storeUploadedFile("receipt", toTempFile) {
                   case (metadata: FileInfo, file: File) =>
-                    val pendingFilesFuture: Future[Either[ReceiptService.Error, PendingFile]] =
-                      ReceiptService.addUploadedFileToReceipt(userId, receiptId, metadata, file).interpret(interpreter)
+                    val pendingFilesFuture: Future[Either[ReceiptErrors.Error, PendingFile]] =
+                      receiptPrograms.addUploadedFileToReceipt(uploadsLocation, userId, receiptId, metadata, file)
 
                     onComplete(pendingFilesFuture) {
-                      case Success(pendingFileEither: Either[ReceiptService.Error, PendingFile]) =>
+                      case Success(pendingFileEither: Either[ReceiptErrors.Error, PendingFile]) =>
                         pendingFileEither match {
                           case Right(pendingFile: PendingFile) => complete(Created -> pendingFile)
                           case Left(error)                     => receiptServiceError(error)
@@ -122,9 +119,8 @@ class ReceiptRouting(
               get {
                 val fileId = fileIdWithExt.split('.')(0)
 
-                val fileToServeFuture = ReceiptService
+                val fileToServeFuture = receiptPrograms
                   .receiptFileWithExtension(receiptId, fileId)
-                  .interpret(interpreter)
 
                 onComplete(fileToServeFuture) {
                   case Success(fileToServeOption: Option[FileToServe]) =>
@@ -141,9 +137,8 @@ class ReceiptRouting(
             get {
               parameters("last-modified".as[Long].?, "q".as[String].?) { (lastModified: Option[Long], queryOption: Option[String]) =>
                 val userReceiptsFuture: Future[Seq[ReceiptEntity]] =
-                  ReceiptService
+                  receiptPrograms
                     .findForUser(userId, lastModified, queryOption)
-                    .interpret(interpreter)
 
                 onComplete(userReceiptsFuture) { userReceipts =>
                   complete(userReceipts)
@@ -152,13 +147,12 @@ class ReceiptRouting(
             } ~
             post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
               FileUploadDirective.uploadedFileWithFields("receipt", "total", "description", "transactionTime", "tags") {
-                (parsedForm: ParsedForm) =>
-                  val receiptFuture = ReceiptService
-                    .createReceipt(userId, parsedForm)
-                    .interpret(interpreter)
+                parsedForm: ParsedForm =>
+                  val receiptFuture = receiptPrograms
+                    .createReceipt(uploadsLocation, userId, parsedForm)
 
                   onComplete(receiptFuture) {
-                    case Success(receiptEither: Either[ReceiptService.Error, ReceiptEntity]) =>
+                    case Success(receiptEither: Either[ReceiptErrors.Error, ReceiptEntity]) =>
                       receiptEither match {
                         case Right(receipt: ReceiptEntity) => complete(Created -> receipt)
                         case Left(error)                   => receiptServiceError(error)

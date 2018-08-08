@@ -9,7 +9,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
-import de.choffmeister.auth.common.OAuth2AccessTokenResponse
+import authentication.OAuth2AccessTokenResponse
 import model.{CreateUserRequest, JsonProtocols, UserInfo}
 
 import scala.concurrent.{ExecutionContext, Future}

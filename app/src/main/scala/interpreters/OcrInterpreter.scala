@@ -2,11 +2,10 @@ package interpreters
 
 import java.io.File
 
-import cats.~>
 import model.{OcrEntity, OcrText}
 import ocr.model.{OcrTextAnnotation, OcrSearchResult, OcrContent}
 import ocr.service.OcrService
-import ops.OcrOps._
+import algebras.OcrAlg
 import repository.OcrRepository
 
 import akka.http.scaladsl.Http
@@ -25,11 +24,11 @@ object OcrIntepreter {
   case class OcrConfig(ocrHost: String, apiKey: String)
 }
 
-class OcrInterpreter(ocrRepository: OcrRepository, ocrService: OcrService, ocrConfig: OcrIntepreter.OcrConfig)(
+class OcrInterpreterTagless(ocrRepository: OcrRepository, ocrService: OcrService, ocrConfig: OcrIntepreter.OcrConfig)(
     implicit system: ActorSystem,
     executor: ExecutionContextExecutor,
     materializer: ActorMaterializer)
-    extends (OcrOp ~> Future)
+    extends OcrAlg[Future]
     with DefaultJsonProtocol {
 
   implicit val ocrSearchResultFormat = jsonFormat1(OcrSearchResult.apply)
@@ -57,12 +56,11 @@ class OcrInterpreter(ocrRepository: OcrRepository, ocrService: OcrService, ocrCo
         ))
     } yield ()
 
-  def apply[A](i: OcrOp[A]): Future[A] = i match {
-    case OcrImage(file: File) => ocrService.ocrImage(file)
-    case SaveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation) =>
-      ocrRepository.save(OcrEntity(userId = userId, id = receiptId, result = ocrResult))
-    case AddOcrToIndex(userId: String, receiptId: String, ocrText: OcrText) => addOcrToIndex(userId, receiptId, ocrText.text)
-    case FindIdsByText(userId: String, query: String)                       => getOcrResults(userId, query)
-  }
-
+  override def ocrImage(file: File): Future[OcrTextAnnotation] = ocrService.ocrImage(file)
+  override def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): Future[OcrEntity] =
+    ocrRepository.save(OcrEntity(userId = userId, id = receiptId, result = ocrResult))
+  override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): Future[Unit] =
+    addOcrToIndex(userId, receiptId, ocrText.text)
+  override def findIdsByText(userId: String, query: String): Future[Seq[String]] =
+    getOcrResults(userId, query)
 }

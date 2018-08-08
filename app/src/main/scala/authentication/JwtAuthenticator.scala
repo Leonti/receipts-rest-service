@@ -9,18 +9,20 @@ import akka.http.scaladsl.server.directives.RouteDirectives._
 import akka.http.scaladsl.server.directives.CookieDirectives._
 import akka.http.scaladsl.server.directives._
 import akka.pattern.after
-import de.choffmeister.auth.common.JsonWebToken
-import de.choffmeister.auth.common.JsonWebToken._
-
+import algebras.JwtVerificationAlg
+import cats.Id
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.Success
+import model.SubClaim
 
-class JwtAuthenticator[Auth](realm: String,
-                             bearerTokenSecret: Array[Byte],
+class JwtAuthenticator[Auth](verificationAlg: JwtVerificationAlg[Id],
+                             realm: String,
                              fromUsernamePassword: (String, String) => Future[Option[Auth]],
-                             fromBearerToken: JsonWebToken => Future[Option[Auth]])(implicit executor: ExecutionContext)
+                             fromBearerTokenClaim: SubClaim => Future[Option[Auth]])(implicit executor: ExecutionContext)
     extends SecurityDirectives {
+  import verificationAlg._
+
   def apply(): Directive1[Auth] = {
     bearerTokenOrCookie(acceptExpired = false).recover { rejs =>
       basic().recover(rejs2 => reject(rejs ++ rejs2: _*))
@@ -54,19 +56,18 @@ class JwtAuthenticator[Auth](realm: String,
   }
 
   def bearerTokenOrCookie(acceptExpired: Boolean = false): AuthenticationDirective[Auth] = {
-    def resolve(token: JsonWebToken): Future[AuthenticationResult[Auth]] = fromBearerToken(token).map {
+    def resolve(subClaim: SubClaim): Future[AuthenticationResult[Auth]] = fromBearerTokenClaim(subClaim).map {
       case Some(user) => grant(user)
       case None       => deny(None)
     }
 
     val authenticator: Option[String] => Future[AuthenticationResult[Auth]] = {
       case Some(tokenStr) =>
-        JsonWebToken.read(tokenStr, bearerTokenSecret) match {
-          case Right(token)                          => resolve(token)
-          case Left(Expired(token)) if acceptExpired => resolve(token)
+        verify(tokenStr) match {
+          case Right(subClaim)                          => resolve(subClaim)
           case Left(error)                           => Future(deny(Some(error)))
         }
-      case None => Future(deny(Some(Missing)))
+      case None => Future(deny(Some("Missing token")))
     }
 
     extractExecutionContext.flatMap { implicit ec =>
@@ -96,42 +97,19 @@ class JwtAuthenticator[Auth](realm: String,
       }
     }
   }
-  /*
-  def bearerToken(acceptExpired: Boolean = false): AuthenticationDirective[Auth] = {
-    def resolve(token: JsonWebToken): Future[AuthenticationResult[Auth]] = fromBearerToken(token).map {
-      case Some(user) => grant(user)
-      case None => deny(None)
-    }
 
-    authenticateOrRejectWithChallenge[OAuth2BearerToken, Auth] {
-      case Some(OAuth2BearerToken(tokenStr)) =>
-        JsonWebToken.read(tokenStr, bearerTokenSecret) match {
-          case Right(token) => resolve(token)
-          case Left(Expired(token)) if acceptExpired => resolve(token)
-          case Left(error) => Future(deny(Some(error)))
-        }
-      case None => Future(deny(Some(Missing)))
-    }
-  }
-   */
   private def grant(user: Auth)          = AuthenticationResult.success(user)
   private def deny                       = AuthenticationResult.failWithChallenge(createBasicChallenge)
-  private def deny(error: Option[Error]) = AuthenticationResult.failWithChallenge(createBearerTokenChallenge(error))
+  private def deny(error: Option[String]) = AuthenticationResult.failWithChallenge(createBearerTokenChallenge(error))
 
   private def createBasicChallenge: HttpChallenge = {
     HttpChallenge("Basic", realm)
   }
 
-  private def createBearerTokenChallenge(error: Option[Error]): HttpChallenge = {
+  private def createBearerTokenChallenge(error: Option[String]): HttpChallenge = {
     val desc = error match {
       case None                             => None
-      case Some(Missing)                    => None
-      case Some(Malformed)                  => Some("The access token is malformed")
-      case Some(InvalidSignature)           => Some("The access token has been manipulated")
-      case Some(Incomplete)                 => Some("The token must at least contain the iat and exp claim")
-      case Some(Expired(_))                 => Some("The access token expired")
-      case Some(UnsupportedAlgorithm(algo)) => Some(s"The signature algorithm $algo is not supported")
-      case Some(Unknown)                    => Some("An unknown error occured")
+      case Some(message)                    => Some(message)
     }
     val params = desc match {
       case Some(msg) => Map("error" -> "invalid_token", "error_description" -> msg)
