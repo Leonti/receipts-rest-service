@@ -54,8 +54,12 @@ libraryDependencies ++= {
     "com.typesafe.akka"     %% "akka-http-spray-json"      % akkaHttpV,
     "com.typesafe.akka"     %% "akka-http-testkit"         % akkaHttpV,
     "com.amazonaws"         % "aws-java-sdk-s3"            % amazonS3V,
-    "com.google.apis"       % "google-api-services-vision" % visionApiV,
-    "com.google.api-client" % "google-api-client"          % googleApiClient,
+    "com.google.apis"       % "google-api-services-vision" % visionApiV excludeAll (
+      ExclusionRule(organization="com.google.guava", name="guava-jdk5")
+      ),
+    "com.google.api-client" % "google-api-client"          % googleApiClient excludeAll (
+      ExclusionRule(organization="com.google.guava", name="guava-jdk5")
+      ),
     "org.reactivemongo"     %% "reactivemongo"             % reactiveMongoV excludeAll (
       ExclusionRule(organization = "com.typesafe.akka")
     ),
