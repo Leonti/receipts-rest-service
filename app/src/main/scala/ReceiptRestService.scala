@@ -121,7 +121,7 @@ object ReceiptRestService extends App with Service {
   override val config = ConfigFactory.load()
 
   val userRepository = new UserRepository()
-  val auth0Service   = new Auth0Service()
+  val openIdService   = new OpenIdService()
 
   val fileCachingService    = new FileCachingService()
   val imageResizingService  = new ImageResizingService()
@@ -143,7 +143,7 @@ object ReceiptRestService extends App with Service {
     } else
       new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
 
-  val userInterpreter   = new UserInterpreter(userRepository, auth0Service)
+  val userInterpreter   = new UserInterpreter(userRepository, openIdService)
   val tokenInterpreter  = new TokenInterpreter()
   val randomInterpreter = new RandomInterpreterTagless()
   val fileInterpreter =

@@ -13,16 +13,16 @@ import com.typesafe.config.ConfigFactory
 import model.{AccessToken, Email}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
-case class Auth0UserInfo(
+case class OpenIdUserInfo(
     sub: String,
     email: String,
     email_verified: Boolean
 )
 
-class Auth0Service()(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
+class OpenIdService()(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
     extends DefaultJsonProtocol {
 
-  implicit val auth0TokenInfoFormat: RootJsonFormat[Auth0UserInfo] = jsonFormat3(Auth0UserInfo)
+  implicit val openIdTokenInfoFormat: RootJsonFormat[OpenIdUserInfo] = jsonFormat3(OpenIdUserInfo)
   private val config                                               = ConfigFactory.load()
 
   val fetchAndValidateTokenInfo: AccessToken => Future[Email] = accessToken => {
@@ -34,7 +34,7 @@ class Auth0Service()(implicit system: ActorSystem, executor: ExecutionContextExe
           uri = s"https://leonti.au.auth0.com/userinfo",
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
-      userInfo <- Unmarshal(response.entity).to[Auth0UserInfo]
+      userInfo <- Unmarshal(response.entity).to[OpenIdUserInfo]
     } yield Email(userInfo.email)
   }
 }

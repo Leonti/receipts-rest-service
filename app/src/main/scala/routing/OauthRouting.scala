@@ -13,17 +13,17 @@ import spray.json.RootJsonFormat
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
-case class Auth0Token(token: String)
+case class OpenIdToken(token: String)
 
 class OauthRouting(userPrograms: UserPrograms[Future])(implicit system: ActorSystem,
                                                        executor: ExecutionContextExecutor,
                                                        materializer: ActorMaterializer)
     extends JsonProtocols {
 
-  private implicit val auth0TokenFormat: RootJsonFormat[Auth0Token] = jsonFormat1(Auth0Token)
+  private implicit val openIdTokenFormat: RootJsonFormat[OpenIdToken] = jsonFormat1(OpenIdToken)
 
-  private val validateTokenWithUserCreation: Auth0Token => Route = token => {
-    val userFuture: Future[User] = userPrograms.validateAuth0User(AccessToken(token.token))
+  private val validateTokenWithUserCreation: OpenIdToken => Route = token => {
+    val userFuture: Future[User] = userPrograms.validateOpenIdUser(AccessToken(token.token))
 
     onComplete(userFuture) { userTry: Try[User] =>
       userTry match {
@@ -37,10 +37,10 @@ class OauthRouting(userPrograms: UserPrograms[Future])(implicit system: ActorSys
   }
 
   val routes: Route = {
-    path("oauth" / "auth0") {
+    path("oauth" / "openId") {
       post {
-        entity(as[Auth0Token]) { auth0Token =>
-          validateTokenWithUserCreation(auth0Token)
+        entity(as[OpenIdToken]) { openIdToken =>
+          validateTokenWithUserCreation(openIdToken)
         }
       }
     }

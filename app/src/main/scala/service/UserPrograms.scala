@@ -12,7 +12,7 @@ class UserPrograms[F[_]: Monad](userAlg: UserAlg[F]) {
 
   def findById(id: String): F[Option[User]] = findUserById(id)
 
-  def validateAuth0User(accessToken: AccessToken): F[User] =
+  def validateOpenIdUser(accessToken: AccessToken): F[User] =
     for {
       email        <- getEmailFromAccessToken(accessToken)
       existingUser <- findUserByUsername(email.value)
