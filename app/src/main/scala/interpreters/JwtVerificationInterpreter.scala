@@ -11,7 +11,8 @@ import scala.util.Try
 class JwtVerificationInterpreter(bearerTokenSecret: Array[Byte]) extends JwtVerificationAlg[Id] {
   override def verify(token: String): Either[String, SubClaim] = {
     val algorithmHS = Algorithm.HMAC256(bearerTokenSecret)
-    val verifier = JWT.require(algorithmHS)
+    val verifier = JWT
+      .require(algorithmHS)
       .build()
     val jwtTry = Try(verifier.verify(token))
 

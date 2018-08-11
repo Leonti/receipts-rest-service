@@ -22,7 +22,6 @@ val akkaHttpV       = "10.0.11"
 val amazonS3V       = "1.11.241"
 val scalaTestV      = "3.0.4"
 val reactiveMongoV  = "0.12.6"
-val jwtAuthV        = "0.3.0-1-g71ae99b"
 val visionApiV      = "v1-rev346-1.22.0"
 val googleApiClient = "1.22.0"
 val scalaLoggingV   = "3.5.0"
@@ -65,13 +64,6 @@ libraryDependencies ++= {
     ),
     "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
     "org.typelevel"        %% "cats-core"              % catsV,
-    "de.choffmeister"      %% "auth-common"       % jwtAuthV excludeAll (
-      ExclusionRule(organization = "io.spray")
-    ),
-    "de.choffmeister" %% "auth-akka-http" % jwtAuthV excludeAll (
-      ExclusionRule(organization = "com.typesafe.akka"),
-      ExclusionRule(organization = "io.spray")
-    ),
     "org.gnieh"     %% "diffson-spray-json" % diffsonV,
     "com.auth0" % "java-jwt" % "3.4.0",
     "com.auth0" % "jwks-rsa" % "0.6.0",
@@ -91,15 +83,7 @@ resolvers ++= Seq(
   Resolver.bintrayRepo("dwhjames", "maven")
 )
 
-//resolvers += Resolver.bintrayRepo("projectseptemberinc", "maven")
-
-// auth-utils is published there
-resolvers += Resolver.bintrayRepo("leonti", "maven")
-
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
-
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
-
-//Revolver.settings
 
 mainClass in assembly := Some("ReceiptRestService")

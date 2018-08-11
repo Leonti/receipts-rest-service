@@ -66,7 +66,6 @@ trait Service extends JsonProtocols with CorsSupport {
   val userRouting: UserRouting
   val receiptRouting: ReceiptRouting
   val pendingFileRouting: PendingFileRouting
-  val authenticationRouting: AuthenticationRouting
   val appConfigRouting: AppConfigRouting
   val oauthRouting: OauthRouting
   val backupRouting: BackupRouting
@@ -96,7 +95,6 @@ trait Service extends JsonProtocols with CorsSupport {
         userRouting.routes ~
         receiptRouting.routes(config.getString("uploadsFolder")) ~
         pendingFileRouting.routes ~
-        authenticationRouting.routes ~
         appConfigRouting.routes ~
         oauthRouting.routes ~
         backupRouting.routes ~
@@ -122,8 +120,8 @@ object ReceiptRestService extends App with Service {
 
   override val config = ConfigFactory.load()
 
-  val userRepository     = new UserRepository()
-  val googleOauthService = new GoogleOauthService()
+  val userRepository = new UserRepository()
+  val auth0Service   = new Auth0Service()
 
   val fileCachingService    = new FileCachingService()
   val imageResizingService  = new ImageResizingService()
@@ -145,8 +143,8 @@ object ReceiptRestService extends App with Service {
     } else
       new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
 
-  val userInterpreter   = new UserInterpreterTagless(userRepository, googleOauthService)
-  val tokenInterpreter  = new TokenInterpreterTagless()
+  val userInterpreter   = new UserInterpreter(userRepository, auth0Service)
+  val tokenInterpreter  = new TokenInterpreter()
   val randomInterpreter = new RandomInterpreterTagless()
   val fileInterpreter =
     new FileInterpreterTagless(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer)
@@ -157,13 +155,12 @@ object ReceiptRestService extends App with Service {
                               OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY")))
   val pendingFileInterpreter = new PendingFileInterpreterTagless(pendingFileRepository)
 
-  val userPrograms = new UserPrograms(userInterpreter, randomInterpreter, tokenInterpreter)
+  val userPrograms = new UserPrograms(userInterpreter)
 
   val authenticator = new JwtAuthenticator[User](
     new JwtVerificationInterpreter(config.getString("tokenSecret").getBytes),
     realm = "Example realm",
-    fromBearerTokenClaim = subClaim => userPrograms.findById(subClaim.value),
-    fromUsernamePassword = (userName: String, password: String) => userPrograms.findByUserNameWithPassword(userName, password)
+    fromBearerTokenClaim = subClaim => userPrograms.findById(subClaim.value)
   )
 
   val pathAuthorization = new PathAuthorization(bearerTokenSecret = config.getString("tokenSecret").getBytes)
@@ -185,10 +182,9 @@ object ReceiptRestService extends App with Service {
     authenticator.bearerTokenOrCookie(acceptExpired = true)
   )
 
-  override val userRouting           = new UserRouting(userPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
-  override val authenticationRouting = new AuthenticationRouting(authenticator)
-  override val appConfigRouting      = new AppConfigRouting()
-  override val oauthRouting          = new OauthRouting(userPrograms)
+  override val userRouting      = new UserRouting(userPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
+  override val appConfigRouting = new AppConfigRouting()
+  override val oauthRouting     = new OauthRouting(userPrograms)
 
   val backupService = new BackupService(receiptPrograms, fileService)
 

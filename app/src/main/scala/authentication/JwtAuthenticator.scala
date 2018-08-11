@@ -8,51 +8,19 @@ import akka.http.scaladsl.server.directives.FutureDirectives._
 import akka.http.scaladsl.server.directives.RouteDirectives._
 import akka.http.scaladsl.server.directives.CookieDirectives._
 import akka.http.scaladsl.server.directives._
-import akka.pattern.after
 import algebras.JwtVerificationAlg
 import cats.Id
 import scala.concurrent._
-import scala.concurrent.duration._
-import scala.util.Success
 import model.SubClaim
 
 class JwtAuthenticator[Auth](verificationAlg: JwtVerificationAlg[Id],
                              realm: String,
-                             fromUsernamePassword: (String, String) => Future[Option[Auth]],
                              fromBearerTokenClaim: SubClaim => Future[Option[Auth]])(implicit executor: ExecutionContext)
     extends SecurityDirectives {
   import verificationAlg._
 
   def apply(): Directive1[Auth] = {
-    bearerTokenOrCookie(acceptExpired = false).recover { rejs =>
-      basic().recover(rejs2 => reject(rejs ++ rejs2: _*))
-    }
-  }
-
-  def basic(minDelay: Option[FiniteDuration] = None): AuthenticationDirective[Auth] = {
-    authenticateOrRejectWithChallenge[BasicHttpCredentials, Auth] {
-      case Some(BasicHttpCredentials(username, password)) =>
-        val auth = fromUsernamePassword(username, password)
-        val delayedAuth = minDelay match {
-          case None => auth
-          case Some(delay) =>
-            val delayed = after[Option[Auth]](delay, SimpleScheduler.instance)(Future(None))
-
-            val promise = Promise[Option[Auth]]()
-            auth.onComplete {
-              case Success(Some(user)) => promise.success(Some(user))
-              case _                   => delayed.onComplete(_ => promise.success(None))
-            }
-            promise.future
-        }
-
-        delayedAuth map {
-          case Some(user) => grant(user)
-          case None       => deny
-        }
-
-      case None => Future(deny)
-    }
+    bearerTokenOrCookie(acceptExpired = false)
   }
 
   def bearerTokenOrCookie(acceptExpired: Boolean = false): AuthenticationDirective[Auth] = {
@@ -64,8 +32,8 @@ class JwtAuthenticator[Auth](verificationAlg: JwtVerificationAlg[Id],
     val authenticator: Option[String] => Future[AuthenticationResult[Auth]] = {
       case Some(tokenStr) =>
         verify(tokenStr) match {
-          case Right(subClaim)                          => resolve(subClaim)
-          case Left(error)                           => Future(deny(Some(error)))
+          case Right(subClaim) => resolve(subClaim)
+          case Left(error)     => Future(deny(Some(error)))
         }
       case None => Future(deny(Some("Missing token")))
     }
@@ -98,8 +66,8 @@ class JwtAuthenticator[Auth](verificationAlg: JwtVerificationAlg[Id],
     }
   }
 
-  private def grant(user: Auth)          = AuthenticationResult.success(user)
-  private def deny                       = AuthenticationResult.failWithChallenge(createBasicChallenge)
+  private def grant(user: Auth)           = AuthenticationResult.success(user)
+  private def deny                        = AuthenticationResult.failWithChallenge(createBasicChallenge)
   private def deny(error: Option[String]) = AuthenticationResult.failWithChallenge(createBearerTokenChallenge(error))
 
   private def createBasicChallenge: HttpChallenge = {
@@ -108,8 +76,8 @@ class JwtAuthenticator[Auth](verificationAlg: JwtVerificationAlg[Id],
 
   private def createBearerTokenChallenge(error: Option[String]): HttpChallenge = {
     val desc = error match {
-      case None                             => None
-      case Some(message)                    => Some(message)
+      case None          => None
+      case Some(message) => Some(message)
     }
     val params = desc match {
       case Some(msg) => Map("error" -> "invalid_token", "error_description" -> msg)
