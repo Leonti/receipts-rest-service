@@ -29,28 +29,25 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProto
   implicit val materializer = ActorMaterializer()
 
   it should "test downloading a backup" in {
-    val username          = "ci_user_" + java.util.UUID.randomUUID()
-    val createUserRequest = CreateUserRequest(username, "password")
 
     val zipEntriesFuture: Future[List[ZipEntry]] = for {
-      userInfo      <- createUser(createUserRequest)
-      accessToken   <- authenticateUser(userInfo)
+      (userInfo, accessToken)      <- createUser()
       requestEntity <- createImageFileContent()
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
           uri = s"$appHostPort/user/${userInfo.id}/receipt",
           entity = requestEntity,
-          headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
+          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
       firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      receiptEntity      <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.accessToken)
+      receiptEntity      <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.value)
       backupToken <- Http()
         .singleRequest(
           HttpRequest(
             method = HttpMethods.GET,
             uri = s"$appHostPort/user/${userInfo.id}/backup/token",
-            headers = List(Authorization(OAuth2BearerToken(accessToken.accessToken)))
+            headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
           ))
         .flatMap(response => Unmarshal(response.entity).to[OAuth2AccessTokenResponse])
       backupResponse: HttpResponse <- Http().singleRequest(
@@ -61,7 +58,7 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProto
       zipEntries  <- Future.successful(toZipEntries(backupBytes))
     } yield zipEntries
 
-    whenReady(zipEntriesFuture) { (zipEntries: List[ZipEntry]) =>
+    whenReady(zipEntriesFuture) { zipEntries: List[ZipEntry] =>
       zipEntries.length shouldBe 2
     }
 

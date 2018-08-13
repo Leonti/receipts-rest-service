@@ -4,7 +4,8 @@ import reactivemongo.bson.{BSONDocumentWriter, BSONDocument, BSONDocumentReader}
 
 case class User(
     id: String = java.util.UUID.randomUUID.toString,
-    userName: String
+    userName: String,
+    externalIds: List[String]
 ) extends WithId
 
 case class UserInfo(id: String, userName: String)
@@ -22,7 +23,8 @@ object User {
         doc,
         User(
           id = doc.getAs[String]("_id").get,
-          userName = doc.getAs[String]("userName").get
+          userName = doc.getAs[String]("userName").get,
+          externalIds = doc.getAs[List[String]]("externalIds").get,
         )
       )
   }
@@ -32,7 +34,8 @@ object User {
     def write(user: User): BSONDocument = {
       BSONDocument(
         "_id"      -> user.id,
-        "userName" -> user.userName
+        "userName" -> user.userName,
+        "externalIds" -> user.externalIds
       )
     }
   }

@@ -35,7 +35,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
   it should "create receipt from file upload" in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
     val receiptRouting = new ReceiptRouting(new ReceiptPrograms(receiptInt, fileInt, randomInt, ocrInt), authentication)
@@ -71,7 +71,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
   it should "reject receipt if file already exists" in {
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
@@ -110,7 +110,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
   it should "reject receipt from file upload if form field is not present" in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
     val receiptRouting = new ReceiptRouting(new ReceiptPrograms(receiptInt, fileInt, randomInt, ocrInt), authentication)
@@ -137,7 +137,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
   it should "add a file to existing receipt" in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
@@ -168,7 +168,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
   it should "not allow to add a receipt with existing file" in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
@@ -201,7 +201,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
   it should "return a file content" in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
@@ -222,7 +222,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
   it should "read receipt by id" in {
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
@@ -240,7 +240,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
   it should "patch a receipt" in {
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
@@ -272,7 +272,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
   it should "unset total after patch with null" in {
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
@@ -298,7 +298,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
   it should "unset total after patch with remove" in {
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
@@ -323,7 +323,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
 
   it should "set tags with a patch" in {
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 
@@ -350,7 +350,7 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
   it should "delete a receipt " in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", passwordHash = "hash")))
+      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
     }
     val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
 

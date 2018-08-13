@@ -37,7 +37,7 @@ class OauthRouting(userPrograms: UserPrograms[Future])(implicit system: ActorSys
   }
 
   val routes: Route = {
-    path("oauth" / "openId") {
+    path("oauth" / "openid") {
       post {
         entity(as[OpenIdToken]) { openIdToken =>
           validateTokenWithUserCreation(openIdToken)

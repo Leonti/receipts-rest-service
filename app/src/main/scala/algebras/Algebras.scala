@@ -45,10 +45,10 @@ trait FileAlg[F[_]] {
 }
 
 trait UserAlg[F[_]] {
-  def findUserById(id: String): F[Option[User]]
   def findUserByUsername(username: String): F[Option[User]]
+  def findUserByExternalId(id: String): F[Option[User]]
   def saveUser(user: User): F[User]
-  def getEmailFromAccessToken(accessToken: AccessToken): F[Email]
+  def getExternalUserInfoFromAccessToken(accessToken: AccessToken): F[ExternalUserInfo]
 }
 
 trait PendingFileAlg[F[_]] {

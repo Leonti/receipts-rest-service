@@ -10,7 +10,7 @@ import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import com.typesafe.config.ConfigFactory
-import model.{AccessToken, Email}
+import model.{AccessToken, ExternalUserInfo}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
 case class OpenIdUserInfo(
@@ -25,7 +25,7 @@ class OpenIdService()(implicit system: ActorSystem, executor: ExecutionContextEx
   implicit val openIdTokenInfoFormat: RootJsonFormat[OpenIdUserInfo] = jsonFormat3(OpenIdUserInfo)
   private val config                                               = ConfigFactory.load()
 
-  val fetchAndValidateTokenInfo: AccessToken => Future[Email] = accessToken => {
+  val fetchAndValidateTokenInfo: AccessToken => Future[ExternalUserInfo] = accessToken => {
 
     for {
       response <- Http().singleRequest(
@@ -35,6 +35,6 @@ class OpenIdService()(implicit system: ActorSystem, executor: ExecutionContextEx
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
       userInfo <- Unmarshal(response.entity).to[OpenIdUserInfo]
-    } yield Email(userInfo.email)
+    } yield ExternalUserInfo(email = userInfo.email, sub = userInfo.sub)
   }
 }

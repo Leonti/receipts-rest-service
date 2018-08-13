@@ -10,16 +10,18 @@ import scala.language.higherKinds
 class UserPrograms[F[_]: Monad](userAlg: UserAlg[F]) {
   import userAlg._
 
-  def findById(id: String): F[Option[User]] = findUserById(id)
+  def findUserByExternalId(id: String): F[Option[User]] = userAlg.findUserByExternalId(id)
 
   def validateOpenIdUser(accessToken: AccessToken): F[User] =
     for {
-      email        <- getEmailFromAccessToken(accessToken)
-      existingUser <- findUserByUsername(email.value)
+      externalUserInfo        <- getExternalUserInfoFromAccessToken(accessToken)
+      existingUser <- findUserByUsername(externalUserInfo.email)
       user <- if (existingUser.isDefined) {
-        Monad[F].pure(existingUser.get)
+        saveUser(existingUser.get.copy(
+          externalIds = externalUserInfo.sub +: existingUser.get.externalIds.filterNot(id => id == externalUserInfo.sub)
+        ))
       } else {
-        saveUser(User(userName = email.value))
+        saveUser(User(userName = externalUserInfo.email, externalIds = List(externalUserInfo.sub)))
       }
     } yield user
 }

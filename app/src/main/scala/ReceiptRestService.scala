@@ -160,7 +160,7 @@ object ReceiptRestService extends App with Service {
   val authenticator = new JwtAuthenticator[User](
     new JwtVerificationInterpreter(config.getString("tokenSecret").getBytes),
     realm = "Example realm",
-    fromBearerTokenClaim = subClaim => userPrograms.findById(subClaim.value)
+    fromBearerTokenClaim = subClaim => userPrograms.findUserByExternalId(subClaim.value)
   )
 
   val pathAuthorization = new PathAuthorization(bearerTokenSecret = config.getString("tokenSecret").getBytes)
