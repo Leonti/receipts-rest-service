@@ -5,13 +5,14 @@ import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import com.typesafe.config.ConfigFactory
 import model.{AccessToken, ExternalUserInfo}
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
 case class OpenIdUserInfo(
     sub: String,
@@ -19,10 +20,13 @@ case class OpenIdUserInfo(
     email_verified: Boolean
 )
 
-class OpenIdService()(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
-    extends DefaultJsonProtocol {
+object OpenIdUserInfo {
+  implicit val openIdUserInfoDecoder: Decoder[OpenIdUserInfo] = deriveDecoder
+  implicit val openIdUserInfoEncoder: Encoder[OpenIdUserInfo] = deriveEncoder
+}
 
-  implicit val openIdTokenInfoFormat: RootJsonFormat[OpenIdUserInfo] = jsonFormat3(OpenIdUserInfo)
+class OpenIdService()(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) {
+
   private val config                                               = ConfigFactory.load()
 
   val fetchAndValidateTokenInfo: AccessToken => Future[ExternalUserInfo] = accessToken => {

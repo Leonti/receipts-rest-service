@@ -1,5 +1,7 @@
 package model
 
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import model.PendingFile.PendingFileId
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 
@@ -8,6 +10,9 @@ case class PendingFile(id: PendingFileId, userId: String, receiptId: String) ext
 object PendingFile {
 
   type PendingFileId = String
+
+  implicit val pendingFileDecoder: Decoder[PendingFile] = deriveDecoder
+  implicit val pendingFileEncoder: Encoder[PendingFile] = deriveEncoder
 
   implicit object PendingFileBSONReader extends BSONDocumentReader[PendingFile] {
 

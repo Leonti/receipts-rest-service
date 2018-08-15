@@ -5,22 +5,25 @@ import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import model._
 import service._
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
-import spray.json.RootJsonFormat
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
 case class OpenIdToken(token: String)
 
+object OpenIdToken {
+  implicit val openIdTokenDecoder: Decoder[OpenIdToken] = deriveDecoder
+  implicit val openIdTokenEncoder: Encoder[OpenIdToken] = deriveEncoder
+}
+
 class OauthRouting(userPrograms: UserPrograms[Future])(implicit system: ActorSystem,
                                                        executor: ExecutionContextExecutor,
-                                                       materializer: ActorMaterializer)
-    extends JsonProtocols {
-
-  private implicit val openIdTokenFormat: RootJsonFormat[OpenIdToken] = jsonFormat1(OpenIdToken)
+                                                       materializer: ActorMaterializer) {
 
   private val validateTokenWithUserCreation: OpenIdToken => Route = token => {
     val userFuture: Future[User] = userPrograms.validateOpenIdUser(AccessToken(token.token))

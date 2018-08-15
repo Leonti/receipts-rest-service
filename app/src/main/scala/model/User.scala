@@ -1,6 +1,8 @@
 package model
 
-import reactivemongo.bson.{BSONDocumentWriter, BSONDocument, BSONDocumentReader}
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 
 case class User(
     id: String = java.util.UUID.randomUUID.toString,
@@ -11,6 +13,9 @@ case class User(
 case class UserInfo(id: String, userName: String)
 
 object UserInfo {
+  implicit val userInfoDecoder: Decoder[UserInfo] = deriveDecoder
+  implicit val userInfoEncoder: Encoder[UserInfo] = deriveEncoder
+
   def apply(user: User) = new UserInfo(id = user.id, userName = user.userName)
 }
 

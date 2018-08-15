@@ -8,7 +8,7 @@ import akka.util.ByteString
 import model._
 import org.scalatest.{FlatSpec, Matchers}
 import akka.actor.ActorSystem
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import routing.ReceiptRouting
 import TestInterpreters._
 
@@ -17,8 +17,9 @@ import scala.concurrent.duration.DurationInt
 import akka.testkit._
 import service.ReceiptPrograms
 import cats.implicits._
+import org.scalatest.concurrent.ScalaFutures
 
-class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with JsonProtocols {
+class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalaFutures with ScalatestRouteTest {
 
   implicit def default(implicit system: ActorSystem) = RouteTestTimeout(new DurationInt(5).second.dilated(system))
 
@@ -216,7 +217,9 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
     Get(s"/user/123-user/receipt/${receipt.id}/file/${fileEntity.id}.txt") ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe OK
       contentType shouldBe `text/plain(UTF-8)`
-      responseAs[String] should include("some text")
+      whenReady(responseEntity.toStrict(1.second).map { _.data }.map(_.utf8String)) { stringResponse =>
+        stringResponse should include("some text")
+      }
     }
   }
 
@@ -362,7 +365,6 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest 
       fileInt, randomInt, ocrInt), authentication)
 
     Delete(s"/user/123-user/receipt/${receipt.id}") ~> receiptRouting.routes("testLocation") ~> check {
-      println(responseAs[String])
       status shouldBe OK
     }
   }

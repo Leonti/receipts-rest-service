@@ -6,12 +6,12 @@ import model._
 import service.UserPrograms
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.server.directives.AuthenticationDirective
 
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+
 class UserRouting(userPrograms: UserPrograms[Future], authenticaton: AuthenticationDirective[User])(
-    implicit executor: ExecutionContextExecutor)
-    extends JsonProtocols {
+    implicit executor: ExecutionContextExecutor) {
 
   val routes = path("user" / "info") {
     get {

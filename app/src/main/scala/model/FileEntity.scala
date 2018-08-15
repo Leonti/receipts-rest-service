@@ -1,8 +1,9 @@
 package model
 
+import io.circe.{Decoder, Encoder, HCursor, Json}
 import model.FileMetadata.FileMetadataBSONReader.FileMetadataBSONWriter
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
-import spray.json.{DeserializationException, JsNumber, JsObject, JsString, JsValue, RootJsonFormat}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
 case class FileEntity(
     id: String,
@@ -28,46 +29,44 @@ sealed trait FileMetadata {
 case class ImageMetadata(fileType: String = "IMAGE", length: Long, width: Int, height: Int) extends FileMetadata
 case class GenericMetadata(fileType: String = "UNKNOWN", length: Long)                      extends FileMetadata
 
-object FileMetadataFormat extends RootJsonFormat[FileMetadata] {
-  def write(fileMetadata: FileMetadata) = {
-    fileMetadata match {
+object FileMetadata {
+
+  implicit val encodeMetadata: Encoder[FileMetadata] = new Encoder[FileMetadata] {
+    final def apply(a: FileMetadata): Json = a match {
       case imageMetadata: ImageMetadata =>
-        JsObject(
-          "fileType" -> JsString(imageMetadata.fileType),
-          "length"   -> JsNumber(imageMetadata.length),
-          "width"    -> JsNumber(imageMetadata.width),
-          "height"   -> JsNumber(imageMetadata.height)
+        Json.obj(
+          ("fileType", Json.fromString(imageMetadata.fileType)),
+          ("length", Json.fromLong(imageMetadata.length)),
+          ("width", Json.fromInt(imageMetadata.width)),
+          ("height", Json.fromInt(imageMetadata.height))
         )
       case _ =>
-        JsObject(
-          "fileType" -> JsString(fileMetadata.fileType),
-          "length"   -> JsNumber(fileMetadata.length)
+        Json.obj(
+          ("fileType", Json.fromString(a.fileType)),
+          ("length", Json.fromLong(a.length))
         )
     }
   }
 
-  def read(value: JsValue): FileMetadata =
-    value.asJsObject.getFields("fileType", "length") match {
-      case Seq(JsString("IMAGE"), JsNumber(length)) =>
-        value.asJsObject.getFields("width", "height") match {
-          case Seq(JsNumber(width), JsNumber(height)) =>
-            ImageMetadata(
-              length = length.toLong,
-              width = width.toInt,
-              height = height.toInt
-            )
-          case _ => throw new DeserializationException("'IMAGE' file metadata should have 'width' and 'height' fields!")
-        }
-      case Seq(JsString(fileType), JsNumber(length)) =>
-        GenericMetadata(
-          fileType = fileType,
-          length = length.toLong
+  implicit val decodeMetadata: Decoder[FileMetadata] = new Decoder[FileMetadata] {
+    final def apply(c: HCursor): Decoder.Result[FileMetadata] =
+      c.downField("fileType").as[String].flatMap({
+        case "IMAGE" => for {
+          length <- c.downField("length").as[Long]
+          width <- c.downField("width").as[Int]
+          height <- c.downField("height").as[Int]
+        } yield ImageMetadata(
+          length = length,
+          width = width,
+          height = height
         )
-      case _ => throw new DeserializationException("File metadata should have 'fileType' and 'length' fields")
-    }
-}
+        case fileType => c.downField("length").as[Long].map(length => GenericMetadata(
+          fileType = fileType,
+          length = length
+        ))
+      })
+  }
 
-object FileMetadata {
   implicit object FileMetadataBSONReader extends BSONDocumentReader[FileMetadata] {
 
     def read(doc: BSONDocument): FileMetadata =
@@ -114,6 +113,10 @@ object FileMetadata {
 }
 
 object FileEntity {
+
+  implicit val fileEntityDecoder: Decoder[FileEntity] = deriveDecoder
+  implicit val fileEntityEncoder: Encoder[FileEntity] = deriveEncoder
+
   implicit object FileEntityBSONReader extends BSONDocumentReader[FileEntity] {
 
     def read(doc: BSONDocument): FileEntity =

@@ -1,6 +1,8 @@
 package model
 
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
 case class ReceiptEntity(
     id: String = java.util.UUID.randomUUID.toString,
@@ -15,6 +17,9 @@ case class ReceiptEntity(
 ) extends WithId
 
 object ReceiptEntity {
+
+  implicit val receiptEntityDecoder: Decoder[ReceiptEntity] = deriveDecoder
+  implicit val receiptEntityEncoder: Encoder[ReceiptEntity] = deriveEncoder
 
   implicit object ReceiptEntityBSONReader extends BSONDocumentReader[ReceiptEntity] {
 

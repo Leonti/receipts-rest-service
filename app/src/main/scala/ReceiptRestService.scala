@@ -4,7 +4,7 @@ import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.Logger
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpMethods}
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model.headers.{
@@ -34,7 +34,7 @@ import queue.files.ReceiptFileQueue
 import cats.implicits._
 // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
 
-trait Service extends JsonProtocols with CorsSupport {
+trait Service extends CorsSupport {
   implicit val system: ActorSystem
   implicit def executor: ExecutionContextExecutor
   implicit val materializer: Materializer

@@ -5,7 +5,7 @@ import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, RequestEntity}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
-import model.{AccessToken, JsonProtocols, UserInfo}
+import model.{AccessToken, UserInfo}
 import TestConfig._
 import routing.OpenIdToken
 

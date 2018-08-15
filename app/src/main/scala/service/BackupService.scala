@@ -8,17 +8,16 @@ import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, IOResult}
 import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
-import model.{FileEntity, JsonProtocols, ReceiptEntity}
+import model.{FileEntity, ReceiptEntity}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import spray.json._
+import io.circe.syntax._
 
 case class ReceiptsBackup(source: Source[ByteString, Future[IOResult]], filename: String)
 
 class BackupService(receiptPrograms: ReceiptPrograms[Future], fileService: FileService)(implicit system: ActorSystem,
                                                                                         executor: ExecutionContextExecutor,
-                                                                                        materializer: ActorMaterializer)
-    extends JsonProtocols {
+                                                                                        materializer: ActorMaterializer) {
 
   case class FileToZip(path: String, source: Source[ByteString, Any])
 
@@ -34,7 +33,7 @@ class BackupService(receiptPrograms: ReceiptPrograms[Future], fileService: FileS
       )
 
     val receiptJsonEntry: Seq[ReceiptEntity] => FileToZip = receipts => {
-      val receiptsAsJson = receipts.toJson.prettyPrint
+      val receiptsAsJson = receipts.asJson.spaces2
       val byteString     = ByteString(receiptsAsJson.getBytes(StandardCharsets.UTF_8))
       FileToZip(
         path = "receipts.json",

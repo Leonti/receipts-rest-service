@@ -10,13 +10,12 @@ import org.slf4j.LoggerFactory
 import service.PendingFileService
 
 import scala.concurrent.ExecutionContextExecutor
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
 class PendingFileRouting(
     pendingFileService: PendingFileService,
     authenticaton: AuthenticationDirective[User]
-)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
-    extends JsonProtocols {
+)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) {
 
   val logger = Logger(LoggerFactory.getLogger("PendingFileRouting"))
 

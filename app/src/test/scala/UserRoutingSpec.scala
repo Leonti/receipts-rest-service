@@ -1,19 +1,19 @@
 import TestInterpreters._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import model.{JsonProtocols, User, UserInfo}
+import model.{User, UserInfo}
 import org.scalatest.{FlatSpec, Matchers}
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model.ContentTypes._
 import routing.UserRouting
 
 import scala.concurrent.Future
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.model.headers.{HttpChallenge, HttpCredentials}
 import akka.http.scaladsl.server.directives.{AuthenticationResult, SecurityDirectives}
 import service.UserPrograms
 import cats.implicits._
 
-class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest with JsonProtocols {
+class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest {
 
   val userInterpreter = new UserInterpreterTagless(List(), "")
   val randomInterpreter = new RandomInterpreterTagless("", 0)

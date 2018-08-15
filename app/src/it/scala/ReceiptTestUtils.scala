@@ -1,6 +1,6 @@
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import model.{JsonProtocols, PendingFile, ReceiptEntity}
+import model.{PendingFile, ReceiptEntity}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.ContentTypes._

@@ -1,16 +1,21 @@
 package routing
 
 import com.typesafe.config.ConfigFactory
-import spray.json.DefaultJsonProtocol
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
 case class AppConfig(googleClientId: String)
 
+object AppConfig {
+  implicit val appConfigDecoder: Decoder[AppConfig] = deriveDecoder
+  implicit val appConfigEncoder: Encoder[AppConfig] = deriveEncoder
+}
+
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
-class AppConfigRouting extends DefaultJsonProtocol {
-  implicit val appConfigFormat = jsonFormat1(AppConfig)
+class AppConfigRouting {
   val config                   = ConfigFactory.load()
 
   val routes = path("config") {
