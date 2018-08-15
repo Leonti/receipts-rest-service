@@ -8,26 +8,23 @@ import authentication.OAuth2AccessTokenResponse
 import model._
 import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
-import service.{GoogleTokenInfo, JwtTokenGenerator, TokenType}
+import service.JwtTokenGenerator
 
 import scala.concurrent.Future
 
 // TODO remove futures
 object TestInterpreters {
 
-  class UserInterpreterTagless(users: Seq[User], googleTokenEmail: String) extends UserAlg[Future] {
-    override def findUserById(id: String): Future[Option[User]] = Future.successful(users.find(_.id == id))
+  class UserInterpreterTagless(users: Seq[User], email: String) extends UserAlg[Future] {
+    override def findUserByExternalId(id: String): Future[Option[User]] = Future.successful(users.find(_.id == id)) // FIXME fix user id
     override def findUserByUsername(
         username: String): Future[Option[User]] = Future.successful(users.find(_.userName == username))
     override def saveUser(user: User): Future[User] = Future.successful(user)
-    override def getValidatedGoogleTokenInfo(
-        tokenValue: String,
-        tokenType: TokenType): Future[GoogleTokenInfo] = Future.successful(GoogleTokenInfo(aud = "", sub = "", email = googleTokenEmail))
+    override def getExternalUserInfoFromAccessToken(
+        accessToken: AccessToken): Future[ExternalUserInfo] = Future.successful(ExternalUserInfo(sub = "", email = email))
   }
 
   class TokenInterpreterTagless(currentTimeMillis: Long, bearerTokenSecret: String) extends TokenAlg[Future] {
-    override def generateUserToken(
-        user: User): Future[OAuth2AccessTokenResponse] = Future.successful(JwtTokenGenerator.generateToken(user, currentTimeMillis, bearerTokenSecret.getBytes))
     override def generatePathToken(
         path: String): Future[OAuth2AccessTokenResponse] =
       Future.successful(JwtTokenGenerator.generatePathToken(path, currentTimeMillis, bearerTokenSecret.getBytes))

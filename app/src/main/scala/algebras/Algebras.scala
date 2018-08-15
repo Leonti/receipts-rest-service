@@ -9,7 +9,6 @@ import authentication.OAuth2AccessTokenResponse
 import model._
 import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
-import service.{GoogleTokenInfo, TokenType}
 
 import scala.concurrent.Future
 import scala.language.higherKinds
@@ -46,10 +45,10 @@ trait FileAlg[F[_]] {
 }
 
 trait UserAlg[F[_]] {
-  def findUserById(id: String): F[Option[User]]
   def findUserByUsername(username: String): F[Option[User]]
+  def findUserByExternalId(id: String): F[Option[User]]
   def saveUser(user: User): F[User]
-  def getValidatedGoogleTokenInfo(tokenValue: String, tokenType: TokenType): F[GoogleTokenInfo]
+  def getExternalUserInfoFromAccessToken(accessToken: AccessToken): F[ExternalUserInfo]
 }
 
 trait PendingFileAlg[F[_]] {
@@ -60,7 +59,6 @@ trait PendingFileAlg[F[_]] {
 }
 
 trait TokenAlg[F[_]] {
-  def generateUserToken(user: User): F[OAuth2AccessTokenResponse]
   def generatePathToken(path: String): F[OAuth2AccessTokenResponse]
 }
 

@@ -1,38 +1,29 @@
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, RequestEntity}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
-import authentication.OAuth2AccessTokenResponse
-import model.{CreateUserRequest, JsonProtocols, UserInfo}
+import model.{AccessToken, UserInfo}
 import TestConfig._
+import routing.OpenIdToken
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
-package object UserTestUtils extends JsonProtocols {
+package object UserTestUtils {
 
   implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
-  def createUser(createUserRequest: CreateUserRequest): Future[UserInfo] = {
+  def createUser(): Future[(UserInfo, AccessToken)] = {
     for {
-      request  <- Marshal(createUserRequest).to[RequestEntity]
-      response <- Http().singleRequest(HttpRequest(method = HttpMethods.POST, uri = s"$appHostPort/user/create", entity = request))
+      accessToken  <- Auth0Api.createUserAndGetAccessToken()
+      request <- Marshal(OpenIdToken(accessToken)).to[RequestEntity]
+      response <- Http().singleRequest(HttpRequest(method = HttpMethods.POST, uri = s"$appHostPort/oauth/openid", entity = request))
       userInfo <- Unmarshal(response.entity).to[UserInfo]
-    } yield userInfo
-  }
-
-  def authenticateUser(userInfo: UserInfo): Future[OAuth2AccessTokenResponse] = {
-    for {
-      response <- Http().singleRequest(
-        HttpRequest(uri = s"$appHostPort/token/create",
-                    headers = List(Authorization(BasicHttpCredentials(userInfo.userName, "password")))))
-      accessToken <- Unmarshal(response.entity).to[OAuth2AccessTokenResponse]
-    } yield accessToken
+    } yield (userInfo, AccessToken(accessToken))
   }
 
 }

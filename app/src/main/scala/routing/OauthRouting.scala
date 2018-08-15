@@ -3,31 +3,34 @@ package routing
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
-import authentication.OAuth2AccessTokenResponse
-import model.{ErrorResponse, JsonProtocols}
+import model._
 import service._
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
-case class GoogleToken(token: String)
+case class OpenIdToken(token: String)
+
+object OpenIdToken {
+  implicit val openIdTokenDecoder: Decoder[OpenIdToken] = deriveDecoder
+  implicit val openIdTokenEncoder: Encoder[OpenIdToken] = deriveEncoder
+}
 
 class OauthRouting(userPrograms: UserPrograms[Future])(implicit system: ActorSystem,
                                                        executor: ExecutionContextExecutor,
-                                                       materializer: ActorMaterializer)
-    extends JsonProtocols {
+                                                       materializer: ActorMaterializer) {
 
-  private implicit val googleTokenFormat = jsonFormat1(GoogleToken)
+  private val validateTokenWithUserCreation: OpenIdToken => Route = token => {
+    val userFuture: Future[User] = userPrograms.validateOpenIdUser(AccessToken(token.token))
 
-  private val validateTokenWithUserCreation: (GoogleToken, TokenType) => Route = (googleToken, tokenType) => {
-    val tokenFuture: Future[OAuth2AccessTokenResponse] = userPrograms.validateGoogleUser(googleToken, tokenType)
-
-    onComplete(tokenFuture) { (tokenResult: Try[OAuth2AccessTokenResponse]) =>
-      tokenResult match {
-        case Success(token) => complete(Created -> token)
+    onComplete(userFuture) { userTry: Try[User] =>
+      userTry match {
+        case Success(user) => complete(Created -> UserInfo(user))
         case Failure(t: Throwable) => {
           println(s"Authentication exception $t")
           complete(BadRequest -> ErrorResponse("Failed to authenticate"))
@@ -37,17 +40,10 @@ class OauthRouting(userPrograms: UserPrograms[Future])(implicit system: ActorSys
   }
 
   val routes: Route = {
-    path("oauth" / "google-access-token") {
+    path("oauth" / "openid") {
       post {
-        entity(as[GoogleToken]) { googleToken =>
-          validateTokenWithUserCreation(googleToken, AccessToken)
-        }
-      }
-    } ~
-    path("oauth" / "google-id-token") {
-      post {
-        entity(as[GoogleToken]) { googleToken =>
-          validateTokenWithUserCreation(googleToken, IdToken)
+        entity(as[OpenIdToken]) { openIdToken =>
+          validateTokenWithUserCreation(openIdToken)
         }
       }
     }

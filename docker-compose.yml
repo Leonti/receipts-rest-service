@@ -1,9 +1,9 @@
-version: '2'
+version: '3'
 
 services:
 
   app:
-    image: leonti/receipts-rest-service:${VERSION}
+    image: leonti/receipts-rest-service:${VERSION:-0}
     build:
       context: /tmp/receipts-target
     volumes:
@@ -29,7 +29,7 @@ services:
       - OCR_SEARCH_API_KEY
 
   assembly:
-    image: leonti/sbt_1.0.4_openjdk8-alpine3.7:1.0
+    image: leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
     working_dir: /app
     volumes:
       - ./app/src:/app/src
@@ -42,7 +42,7 @@ services:
     command: bash -c "sbt assembly && cp Dockerfile /app/target && cp /app/target/scala-2.12/receipts-rest-service-assembly-1.0.jar /app/target/receipts.jar"
 
   test:
-    image: leonti/sbt_1.0.4_openjdk8-alpine3.7:1.0
+    image: leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
     working_dir: /app
     volumes:
       - ./app/src:/app/src
@@ -54,9 +54,11 @@ services:
     command: sbt test
 
   integration-tests:
-    image: leonti/sbt_1.0.4_openjdk8-alpine3.7:1.0
+    image: leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
     environment:
       - APP_HOST_PORT=http://app:9000
+      - AUTH0_API_CLIENT_ID
+      - AUTH0_CLIENT_SECRET
       - WAIT_EXPRESSION=[ $$(curl --write-out %{http_code} --silent --output /dev/null "$$APP_HOST_PORT/config") = 200 ]
       - WAIT_SLEEP=2
       - WAIT_LOOPS=60

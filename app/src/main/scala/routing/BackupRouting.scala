@@ -6,10 +6,10 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{AuthorizationFailedRejection, RejectionHandler}
 import akka.http.scaladsl.server.directives.AuthenticationDirective
 import akka.stream.ActorMaterializer
-import model.{ErrorResponse, JsonProtocols, User}
+import model.{ErrorResponse, User}
 import service.{BackupService, JwtTokenGenerator}
 import authorization.PathAuthorization.PathAuthorizationDirective
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ContentDispositionTypes, `Content-Disposition`}
 import com.typesafe.config.ConfigFactory
@@ -19,8 +19,7 @@ import scala.concurrent.ExecutionContextExecutor
 class BackupRouting(authenticaton: AuthenticationDirective[User], authorizePath: PathAuthorizationDirective, backupService: BackupService)(
     implicit system: ActorSystem,
     executor: ExecutionContextExecutor,
-    materializer: ActorMaterializer)
-    extends JsonProtocols {
+    materializer: ActorMaterializer) {
 
   private val config                         = ConfigFactory.load()
   private val bearerTokenSecret: Array[Byte] = config.getString("tokenSecret").getBytes

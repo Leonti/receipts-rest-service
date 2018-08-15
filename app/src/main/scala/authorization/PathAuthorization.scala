@@ -17,13 +17,14 @@ class PathAuthorization(bearerTokenSecret: Array[Byte]) {
         println(s"Checking if uri is correct: ${ctx.request.uri.path}")
 
         val algorithmHS = Algorithm.HMAC256(bearerTokenSecret)
-        val verifier = JWT.require(algorithmHS)
+        val verifier = JWT
+          .require(algorithmHS)
           .build()
         val jwtTry = Try(verifier.verify(accessToken))
 
         jwtTry match {
           case Success(token) => authorize(token.getClaim("sub").asString == ctx.request.uri.path.toString) // FIXME can be null
-          case Failure(_)      => authorize(false)
+          case Failure(_)     => authorize(false)
         }
       }
     }

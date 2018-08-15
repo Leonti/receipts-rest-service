@@ -5,7 +5,8 @@ import java.util.concurrent.Executors
 
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
-import spray.json.{DeserializationException, JsString, JsValue, RootJsonFormat}
+import io.circe.{ Decoder, Encoder }
+import cats.syntax.either._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.sys.process._
@@ -13,19 +14,17 @@ import scala.sys.process._
 sealed trait ImageSize { def pixels: Int }
 case object WebSize extends ImageSize { val pixels: Int = 1000000 }
 
-object ImageSizeFormat extends RootJsonFormat[ImageSize] {
+object ImageSizeJson {
 
   val jsMappings: Map[String, ImageSize] = Map("WEB_SIZE" -> WebSize)
 
   private def asString(imageSize: ImageSize): String = jsMappings.filter(pair => pair._2 == imageSize).head._1
 
-  def write(imageSize: ImageSize) = JsString(asString(imageSize))
+  implicit val encodeImageSize: Encoder[ImageSize] = Encoder.encodeString.contramap[ImageSize](asString)
 
-  def read(value: JsValue): ImageSize =
-    value match {
-      case JsString(asString) => jsMappings(asString)
-      case _                  => throw new DeserializationException("ImageSize should be encoded as JsString!")
-    }
+  implicit val decodeImageSize: Decoder[ImageSize] = Decoder.decodeString.emap { str =>
+    Either.catchNonFatal(jsMappings(str)).leftMap(t => "ImageSize")
+  }
 }
 
 class ImageResizingService {

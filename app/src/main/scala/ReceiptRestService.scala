@@ -4,7 +4,7 @@ import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.Logger
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpMethods}
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model.headers.{
@@ -34,7 +34,7 @@ import queue.files.ReceiptFileQueue
 import cats.implicits._
 // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
 
-trait Service extends JsonProtocols with CorsSupport {
+trait Service extends CorsSupport {
   implicit val system: ActorSystem
   implicit def executor: ExecutionContextExecutor
   implicit val materializer: Materializer
@@ -66,7 +66,6 @@ trait Service extends JsonProtocols with CorsSupport {
   val userRouting: UserRouting
   val receiptRouting: ReceiptRouting
   val pendingFileRouting: PendingFileRouting
-  val authenticationRouting: AuthenticationRouting
   val appConfigRouting: AppConfigRouting
   val oauthRouting: OauthRouting
   val backupRouting: BackupRouting
@@ -96,7 +95,6 @@ trait Service extends JsonProtocols with CorsSupport {
         userRouting.routes ~
         receiptRouting.routes(config.getString("uploadsFolder")) ~
         pendingFileRouting.routes ~
-        authenticationRouting.routes ~
         appConfigRouting.routes ~
         oauthRouting.routes ~
         backupRouting.routes ~
@@ -122,8 +120,8 @@ object ReceiptRestService extends App with Service {
 
   override val config = ConfigFactory.load()
 
-  val userRepository     = new UserRepository()
-  val googleOauthService = new GoogleOauthService()
+  val userRepository = new UserRepository()
+  val openIdService   = new OpenIdService()
 
   val fileCachingService    = new FileCachingService()
   val imageResizingService  = new ImageResizingService()
@@ -145,8 +143,8 @@ object ReceiptRestService extends App with Service {
     } else
       new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
 
-  val userInterpreter   = new UserInterpreterTagless(userRepository, googleOauthService)
-  val tokenInterpreter  = new TokenInterpreterTagless()
+  val userInterpreter   = new UserInterpreter(userRepository, openIdService)
+  val tokenInterpreter  = new TokenInterpreter()
   val randomInterpreter = new RandomInterpreterTagless()
   val fileInterpreter =
     new FileInterpreterTagless(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer)
@@ -157,13 +155,12 @@ object ReceiptRestService extends App with Service {
                               OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY")))
   val pendingFileInterpreter = new PendingFileInterpreterTagless(pendingFileRepository)
 
-  val userPrograms = new UserPrograms(userInterpreter, randomInterpreter, tokenInterpreter)
+  val userPrograms = new UserPrograms(userInterpreter)
 
   val authenticator = new JwtAuthenticator[User](
     new JwtVerificationInterpreter(config.getString("tokenSecret").getBytes),
     realm = "Example realm",
-    fromBearerTokenClaim = subClaim => userPrograms.findById(subClaim.value),
-    fromUsernamePassword = (userName: String, password: String) => userPrograms.findByUserNameWithPassword(userName, password)
+    fromBearerTokenClaim = subClaim => userPrograms.findUserByExternalId(subClaim.value)
   )
 
   val pathAuthorization = new PathAuthorization(bearerTokenSecret = config.getString("tokenSecret").getBytes)
@@ -185,10 +182,9 @@ object ReceiptRestService extends App with Service {
     authenticator.bearerTokenOrCookie(acceptExpired = true)
   )
 
-  override val userRouting           = new UserRouting(userPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
-  override val authenticationRouting = new AuthenticationRouting(authenticator)
-  override val appConfigRouting      = new AppConfigRouting()
-  override val oauthRouting          = new OauthRouting(userPrograms)
+  override val userRouting      = new UserRouting(userPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
+  override val appConfigRouting = new AppConfigRouting()
+  override val oauthRouting     = new OauthRouting(userPrograms)
 
   val backupService = new BackupService(receiptPrograms, fileService)
 

@@ -7,8 +7,9 @@ import algebras.{FileAlg, OcrAlg, RandomAlg, ReceiptAlg}
 import cats.Monad
 import model._
 import routing.ParsedForm
-import spray.json._
-import gnieh.diffson.sprayJson._
+import io.circe.syntax._
+import io.circe.parser._
+import gnieh.diffson.circe._
 
 import scala.util.Try
 import cats.implicits._
@@ -22,12 +23,12 @@ object ReceiptErrors {
   final case class ReceiptNotFound(receiptId: String) extends Error
 }
 
-object Patch extends JsonProtocols {
-  val applyPatch: (ReceiptEntity, String) => ReceiptEntity = (receiptEntity, jsonPatch) => {
+object Patch {
+  val applyPatch: (ReceiptEntity, JsonPatch) => ReceiptEntity = (receiptEntity, jsonPatch) => {
     val asJson: String =
-      receiptEntity.copy(total = if (receiptEntity.total.isDefined) receiptEntity.total else Some(BigDecimal("0"))).toJson.compactPrint
-    val patched: String = JsonPatch.parse(jsonPatch).apply(asJson)
-    patched.parseJson.convertTo[ReceiptEntity]
+      receiptEntity.copy(total = if (receiptEntity.total.isDefined) receiptEntity.total else Some(BigDecimal("0"))).asJson.noSpaces
+    val patched: String = jsonPatch(asJson)
+    decode[ReceiptEntity](patched).toSeq.head
   }
 }
 
@@ -121,7 +122,7 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
     eitherT.value
   }
 
-  def patchReceipt(receiptId: String, jsonPatch: String): F[Option[ReceiptEntity]] =
+  def patchReceipt(receiptId: String, jsonPatch: JsonPatch): F[Option[ReceiptEntity]] =
     for {
       receiptOption <- getReceipt(receiptId)
       patchedReceipt = receiptOption.map(r => Patch.applyPatch(r, jsonPatch))

@@ -14,17 +14,19 @@ import akka.actor.ActorSystem
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import gnieh.diffson.circe._
+import gnieh.diffson.circe.DiffsonProtocol._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
+
 import cats.implicits._
 
 class ReceiptRouting(
     receiptPrograms: ReceiptPrograms[Future],
     authenticaton: AuthenticationDirective[User]
-)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer)
-    extends JsonProtocols {
+)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) {
 
   val logger = Logger(LoggerFactory.getLogger("ReceiptRouting"))
 
@@ -88,7 +90,7 @@ class ReceiptRouting(
                 respondWithReceipt(receiptPrograms.findById(receiptId))
               } ~
               patch {
-                entity(as[String]) { receiptPatch =>
+                entity(as[JsonPatch]) { receiptPatch =>
                   val receiptFuture = receiptPrograms.patchReceipt(receiptId, receiptPatch)
                   respondWithReceipt(receiptFuture)
                 }

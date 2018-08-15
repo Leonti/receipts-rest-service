@@ -1,21 +1,21 @@
 package model
 
-import reactivemongo.bson.{BSONDocumentWriter, BSONDocument, BSONDocumentReader}
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 
 case class User(
     id: String = java.util.UUID.randomUUID.toString,
-    isGoogleUser: Boolean = false,
     userName: String,
-    passwordHash: String = ""
+    externalIds: List[String]
 ) extends WithId
-
-case class CreateUserRequest(userName: String, password: String)
-
-//case class CreateGoogleUserRequest(accessToken: Option[String], idToken: Option[String])
 
 case class UserInfo(id: String, userName: String)
 
 object UserInfo {
+  implicit val userInfoDecoder: Decoder[UserInfo] = deriveDecoder
+  implicit val userInfoEncoder: Encoder[UserInfo] = deriveEncoder
+
   def apply(user: User) = new UserInfo(id = user.id, userName = user.userName)
 }
 
@@ -28,9 +28,8 @@ object User {
         doc,
         User(
           id = doc.getAs[String]("_id").get,
-          isGoogleUser = doc.getAs[Boolean]("isGoogleUser").getOrElse(false),
           userName = doc.getAs[String]("userName").get,
-          passwordHash = doc.getAs[String]("passwordHash").get
+          externalIds = doc.getAs[List[String]]("externalIds").get,
         )
       )
   }
@@ -39,10 +38,9 @@ object User {
 
     def write(user: User): BSONDocument = {
       BSONDocument(
-        "_id"          -> user.id,
-        "userName"     -> user.userName,
-        "isGoogleUser" -> user.isGoogleUser,
-        "passwordHash" -> user.passwordHash
+        "_id"      -> user.id,
+        "userName" -> user.userName,
+        "externalIds" -> user.externalIds
       )
     }
   }

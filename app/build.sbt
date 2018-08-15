@@ -22,12 +22,11 @@ val akkaHttpV       = "10.0.11"
 val amazonS3V       = "1.11.241"
 val scalaTestV      = "3.0.4"
 val reactiveMongoV  = "0.12.6"
-val jwtAuthV        = "0.3.0-1-g71ae99b"
 val visionApiV      = "v1-rev346-1.22.0"
 val googleApiClient = "1.22.0"
 val scalaLoggingV   = "3.5.0"
 val logbackV        = "1.1.7"
-val diffsonV        = "2.1.2"
+val diffsonV        = "3.0.0"
 val catsV           = "1.2.0"
 val circeVersion = "0.9.3"
 
@@ -51,8 +50,8 @@ libraryDependencies ++= {
     "com.typesafe.akka"     %% "akka-stream"               % akkaV,
     "com.typesafe.akka"     %% "akka-http-core"            % akkaHttpV,
     "com.typesafe.akka"     %% "akka-http"                 % akkaHttpV,
-    "com.typesafe.akka"     %% "akka-http-spray-json"      % akkaHttpV,
     "com.typesafe.akka"     %% "akka-http-testkit"         % akkaHttpV,
+    "de.heikoseeberger" %% "akka-http-circe" % "1.21.0",
     "com.amazonaws"         % "aws-java-sdk-s3"            % amazonS3V,
     "com.google.apis"       % "google-api-services-vision" % visionApiV excludeAll (
       ExclusionRule(organization="com.google.guava", name="guava-jdk5")
@@ -65,41 +64,26 @@ libraryDependencies ++= {
     ),
     "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
     "org.typelevel"        %% "cats-core"              % catsV,
-    "de.choffmeister"      %% "auth-common"       % jwtAuthV excludeAll (
-      ExclusionRule(organization = "io.spray")
-    ),
-    "de.choffmeister" %% "auth-akka-http" % jwtAuthV excludeAll (
-      ExclusionRule(organization = "com.typesafe.akka"),
-      ExclusionRule(organization = "io.spray")
-    ),
-    "org.gnieh"     %% "diffson-spray-json" % diffsonV,
+    "org.gnieh"     %% "diffson-circe" % diffsonV,
     "com.auth0" % "java-jwt" % "3.4.0",
     "com.auth0" % "jwks-rsa" % "0.6.0",
     "org.scalatest" %% "scalatest"          % scalaTestV % "it,test"
   )
 }
-/*
+
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
-*/
+
 libraryDependencies ++= logging
 
 resolvers ++= Seq(
   Resolver.bintrayRepo("dwhjames", "maven")
 )
 
-//resolvers += Resolver.bintrayRepo("projectseptemberinc", "maven")
-
-// auth-utils is published there
-resolvers += Resolver.bintrayRepo("leonti", "maven")
-
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
-
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
-
-//Revolver.settings
 
 mainClass in assembly := Some("ReceiptRestService")

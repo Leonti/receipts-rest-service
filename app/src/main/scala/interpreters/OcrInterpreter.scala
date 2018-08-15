@@ -15,8 +15,8 @@ import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.stream.ActorMaterializer
 import akka.actor.ActorSystem
-import spray.json.DefaultJsonProtocol
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
@@ -28,11 +28,7 @@ class OcrInterpreterTagless(ocrRepository: OcrRepository, ocrService: OcrService
     implicit system: ActorSystem,
     executor: ExecutionContextExecutor,
     materializer: ActorMaterializer)
-    extends OcrAlg[Future]
-    with DefaultJsonProtocol {
-
-  implicit val ocrSearchResultFormat = jsonFormat1(OcrSearchResult.apply)
-  implicit val ocrContent            = jsonFormat1(OcrContent.apply)
+    extends OcrAlg[Future] {
 
   def getOcrResults(userId: String, query: String): Future[Seq[String]] =
     for {

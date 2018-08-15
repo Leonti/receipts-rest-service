@@ -16,7 +16,8 @@ object JwtTokenGenerator {
   val generateToken: (User, Long, Array[Byte]) => OAuth2AccessTokenResponse = (user, currentTimeMillis, bearerTokenSecret) => {
 
     val algorithmHS = Algorithm.HMAC256(bearerTokenSecret)
-    val token = JWT.create()
+    val token = JWT
+      .create()
       .withIssuer("self")
       .withClaim("sub", s"${user.id}")
       .withClaim("name", user.userName)
@@ -29,7 +30,8 @@ object JwtTokenGenerator {
   val generatePathToken: (String, Long, Array[Byte]) => OAuth2AccessTokenResponse = (path, currentTimeMillis, bearerTokenSecret) => {
 
     val algorithmHS = Algorithm.HMAC256(bearerTokenSecret)
-    val token = JWT.create()
+    val token = JWT
+      .create()
       .withIssuer("self")
       .withClaim("sub", path)
       .withExpiresAt(java.util.Date.from(Instant.ofEpochSecond(currentTimeMillis / 1000L + bearerPathTokenLifetime.toSeconds)))

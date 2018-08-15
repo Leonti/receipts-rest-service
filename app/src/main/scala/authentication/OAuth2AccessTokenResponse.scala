@@ -1,20 +1,28 @@
 package authentication
 
-import spray.json._
+import io.circe.{ Decoder, Encoder, HCursor, Json }
 
 case class OAuth2AccessTokenResponse(tokenType: String, accessToken: String, expiresIn: Long)
 
-object OAuth2AccessTokenResponseFormat extends RootJsonFormat[OAuth2AccessTokenResponse] {
-  def write(obj: OAuth2AccessTokenResponse) = JsObject(
-    "token_type" -> JsString(obj.tokenType),
-    "access_token" -> JsString(obj.accessToken),
-    "expires_in" -> JsNumber(obj.expiresIn)
-  )
-  def read(value: JsValue) =
-    value.asJsObject.getFields("token_type", "access_token", "expires_in") match {
-      case Seq(JsString(tokenType), JsString(accessToken), JsNumber(expiresIn)) =>
-        OAuth2AccessTokenResponse(tokenType, accessToken, expiresIn.toLong)
-      case _ =>
-        throw DeserializationException("OAuth2 token response expected")
-    }
+object OAuth2AccessTokenResponse {
+
+  implicit val encodeToken: Encoder[OAuth2AccessTokenResponse] = new Encoder[OAuth2AccessTokenResponse] {
+    final def apply(a: OAuth2AccessTokenResponse): Json = Json.obj(
+      ("token_type", Json.fromString(a.tokenType)),
+      ("access_token", Json.fromString(a.accessToken)),
+      ("expires_in", Json.fromLong(a.expiresIn))
+    )
+  }
+
+  implicit val decodeToken: Decoder[OAuth2AccessTokenResponse] = new Decoder[OAuth2AccessTokenResponse] {
+    final def apply(c: HCursor): Decoder.Result[OAuth2AccessTokenResponse] =
+      for {
+        tokenType <- c.downField("token_type").as[String]
+        accessToken <- c.downField("access_token").as[String]
+        expiresIn <- c.downField("expires_in").as[Long]
+      } yield {
+        OAuth2AccessTokenResponse(tokenType, accessToken, expiresIn)
+      }
+  }
+
 }
