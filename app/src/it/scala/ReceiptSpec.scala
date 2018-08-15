@@ -8,16 +8,17 @@ import ReceiptTestUtils._
 import TestConfig._
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
+import scala.concurrent.duration.DurationInt
 import org.scalatest.time.{Millis, Seconds, Span}
 
-class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtocols {
+class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
 
   implicit val defaultPatience =
     PatienceConfig(timeout = Span(60, Seconds), interval = Span(1000, Millis))
@@ -180,11 +181,12 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures with JsonProt
           uri = s"$appHostPort/user/${userInfo.id}/receipt/${receiptEntity.id}/file/${receiptEntity.files.head.id}",
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
-      file <- Unmarshal(fileResponse.entity).to[String]
-    } yield file
+    } yield fileResponse
 
-    whenReady(fileFuture) { file =>
-      file should include("receipt content")
+    val responseEntity = fileFuture.flatMap(r => r.entity.toStrict(1.second).map { _.data }.map(_.utf8String))
+
+    whenReady(responseEntity) { stringResponse =>
+      stringResponse should include("receipt content")
     }
   }
 

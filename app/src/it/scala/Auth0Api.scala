@@ -2,12 +2,12 @@ import TestConfig._
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, RequestEntity, StatusCode}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
-import spray.json.{DefaultJsonProtocol, RootJsonFormat}
+import io.circe.generic.auto._
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -41,14 +41,9 @@ case class Auth0CreateUserRequest(
     email_verified: Boolean = true
                                  )
 
-object Auth0Api extends DefaultJsonProtocol {
+object Auth0Api {
   implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()
-
-  private implicit val auth0TokenRequestFormat: RootJsonFormat[Auth0TokenRequest] = jsonFormat4(Auth0TokenRequest)
-  private implicit val auth0TokenResponseFormat: RootJsonFormat[Auth0TokenResponse] = jsonFormat2(Auth0TokenResponse)
-  private implicit val auth0CreateUserRequestFormat: RootJsonFormat[Auth0CreateUserRequest] = jsonFormat4(Auth0CreateUserRequest)
-  private implicit val passwordGrantRequestFormat: RootJsonFormat[PasswordGrantRequest] = jsonFormat7(PasswordGrantRequest)
 
   private def requestAuth0RequestToken(): Future[Auth0TokenResponse] = {
     val tokenRequest = Auth0TokenRequest(
@@ -104,7 +99,7 @@ object Auth0Api extends DefaultJsonProtocol {
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(auth0Token.access_token)))
         ))
-      _ <- if (response.status == StatusCode.int2StatusCode(201)) Future.successful() else {
+      _ <- if (response.status == StatusCode.int2StatusCode(201)) Future.successful(()) else {
         println("Failed to create a user in auth0")
         Future.failed(new RuntimeException("Failed to create a user in auth0"))
       }

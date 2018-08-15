@@ -1,7 +1,7 @@
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import model.{PendingFile, ReceiptEntity}
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
@@ -16,7 +16,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.io.BufferedSource
 
-package object ReceiptTestUtils extends JsonProtocols {
+package object ReceiptTestUtils {
 
   implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()

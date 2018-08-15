@@ -11,18 +11,18 @@ import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import authentication.OAuth2AccessTokenResponse
-import model.{CreateUserRequest, ReceiptEntity}
+import model.ReceiptEntity
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FlatSpec, Matchers}
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.stream.scaladsl.Sink
 import akka.util.ByteString
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class BackupSpec extends FlatSpec with Matchers with ScalaFutures with JsonProtocols {
+class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
   implicit val defaultPatience =
     PatienceConfig(timeout = Span(60, Seconds), interval = Span(1000, Millis))
   implicit val system       = ActorSystem()

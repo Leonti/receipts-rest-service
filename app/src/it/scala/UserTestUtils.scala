@@ -1,6 +1,6 @@
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, RequestEntity}
 import akka.http.scaladsl.unmarshalling.Unmarshal
@@ -12,7 +12,7 @@ import routing.OpenIdToken
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
-package object UserTestUtils extends JsonProtocols {
+package object UserTestUtils {
 
   implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()

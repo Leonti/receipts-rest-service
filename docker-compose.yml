@@ -57,6 +57,8 @@ services:
     image: leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
     environment:
       - APP_HOST_PORT=http://app:9000
+      - AUTH0_API_CLIENT_ID
+      - AUTH0_CLIENT_SECRET
       - WAIT_EXPRESSION=[ $$(curl --write-out %{http_code} --silent --output /dev/null "$$APP_HOST_PORT/config") = 200 ]
       - WAIT_SLEEP=2
       - WAIT_LOOPS=60
