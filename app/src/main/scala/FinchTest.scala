@@ -1,16 +1,13 @@
 import algebras.JwtVerificationAlg
 import authentication.BearerAuth
 import cats.Id
-//import com.twitter.finagle.Http
-//import com.twitter.util.Await
 import io.finch.Endpoint
 import model.{SubClaim, User}
-//import routing.ReceiptEndpoints
-//import routing.ExceptionEncoders._
-//import io.finch.circe._
-//import io.circe.generic.auto._
+import cats.instances.future._
+import io.finch.syntax.scalaFutures._
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 object FinchTest {
 
 
@@ -23,7 +20,7 @@ object FinchTest {
       }
     }
 
-    val auth: Endpoint[User] = new BearerAuth(
+    val auth: Endpoint[User] = new BearerAuth[Future, User](
       new TestVerificationAlg(),
       _ => Future.successful(Some(User("test", "", List())))
     ).auth
