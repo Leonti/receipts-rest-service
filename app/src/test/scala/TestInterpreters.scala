@@ -37,6 +37,12 @@ object TestInterpreters {
     override def tmpFile(): Future[File]             = Future.successful(file)
   }
 
+  class RandomInterpreterId(id: String, time: Long = 0, file: File = new File("")) extends RandomAlg[Id] {
+    override def generateGuid(): Id[String] = id
+    override def getTime(): Id[Long]                = time
+    override def tmpFile(): Id[File]             = file
+  }
+
   class FileInterpreterTagless(md5Response: Seq[StoredFile] = List()) extends FileAlg[Future] {
     override def submitPendingFile(pendingFile: PendingFile): Future[PendingFile] = Future.successful(pendingFile)
     override def submitToFileQueue(userId: String,
@@ -64,6 +70,31 @@ object TestInterpreters {
     override def calculateMd5(file: File): Future[String] = Future.successful("")
   }
 
+  class FileInterpreterId(md5Response: Seq[StoredFile] = List()) extends FileAlg[Id] {
+    override def submitPendingFile(pendingFile: PendingFile): Id[PendingFile] = pendingFile
+    override def submitToFileQueue(userId: String,
+                                   receiptId: String,
+                                   file: File,
+                                   fileExt: String,
+                                   pendingFileId: String): Id[JobId] = ""
+    override def moveFile(src: File, dst: File): Id[Unit] = ()
+    override def saveFile(userId: String,
+                          file: File,
+                          ext: String): Id[Seq[FileEntity]] = List()
+    override def saveStoredFile(storedFile: StoredFile): Id[Unit] = ()
+    override def findByMd5(userId: String,
+                           md5: String): Id[Seq[StoredFile]] = md5Response
+    override def deleteStoredFile(storedFileId: String): Id[Unit] = ()
+    override def fetchFile(userId: String, fileId: String): Id[
+      Source[ByteString, Future[IOResult]]] = StreamConverters.fromInputStream(() => new ByteArrayInputStream("some text".getBytes))
+    override def sourceToFile(
+                               source: Source[ByteString, Future[IOResult]],
+                               file: File): Id[File] = file
+    override def deleteFile(userId: String, fileId: String): Id[Unit] = ()
+    override def removeFile(file: File): Id[Unit]                         = ()
+    override def calculateMd5(file: File): Id[String] = ""
+  }
+
   class ReceiptInterpreterTagless(
                             receipts: Seq[ReceiptEntity] = List(),
                             ocrs: Seq[OcrTextOnly] = List()
@@ -80,6 +111,22 @@ object TestInterpreters {
                                   file: FileEntity): Future[Unit] = Future.successful(())
   }
 
+  class ReceiptInterpreterId(
+                                   receipts: Seq[ReceiptEntity] = List(),
+                                   ocrs: Seq[OcrTextOnly] = List()
+                                 ) extends ReceiptAlg[Id] {
+    override def getReceipt(userId: UserId,
+                            id: String): Id[Option[ReceiptEntity]] = receipts.find(_.id == id)
+    override def deleteReceipt(userId: UserId, id: String): Id[Unit] = ()
+    override def saveReceipt(userId: UserId, id: String,
+                             receipt: ReceiptEntity): Id[ReceiptEntity] = receipt
+    override def getReceipts(userId: UserId,
+                             ids: Seq[String]): Id[Seq[ReceiptEntity]] = receipts
+    override def userReceipts(userId: UserId): Id[Seq[ReceiptEntity]] = receipts
+    override def addFileToReceipt(userId: UserId, receiptId: String,
+                                  file: FileEntity): Id[Unit] = ()
+  }
+
   class OcrInterpreterTagless() extends OcrAlg[Future] {
     val testAnnotation = OcrTextAnnotation(text = "Parsed ocr text", pages = List())
 
@@ -93,6 +140,21 @@ object TestInterpreters {
     override def findIdsByText(userId: String,
                                query: String): Future[Seq[String]] =
       Future.successful(Seq())
+  }
+
+  class OcrInterpreterId() extends OcrAlg[Id] {
+    val testAnnotation = OcrTextAnnotation(text = "Parsed ocr text", pages = List())
+
+    override def ocrImage(file: File): Id[OcrTextAnnotation] = testAnnotation
+    override def saveOcrResult(userId: String,
+                               receiptId: String,
+                               ocrResult: OcrTextAnnotation): Id[OcrEntity] = OcrEntity(userId = userId, id = receiptId, result = testAnnotation)
+    override def addOcrToIndex(userId: String,
+                               receiptId: String,
+                               ocrText: OcrText): Id[Unit] = ()
+    override def findIdsByText(userId: String,
+                               query: String): Id[Seq[String]] =
+      Seq()
   }
 
   class PendingFileInterpreterTagless() extends PendingFileAlg[Future] {

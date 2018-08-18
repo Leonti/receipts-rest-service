@@ -12,7 +12,6 @@ scalacOptions := Seq("-unchecked",
                      "-Xfatal-warnings",
                      "-Ywarn-unused-import",
                      "-Ypartial-unification",
-                     "-print",
                      "-encoding",
                      "utf8")
 
