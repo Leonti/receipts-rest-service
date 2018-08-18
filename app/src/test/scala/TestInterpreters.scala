@@ -5,6 +5,7 @@ import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import algebras._
 import authentication.OAuth2AccessTokenResponse
+import cats.Id
 import model._
 import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
@@ -67,15 +68,15 @@ object TestInterpreters {
                             receipts: Seq[ReceiptEntity] = List(),
                             ocrs: Seq[OcrTextOnly] = List()
                           ) extends ReceiptAlg[Future] {
-    override def getReceipt(
-        id: String): Future[Option[ReceiptEntity]] = Future.successful(receipts.find(_.id == id))
-    override def deleteReceipt(id: String): Future[Unit] = Future.successful(())
-    override def saveReceipt(id: String,
+    override def getReceipt(userId: UserId,
+                            id: String): Future[Option[ReceiptEntity]] = Future.successful(receipts.find(_.id == id))
+    override def deleteReceipt(userId: UserId, id: String): Future[Unit] = Future.successful(())
+    override def saveReceipt(userId: UserId, id: String,
                              receipt: ReceiptEntity): Future[ReceiptEntity] = Future.successful(receipt)
-    override def getReceipts(
-        ids: Seq[String]): Future[Seq[ReceiptEntity]] = Future.successful(receipts)
-    override def userReceipts(userId: String): Future[Seq[ReceiptEntity]] = Future.successful(receipts)
-    override def addFileToReceipt(receiptId: String,
+    override def getReceipts(userId: UserId,
+                             ids: Seq[String]): Future[Seq[ReceiptEntity]] = Future.successful(receipts)
+    override def userReceipts(userId: UserId): Future[Seq[ReceiptEntity]] = Future.successful(receipts)
+    override def addFileToReceipt(userId: UserId, receiptId: String,
                                   file: FileEntity): Future[Unit] = Future.successful(())
   }
 
@@ -100,6 +101,10 @@ object TestInterpreters {
         userId: String): Future[List[PendingFile]] = Future.successful(List())
     override def deletePendingFileById(id: String): Future[Unit] = Future.successful(())
     override def deleteAllPendingFiles(): Future[Unit] = Future.successful(())
+  }
+
+  class TestVerificationAlg(result: Either[String, SubClaim]) extends JwtVerificationAlg[Id] {
+    override def verify(token: String): Id[Either[String, SubClaim]] = result
   }
 
 }

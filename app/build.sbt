@@ -29,6 +29,7 @@ val logbackV        = "1.1.7"
 val diffsonV        = "3.0.0"
 val catsV           = "1.2.0"
 val circeVersion = "0.9.3"
+val finchV = "0.23.0"
 
 val logging = Seq(
   "ch.qos.logback"             % "logback-classic"          % logbackV,
@@ -52,6 +53,8 @@ libraryDependencies ++= {
     "com.typesafe.akka"     %% "akka-http"                 % akkaHttpV,
     "com.typesafe.akka"     %% "akka-http-testkit"         % akkaHttpV,
     "de.heikoseeberger" %% "akka-http-circe" % "1.21.0",
+    "com.github.finagle" %% "finch-core" % finchV,
+    "com.github.finagle" %% "finch-circe" % finchV,
     "com.amazonaws"         % "aws-java-sdk-s3"            % amazonS3V,
     "com.google.apis"       % "google-api-services-vision" % visionApiV excludeAll (
       ExclusionRule(organization="com.google.guava", name="guava-jdk5")
@@ -65,7 +68,9 @@ libraryDependencies ++= {
     "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
     "org.typelevel"        %% "cats-core"              % catsV,
     "org.gnieh"     %% "diffson-circe" % diffsonV,
-    "com.auth0" % "java-jwt" % "3.4.0",
+    "com.auth0" % "java-jwt" % "3.4.0" excludeAll (
+      ExclusionRule(organization = "com.fasterxml.jackson.core")
+      ),
     "com.auth0" % "jwks-rsa" % "0.6.0",
     "org.scalatest" %% "scalatest"          % scalaTestV % "it,test"
   )

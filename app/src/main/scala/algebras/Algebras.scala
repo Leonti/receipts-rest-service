@@ -14,12 +14,12 @@ import scala.concurrent.Future
 import scala.language.higherKinds
 
 trait ReceiptAlg[F[_]] {
-  def getReceipt(id: String): F[Option[ReceiptEntity]]
-  def deleteReceipt(id: String): F[Unit]
-  def saveReceipt(id: String, receipt: ReceiptEntity): F[ReceiptEntity]
-  def getReceipts(ids: Seq[String]): F[Seq[ReceiptEntity]]
-  def userReceipts(userId: String): F[Seq[ReceiptEntity]]
-  def addFileToReceipt(receiptId: String, file: FileEntity): F[Unit]
+  def getReceipt(userId: UserId, id: String): F[Option[ReceiptEntity]]
+  def deleteReceipt(userId: UserId, id: String): F[Unit]
+  def saveReceipt(userId: UserId, id: String, receipt: ReceiptEntity): F[ReceiptEntity]
+  def getReceipts(userId: UserId, ids: Seq[String]): F[Seq[ReceiptEntity]]
+  def userReceipts(userId: UserId): F[Seq[ReceiptEntity]]
+  def addFileToReceipt(userId: UserId, receiptId: String, file: FileEntity): F[Unit]
 }
 
 trait OcrAlg[F[_]] {

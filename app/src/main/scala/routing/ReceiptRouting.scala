@@ -57,9 +57,9 @@ class ReceiptRouting(
     }
   }
 
-  val deleteReceipt: String => Route = (receiptId) => {
+  val deleteReceipt: (UserId, String) => Route = (userId, receiptId) => {
 
-    val deletionFuture: Future[Option[Unit]] = receiptPrograms.removeReceipt(receiptId)
+    val deletionFuture: Future[Option[Unit]] = receiptPrograms.removeReceipt(userId, receiptId)
 
     onComplete(deletionFuture) {
       case Success(deletionOption: Option[Unit]) =>
@@ -87,16 +87,16 @@ class ReceiptRouting(
           authorize(user.id == userId) {
             path(Segment) { receiptId: String =>
               get {
-                respondWithReceipt(receiptPrograms.findById(receiptId))
+                respondWithReceipt(receiptPrograms.findById(UserId(userId), receiptId))
               } ~
               patch {
                 entity(as[JsonPatch]) { receiptPatch =>
-                  val receiptFuture = receiptPrograms.patchReceipt(receiptId, receiptPatch)
+                  val receiptFuture = receiptPrograms.patchReceipt(UserId(userId), receiptId, receiptPatch)
                   respondWithReceipt(receiptFuture)
                 }
               } ~
               delete {
-                deleteReceipt(receiptId)
+                deleteReceipt(UserId(userId), receiptId)
               }
             } ~
             path(Segment / "file") { receiptId: String =>
@@ -104,7 +104,7 @@ class ReceiptRouting(
                 storeUploadedFile("receipt", toTempFile) {
                   case (metadata: FileInfo, file: File) =>
                     val pendingFilesFuture: Future[Either[ReceiptErrors.Error, PendingFile]] =
-                      receiptPrograms.addUploadedFileToReceipt(uploadsLocation, userId, receiptId, metadata, file)
+                      receiptPrograms.addUploadedFileToReceipt(uploadsLocation, UserId(userId), receiptId, metadata, file)
 
                     onComplete(pendingFilesFuture) {
                       case Success(pendingFileEither: Either[ReceiptErrors.Error, PendingFile]) =>
@@ -122,7 +122,7 @@ class ReceiptRouting(
                 val fileId = fileIdWithExt.split('.')(0)
 
                 val fileToServeFuture = receiptPrograms
-                  .receiptFileWithExtension(receiptId, fileId)
+                  .receiptFileWithExtension(UserId(userId), receiptId, fileId)
 
                 onComplete(fileToServeFuture) {
                   case Success(fileToServeOption: Option[FileToServe]) =>
@@ -140,7 +140,7 @@ class ReceiptRouting(
               parameters("last-modified".as[Long].?, "q".as[String].?) { (lastModified: Option[Long], queryOption: Option[String]) =>
                 val userReceiptsFuture: Future[Seq[ReceiptEntity]] =
                   receiptPrograms
-                    .findForUser(userId, lastModified, queryOption)
+                    .findForUser(UserId(userId), lastModified, queryOption)
 
                 onComplete(userReceiptsFuture) { userReceipts =>
                   complete(userReceipts)
@@ -151,7 +151,7 @@ class ReceiptRouting(
               FileUploadDirective.uploadedFileWithFields("receipt", "total", "description", "transactionTime", "tags") {
                 parsedForm: ParsedForm =>
                   val receiptFuture = receiptPrograms
-                    .createReceipt(uploadsLocation, userId, parsedForm)
+                    .createReceipt(uploadsLocation, UserId(userId), parsedForm)
 
                   onComplete(receiptFuture) {
                     case Success(receiptEither: Either[ReceiptErrors.Error, ReceiptEntity]) =>
