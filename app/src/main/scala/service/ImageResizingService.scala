@@ -5,7 +5,7 @@ import java.util.concurrent.Executors
 
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
-import io.circe.{ Decoder, Encoder }
+import io.circe.{Decoder, Encoder}
 import cats.syntax.either._
 
 import scala.concurrent.{ExecutionContext, Future}

@@ -11,9 +11,9 @@ import cats.implicits._
 import scala.language.higherKinds
 
 class ReceiptEndpoints[M[_]: ToTwitterFuture: Monad](
-                        auth: Endpoint[User],
-                        receiptPrograms: ReceiptPrograms[M]
-                      ) {
+    auth: Endpoint[User],
+    receiptPrograms: ReceiptPrograms[M]
+) {
 
   val test: Endpoint[PendingFile] =
     get(auth :: "receipt" :: path[String]) { (user: User, receiptId: String) =>

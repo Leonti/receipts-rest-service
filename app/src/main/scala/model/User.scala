@@ -38,8 +38,8 @@ object User {
 
     def write(user: User): BSONDocument = {
       BSONDocument(
-        "_id"      -> user.id,
-        "userName" -> user.userName,
+        "_id"         -> user.id,
+        "userName"    -> user.userName,
         "externalIds" -> user.externalIds
       )
     }

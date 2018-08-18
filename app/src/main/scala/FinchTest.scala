@@ -10,7 +10,6 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 object FinchTest {
 
-
   def main(args: Array[String]): Unit = {
 
     class TestVerificationAlg extends JwtVerificationAlg[Id] {
@@ -25,9 +24,9 @@ object FinchTest {
       _ => Future.successful(Some(User("test", "", List())))
     ).auth
 
- //   val receiptEndpoints = new ReceiptEndpoints(auth)
+    //   val receiptEndpoints = new ReceiptEndpoints(auth)
 
- //   Await.ready(Http.server.serve(":8080", receiptEndpoints.test.toService))
+    //   Await.ready(Http.server.serve(":8080", receiptEndpoints.test.toService))
 
   }
 }

@@ -13,6 +13,7 @@ scalacOptions := Seq("-unchecked",
                      "-Ywarn-unused-import",
                      "-Ypartial-unification",
                      "-encoding",
+                     "-print",
                      "utf8")
 
 addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersion.binary)

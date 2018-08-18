@@ -121,7 +121,7 @@ object ReceiptRestService extends App with Service {
   override val config = ConfigFactory.load()
 
   val userRepository = new UserRepository()
-  val openIdService   = new OpenIdService()
+  val openIdService  = new OpenIdService()
 
   val fileCachingService    = new FileCachingService()
   val imageResizingService  = new ImageResizingService()

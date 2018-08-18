@@ -50,21 +50,30 @@ object FileMetadata {
 
   implicit val decodeMetadata: Decoder[FileMetadata] = new Decoder[FileMetadata] {
     final def apply(c: HCursor): Decoder.Result[FileMetadata] =
-      c.downField("fileType").as[String].flatMap({
-        case "IMAGE" => for {
-          length <- c.downField("length").as[Long]
-          width <- c.downField("width").as[Int]
-          height <- c.downField("height").as[Int]
-        } yield ImageMetadata(
-          length = length,
-          width = width,
-          height = height
-        )
-        case fileType => c.downField("length").as[Long].map(length => GenericMetadata(
-          fileType = fileType,
-          length = length
-        ))
-      })
+      c.downField("fileType")
+        .as[String]
+        .flatMap({
+          case "IMAGE" =>
+            for {
+              length <- c.downField("length").as[Long]
+              width  <- c.downField("width").as[Int]
+              height <- c.downField("height").as[Int]
+            } yield
+              ImageMetadata(
+                length = length,
+                width = width,
+                height = height
+              )
+          case fileType =>
+            c.downField("length")
+              .as[Long]
+              .map(
+                length =>
+                  GenericMetadata(
+                    fileType = fileType,
+                    length = length
+                ))
+        })
   }
 
   implicit object FileMetadataBSONReader extends BSONDocumentReader[FileMetadata] {

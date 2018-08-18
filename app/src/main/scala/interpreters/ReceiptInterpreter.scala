@@ -11,6 +11,7 @@ class ReceiptInterpreterTagless(receiptRepository: ReceiptRepository, ocrReposit
   override def deleteReceipt(userId: UserId, id: String): Future[Unit]                                = receiptRepository.deleteById(id)
   override def saveReceipt(userId: UserId, id: String, receipt: ReceiptEntity): Future[ReceiptEntity] = receiptRepository.save(receipt)
   override def getReceipts(userId: UserId, ids: Seq[String]): Future[Seq[ReceiptEntity]]              = receiptRepository.findByIds(ids)
-  override def userReceipts(userId: UserId): Future[Seq[ReceiptEntity]]               = receiptRepository.findForUserId(userId.value)
-  override def addFileToReceipt(userId: UserId, receiptId: String, file: FileEntity): Future[Unit]    = receiptRepository.addFileToReceipt(receiptId, file)
+  override def userReceipts(userId: UserId): Future[Seq[ReceiptEntity]]                               = receiptRepository.findForUserId(userId.value)
+  override def addFileToReceipt(userId: UserId, receiptId: String, file: FileEntity): Future[Unit] =
+    receiptRepository.addFileToReceipt(receiptId, file)
 }
