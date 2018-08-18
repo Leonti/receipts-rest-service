@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.PathMatchers.Segment
 import akka.http.scaladsl.server.directives.{AuthenticationDirective, ContentTypeResolver, FileInfo}
 import akka.http.scaladsl.server._
 import model._
-import service.{ReceiptErrors, ReceiptPrograms}
+import service.{FileUploadPrograms, ReceiptErrors, ReceiptPrograms}
 import akka.actor.ActorSystem
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -20,11 +20,11 @@ import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
-
 import cats.implicits._
 
 class ReceiptRouting(
     receiptPrograms: ReceiptPrograms[Future],
+    fileUploadPrograms: FileUploadPrograms[Future],
     authenticaton: AuthenticationDirective[User]
 )(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) {
 
@@ -150,8 +150,11 @@ class ReceiptRouting(
             post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
               FileUploadDirective.uploadedFileWithFields("receipt", "total", "description", "transactionTime", "tags") {
                 parsedForm: ParsedForm =>
-                  val receiptFuture = receiptPrograms
-                    .createReceipt(uploadsLocation, UserId(userId), parsedForm)
+                  val receiptFuture = fileUploadPrograms
+                    .toReceiptUpload(parsedForm)
+                    .flatMap(receiptUpload =>
+                      receiptPrograms
+                        .createReceipt(uploadsLocation, UserId(userId), receiptUpload))
 
                   onComplete(receiptFuture) {
                     case Success(receiptEither: Either[ReceiptErrors.Error, ReceiptEntity]) =>

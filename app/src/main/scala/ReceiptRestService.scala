@@ -175,8 +175,13 @@ object ReceiptRestService extends App with Service {
     randomInterpreter,
     ocrInterpreter
   )
+  val fileUploadPrograms = new FileUploadPrograms[Future](
+    config.getString("uploadsFolder"),
+    fileInterpreter,
+    randomInterpreter
+  )
   override val receiptRouting =
-    new ReceiptRouting(receiptPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
+    new ReceiptRouting(receiptPrograms, fileUploadPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
   override val pendingFileRouting = new PendingFileRouting(
     pendingFileService,
     authenticator.bearerTokenOrCookie(acceptExpired = true)

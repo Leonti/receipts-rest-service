@@ -6,7 +6,7 @@ import model.{ReceiptEntity, SubClaim, User}
 import org.scalatest.{FlatSpec, Matchers}
 import instances.identity._
 import routing.ReceiptEndpoints
-import service.ReceiptPrograms
+import service.{FileUploadPrograms, ReceiptPrograms}
 
 class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
@@ -24,10 +24,12 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(), description = "some description")
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt), List()), fileInt, randomInt, ocrInt))
+      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt), List()), fileInt, randomInt, ocrInt),
+      new FileUploadPrograms("", fileInt, randomInt)
+    )
 
     val input = Input.get("/receipt/2").withHeaders("Authorization" -> "Bearer token")
-    receiptRouting.all(input).awaitValueUnsafe() shouldBe Some(receipt)
+    receiptRouting.getReceipt(input).awaitValueUnsafe() shouldBe Some(receipt)
   }
 
 }

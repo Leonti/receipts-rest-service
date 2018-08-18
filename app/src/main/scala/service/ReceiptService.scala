@@ -6,12 +6,9 @@ import akka.http.scaladsl.server.directives.FileInfo
 import algebras.{FileAlg, OcrAlg, RandomAlg, ReceiptAlg}
 import cats.Monad
 import model._
-import routing.ParsedForm
 import io.circe.syntax._
 import io.circe.parser._
 import gnieh.diffson.circe._
-
-import scala.util.Try
 import cats.implicits._
 import cats.data.EitherT
 
@@ -65,8 +62,7 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
           receiptId = receiptId
         )
       )
-      _ <- moveFile(file, new File(new File(uploadsLocation), pendingFileId)) // TODO remove new File duplication
-      _ <- submitToFileQueue(userId.value, receiptId, new File(new File(uploadsLocation), pendingFileId), ext(fileName), pendingFile.id)
+      _ <- submitToFileQueue(userId.value, receiptId, file, ext(fileName), pendingFile.id)
     } yield pendingFile
 
   private def validateExistingFile(haveExisting: Boolean): EitherT[F, Error, Unit] =
@@ -75,28 +71,26 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
     else
       EitherT.right[Error](Monad[F].pure(()))
 
-  def createReceipt(uploadsLocation: String, userId: UserId, parsedForm: ParsedForm): F[Either[Error, ReceiptEntity]] = {
+  def createReceipt(uploadsLocation: String, userId: UserId, receiptUpload: ReceiptUpload): F[Either[Error, ReceiptEntity]] = {
     val eitherT: EitherT[F, Error, ReceiptEntity] = for {
-      md5                     <- EitherT.right[Error](calculateMd5(parsedForm.files("receipt").file))
+      md5                     <- EitherT.right[Error](calculateMd5(receiptUpload.receipt))
       exitingFilesWithSameMd5 <- EitherT.right[Error](findByMd5(userId.value, md5))
       _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
       receiptId               <- EitherT.right[Error](generateGuid())
       currentTimeMillis       <- EitherT.right[Error](getTime())
-      uploadedFile = parsedForm.files("receipt")
-      tags         = parsedForm.fields("tags")
       receipt = ReceiptEntity(
         id = receiptId,
         userId = userId.value,
-        total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
-        description = parsedForm.fields("description"),
+        total = receiptUpload.total,
+        description = receiptUpload.description,
         timestamp = currentTimeMillis,
         lastModified = currentTimeMillis,
-        transactionTime = parsedForm.fields("transactionTime").toLong,
-        tags = if (tags.trim() == "") List() else tags.split(",").toList,
+        transactionTime = receiptUpload.transactionTime,
+        tags = receiptUpload.tags,
         files = List()
       )
       _ <- EitherT.right[Error](saveReceipt(userId, receiptId, receipt))
-      _ <- EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, uploadedFile.file, uploadedFile.fileInfo.fileName))
+      _ <- EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, receiptUpload.receipt, receiptUpload.fileName))
     } yield receipt
 
     eitherT.value

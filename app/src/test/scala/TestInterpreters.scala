@@ -6,6 +6,7 @@ import akka.util.ByteString
 import algebras._
 import authentication.OAuth2AccessTokenResponse
 import cats.Id
+import com.twitter.io.Buf
 import model._
 import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
@@ -68,6 +69,7 @@ object TestInterpreters {
       Future.successful(())
     override def removeFile(file: File): Future[Unit]                         = Future.successful(())
     override def calculateMd5(file: File): Future[String] = Future.successful("")
+    override def bufToFile(src: Buf, dst: File): Future[Unit] = Future.successful(())
   }
 
   class FileInterpreterId(md5Response: Seq[StoredFile] = List()) extends FileAlg[Id] {
@@ -93,6 +95,7 @@ object TestInterpreters {
     override def deleteFile(userId: String, fileId: String): Id[Unit] = ()
     override def removeFile(file: File): Id[Unit]                         = ()
     override def calculateMd5(file: File): Id[String] = ""
+    override def bufToFile(src: Buf, dst: File): Id[Unit] = ()
   }
 
   class ReceiptInterpreterTagless(

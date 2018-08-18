@@ -1,6 +1,6 @@
 package interpreters
 
-import java.io.File
+import java.io.{File, FileOutputStream}
 
 import model.{FileEntity, PendingFile, StoredFile}
 import algebras.FileAlg
@@ -12,6 +12,7 @@ import java.nio.file.Files
 import akka.stream.{ActorMaterializer, IOResult}
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
+import com.twitter.io.Buf
 import queue.Models.JobId
 
 import scala.concurrent.Future
@@ -46,4 +47,12 @@ class FileInterpreterTagless(
   override def deleteFile(userId: String, fileId: String): Future[Unit] = fileService.delete(userId, fileId)
   override def removeFile(file: File): Future[Unit]                     = Future { file.delete }.map(_ => ()) // TODO use pure
   override def calculateMd5(file: File): Future[String]                 = Future { fileService.md5(file) } // TODO use pure
+  override def bufToFile(src: Buf, dst: File): Future[Unit] = Future {
+    src match {
+      case Buf.ByteArray.Owned(bytes, _, _) =>
+        val fw = new FileOutputStream(dst)
+        fw.write(bytes)
+        fw.close()
+    }
+  }
 }

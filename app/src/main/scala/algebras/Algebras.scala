@@ -6,6 +6,7 @@ import akka.stream.IOResult
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import authentication.OAuth2AccessTokenResponse
+import com.twitter.io.Buf
 import model._
 import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
@@ -33,6 +34,7 @@ trait FileAlg[F[_]] {
   def submitPendingFile(pendingFile: PendingFile): F[PendingFile]
   def submitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String): F[JobId]
   def moveFile(src: File, dst: File): F[Unit]
+  def bufToFile(src: Buf, dst: File): F[Unit]
   def saveFile(userId: String, file: File, ext: String): F[Seq[FileEntity]]
   def saveStoredFile(storedFile: StoredFile): F[Unit]
   def findByMd5(userId: String, md5: String): F[Seq[StoredFile]]
