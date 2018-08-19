@@ -99,24 +99,6 @@ class ReceiptRouting(
                 deleteReceipt(UserId(userId), receiptId)
               }
             } ~
-            path(Segment / "file") { receiptId: String =>
-              post {
-                storeUploadedFile("receipt", toTempFile) {
-                  case (metadata: FileInfo, file: File) =>
-                    val pendingFilesFuture: Future[Either[ReceiptErrors.Error, PendingFile]] =
-                      receiptPrograms.addUploadedFileToReceipt(uploadsLocation, UserId(userId), receiptId, metadata, file)
-
-                    onComplete(pendingFilesFuture) {
-                      case Success(pendingFileEither: Either[ReceiptErrors.Error, PendingFile]) =>
-                        pendingFileEither match {
-                          case Right(pendingFile: PendingFile) => complete(Created -> pendingFile)
-                          case Left(error)                     => receiptServiceError(error)
-                        }
-                      case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
-                    }
-                }
-              }
-            } ~
             path(Segment / "file" / Segment) { (receiptId, fileIdWithExt) =>
               get {
                 val fileId = fileIdWithExt.split('.')(0)
@@ -154,7 +136,7 @@ class ReceiptRouting(
                     .toReceiptUpload(parsedForm)
                     .flatMap(receiptUpload =>
                       receiptPrograms
-                        .createReceipt(uploadsLocation, UserId(userId), receiptUpload))
+                        .createReceipt(UserId(userId), receiptUpload))
 
                   onComplete(receiptFuture) {
                     case Success(receiptEither: Either[ReceiptErrors.Error, ReceiptEntity]) =>

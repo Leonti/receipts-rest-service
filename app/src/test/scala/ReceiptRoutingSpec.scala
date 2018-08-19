@@ -144,39 +144,6 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalaFutures with S
     }
   }
 
-  it should "add a file to existing receipt" in {
-
-    def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
-      Future(AuthenticationResult.success(User(id = "123-user", userName = "name", externalIds = List())))
-    }
-    val authentication = SecurityDirectives.authenticateOrRejectWithChallenge[User](myUserPassAuthenticator)
-
-    val receipt = ReceiptEntity(id = "1", userId = "123-user")
-    val receiptRouting = new ReceiptRouting(new ReceiptPrograms(
-      new ReceiptInterpreterTagless(List(receipt), List()), fileInt,
-      new RandomInterpreterTagless("2", 0),
-      ocrInt),
-      new FileUploadPrograms("", fileInt, randomInt),
-      authentication)
-
-    val pendingFile = PendingFile(
-      id = "2",
-      userId = "123-user",
-      receiptId = "1"
-    )
-
-    val content = "file content".getBytes
-    val multipartForm =
-      Multipart.FormData(
-        Multipart.FormData.BodyPart.Strict("receipt", HttpEntity(`application/octet-stream`, content), Map("filename" -> "receipt.png")))
-
-    Post(s"/user/123-user/receipt/${receipt.id}/file", multipartForm) ~> receiptRouting.routes("testLocation") ~> check {
-      status shouldBe Created
-      contentType shouldBe `application/json`
-      responseAs[PendingFile] shouldBe pendingFile
-    }
-  }
-
   it should "not allow to add a receipt with existing file" in {
 
     def myUserPassAuthenticator(credentials: Option[HttpCredentials]): Future[Either[HttpChallenge, User]] = {
@@ -202,7 +169,12 @@ class ReceiptRoutingSpec extends FlatSpec with Matchers with ScalaFutures with S
     val content = "file content".getBytes
     val multipartForm =
       Multipart.FormData(
-        Multipart.FormData.BodyPart.Strict("receipt", HttpEntity(`application/octet-stream`, content), Map("filename" -> "receipt.png")))
+        Multipart.FormData.BodyPart.Strict("receipt", HttpEntity(`application/octet-stream`, content), Map("filename" -> "receipt.png")),
+        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity("12.38")),
+        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity("some description")),
+        Multipart.FormData.BodyPart.Strict("transactionTime", utf8TextEntity("1480130712396")),
+        Multipart.FormData.BodyPart.Strict("tags", utf8TextEntity("veggies,food"))
+      )
 
     Post(s"/user/123-user/receipt/${receipt.id}/file", multipartForm) ~> receiptRouting.routes("testLocation") ~> check {
       status shouldBe BadRequest

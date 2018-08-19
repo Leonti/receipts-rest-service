@@ -2,7 +2,6 @@ package service
 
 import java.io.File
 
-import akka.http.scaladsl.server.directives.FileInfo
 import algebras.{FileAlg, OcrAlg, RandomAlg, ReceiptAlg}
 import cats.Monad
 import model._
@@ -52,7 +51,7 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
     } yield receipts
 
   private def ext(fileName: String): String = fileName.split("\\.")(1)
-  private def submitPF(uploadsLocation: String, userId: UserId, receiptId: String, file: File, fileName: String): F[PendingFile] =
+  private def submitPF(userId: UserId, receiptId: String, file: File, fileName: String): F[PendingFile] =
     for {
       pendingFileId <- generateGuid()
       pendingFile <- submitPendingFile(
@@ -71,7 +70,7 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
     else
       EitherT.right[Error](Monad[F].pure(()))
 
-  def createReceipt(uploadsLocation: String, userId: UserId, receiptUpload: ReceiptUpload): F[Either[Error, ReceiptEntity]] = {
+  def createReceipt(userId: UserId, receiptUpload: ReceiptUpload): F[Either[Error, ReceiptEntity]] = {
     val eitherT: EitherT[F, Error, ReceiptEntity] = for {
       md5                     <- EitherT.right[Error](calculateMd5(receiptUpload.receipt))
       exitingFilesWithSameMd5 <- EitherT.right[Error](findByMd5(userId.value, md5))
@@ -90,31 +89,13 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
         files = List()
       )
       _ <- EitherT.right[Error](saveReceipt(userId, receiptId, receipt))
-      _ <- EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, receiptUpload.receipt, receiptUpload.fileName))
+      _ <- EitherT.right[Error](submitPF(userId, receiptId, receiptUpload.receipt, receiptUpload.fileName))
     } yield receipt
 
     eitherT.value
   }
 
   type OptionalReceipt = Option[ReceiptEntity]
-
-  def addUploadedFileToReceipt(uploadsLocation: String,
-                               userId: UserId,
-                               receiptId: String,
-                               metadata: FileInfo,
-                               file: File): F[Either[Error, PendingFile]] = {
-    val eitherT: EitherT[F, Error, PendingFile] = for {
-      md5                     <- EitherT.right[Error](calculateMd5(file))
-      exitingFilesWithSameMd5 <- EitherT.right[Error](findByMd5(userId.value, md5))
-      _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
-      receiptOption           <- EitherT.right[Error](getReceipt(userId, receiptId))
-      pendingFile <- receiptOption
-        .fold(EitherT.left[PendingFile](Monad[F].pure(ReceiptNotFound(receiptId))): EitherT[F, Error, PendingFile])(_ =>
-          EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, file, metadata.fileName)))
-    } yield pendingFile
-
-    eitherT.value
-  }
 
   def patchReceipt(userId: UserId, receiptId: String, jsonPatch: JsonPatch): F[Option[ReceiptEntity]] =
     for {
