@@ -3,15 +3,13 @@ package interpreters
 import com.typesafe.config.ConfigFactory
 import algebras.TokenAlg
 import authentication.OAuth2AccessTokenResponse
+import cats.effect.IO
 import service.JwtTokenGenerator
 
-import scala.concurrent.{ExecutionContext, Future}
-
-// TODO do not use Future here
-class TokenInterpreter(implicit executor: ExecutionContext) extends TokenAlg[Future] {
+class TokenInterpreter extends TokenAlg[IO] {
 
   private val config                         = ConfigFactory.load()
   private val bearerTokenSecret: Array[Byte] = config.getString("tokenSecret").getBytes
-  override def generatePathToken(path: String): Future[OAuth2AccessTokenResponse] =
-    Future.successful(JwtTokenGenerator.generatePathToken(path, System.currentTimeMillis, bearerTokenSecret))
+  override def generatePathToken(path: String): IO[OAuth2AccessTokenResponse] =
+    IO(JwtTokenGenerator.generatePathToken(path, System.currentTimeMillis, bearerTokenSecret))
 }

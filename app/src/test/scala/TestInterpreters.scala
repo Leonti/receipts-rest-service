@@ -1,4 +1,4 @@
-import java.io.{ByteArrayInputStream, File}
+import java.io.{ByteArrayInputStream, File, InputStream}
 
 import akka.stream.IOResult
 import akka.stream.scaladsl.{Source, StreamConverters}
@@ -24,6 +24,15 @@ object TestInterpreters {
     override def saveUser(user: User): Future[User] = Future.successful(user)
     override def getExternalUserInfoFromAccessToken(
         accessToken: AccessToken): Future[ExternalUserInfo] = Future.successful(ExternalUserInfo(sub = "", email = email))
+  }
+
+  class UserInterpreterId(users: Seq[User], email: String) extends UserAlg[Id] {
+    override def findUserByExternalId(id: String): Option[User] = users.find(_.externalIds.contains(id))
+    override def findUserByUsername(
+                                     username: String): Option[User] = users.find(_.userName == username)
+    override def saveUser(user: User): User = user
+    override def getExternalUserInfoFromAccessToken(
+                                                     accessToken: AccessToken): ExternalUserInfo = ExternalUserInfo(sub = "", email = email)
   }
 
   class TokenInterpreterTagless(currentTimeMillis: Long, bearerTokenSecret: String) extends TokenAlg[Future] {
@@ -70,6 +79,10 @@ object TestInterpreters {
     override def removeFile(file: File): Future[Unit]                         = Future.successful(())
     override def calculateMd5(file: File): Future[String] = Future.successful("")
     override def bufToFile(src: Buf, dst: File): Future[Unit] = Future.successful(())
+    override def fetchFileInputStream(userId: String,
+                              fileId: String): Future[InputStream] = ???
+    override def fs2StreamToFile(source: fs2.Stream[Future, Byte],
+                                 file: File): Future[File] = ???
   }
 
   class FileInterpreterId(md5Response: Seq[StoredFile] = List()) extends FileAlg[Id] {
@@ -96,6 +109,8 @@ object TestInterpreters {
     override def removeFile(file: File): Id[Unit]                         = ()
     override def calculateMd5(file: File): Id[String] = ""
     override def bufToFile(src: Buf, dst: File): Id[Unit] = ()
+    override def fetchFileInputStream(userId: String, fileId: String): Id[InputStream] = new ByteArrayInputStream("some text".getBytes)
+    override def fs2StreamToFile(source: fs2.Stream[Id, Byte], file: File): Id[File] = file
   }
 
   class ReceiptInterpreterTagless(

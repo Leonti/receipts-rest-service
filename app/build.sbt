@@ -9,6 +9,7 @@ test in assembly := {}
 scalacOptions := Seq("-unchecked",
                      "-deprecation",
                      "-feature",
+                     "-language:higherKinds",
                      "-Xfatal-warnings",
                      "-Ywarn-unused-import",
                      "-Ypartial-unification",
@@ -30,6 +31,7 @@ val diffsonV        = "3.0.0"
 val catsV           = "1.2.0"
 val circeVersion = "0.9.3"
 val finchV = "0.23.0"
+val fs2V = "0.10.5"
 
 val logging = Seq(
   "ch.qos.logback"             % "logback-classic"          % logbackV,
@@ -72,6 +74,8 @@ libraryDependencies ++= {
       ExclusionRule(organization = "com.fasterxml.jackson.core")
       ),
     "com.auth0" % "jwks-rsa" % "0.6.0",
+    "co.fs2" %% "fs2-core" % fs2V,
+    "co.fs2" %% "fs2-io" % fs2V,
     "org.scalatest" %% "scalatest"          % scalaTestV % "it,test"
   )
 }

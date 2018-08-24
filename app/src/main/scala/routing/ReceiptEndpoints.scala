@@ -1,13 +1,21 @@
 package routing
 
+import akka.http.scaladsl.server.directives.ContentTypeResolver
 import cats.Monad
 import io.finch._
+import io.finch.circe._
 import io.finch.syntax._
 import model.{ReceiptEntity, User, UserId}
 import service.{FileUploadPrograms, ReceiptErrors, ReceiptPrograms}
 import cats.implicits._
+import gnieh.diffson.circe._
+import gnieh.diffson.circe.DiffsonProtocol._
+import com.twitter.conversions.storage._
+import com.twitter.concurrent.AsyncStream
 import com.twitter.finagle.http.Status
 import com.twitter.finagle.http.exp.Multipart.FileUpload
+import com.twitter.io.{Buf, Reader}
+import io.finch.Error.NotPresent
 import service.ReceiptErrors.Error
 
 import scala.language.higherKinds
@@ -37,6 +45,11 @@ class ReceiptEndpoints[F[_]: ToTwitterFuture: Monad](
       receiptPrograms.findById(UserId(user.id), receiptId).map(optionResult)
     }
 
+  val getReceipts: Endpoint[Seq[ReceiptEntity]] =
+    get(auth :: "receipt" :: paramOption[Long]("last-modified") :: paramOption[String]("q")) { (user: User, lastModified: Option[Long], query: Option[String]) =>
+      receiptPrograms.findForUser(UserId(user.id), lastModified, query).map(Ok)
+    }
+
   val createReceipt: Endpoint[ReceiptEntity] =
     post(
       auth :: "receipt" :: multipartFileUpload("receipt") ::
@@ -48,7 +61,34 @@ class ReceiptEndpoints[F[_]: ToTwitterFuture: Monad](
         fileUploadPrograms.toReceiptUpload(fileUpload, total, description, transactionTime, tags).flatMap { receiptUpload =>
           receiptPrograms.createReceipt(UserId(user.id), receiptUpload).map(eitherResult)
         }
+    } handle {
+      case e: NotPresent => BadRequest(e)
     }
 
-  val all = createReceipt :+: getReceipt
+  val patchReceipt: Endpoint[ReceiptEntity] =
+    patch(auth :: "receipt" :: path[String] :: jsonBody[JsonPatch]) { (user: User, receiptId: String, patch: JsonPatch) =>
+      receiptPrograms.patchReceipt(UserId(user.id), receiptId, patch).map(optionResult)
+    }
+
+  val getReceiptFile: Endpoint[AsyncStream[Buf]] =
+    get(auth :: "receipt" :: path[String] :: "file" :: path[String]) { (user: User, receiptId: String, fileIdWithExt: String) =>
+      val fileId = fileIdWithExt.split('.')(0)
+
+      receiptPrograms.receiptFileWithExtension(UserId(user.id), receiptId, fileId).map(_.fold[Output[AsyncStream[Buf]]]
+        (Output.failure(new Exception("Receipt not found")))
+        (fileToServe => {
+          val contentType = ContentTypeResolver.Default("file." + fileToServe.ext)
+          Ok(AsyncStream.fromReader(Reader.fromStream(fileToServe.source), chunkSize = 128.kilobytes.inBytes.toInt))
+            .withHeader("Content-Type", contentType.value)
+        }))
+    }
+
+  val deleteReceipt: Endpoint[Unit] = delete(auth :: "receipt" :: path[String]) { (user: User, receiptId: String) =>
+    receiptPrograms.removeReceipt(UserId(user.id), receiptId).map({
+      case Some(_) => Output.unit(Status.NoContent)
+      case None => Output.failure(new Exception("Entity not found"), Status.NotFound)
+    })
+  }
+
+  val all = createReceipt :+: getReceipt :+: getReceipts :+: getReceiptFile :+: patchReceipt :+: deleteReceipt
 }

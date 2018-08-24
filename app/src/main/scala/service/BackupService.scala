@@ -8,6 +8,7 @@ import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, IOResult}
 import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
+import cats.effect.IO
 import model.{FileEntity, ReceiptEntity, UserId}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -15,7 +16,7 @@ import io.circe.syntax._
 
 case class ReceiptsBackup(source: Source[ByteString, Future[IOResult]], filename: String)
 
-class BackupService(receiptPrograms: ReceiptPrograms[Future], fileService: FileService)(implicit system: ActorSystem,
+class BackupService(receiptPrograms: ReceiptPrograms[IO], fileService: FileService)(implicit system: ActorSystem,
                                                                                         executor: ExecutionContextExecutor,
                                                                                         materializer: ActorMaterializer) {
 
@@ -41,7 +42,7 @@ class BackupService(receiptPrograms: ReceiptPrograms[Future], fileService: FileS
       )
     }
 
-    val userReceipts: Future[Seq[ReceiptEntity]] = receiptPrograms.findForUser(UserId(userId))
+    val userReceipts: Future[Seq[ReceiptEntity]] = receiptPrograms.findForUser(UserId(userId)).unsafeToFuture()
 
     userReceipts
       .map(_.map(receiptWithMainFiles))

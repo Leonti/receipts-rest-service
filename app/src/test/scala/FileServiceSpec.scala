@@ -1,4 +1,4 @@
-import java.io.{ByteArrayInputStream, File}
+import java.io.{ByteArrayInputStream, File, InputStream}
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
@@ -37,6 +37,7 @@ class FileServiceSpec extends FlatSpec with Matchers with ScalaFutures {
       StreamConverters.fromInputStream(() => new ByteArrayInputStream("some text".getBytes))
 
     override def delete(userId: String, fileId: String): Future[Unit] = Future.successful(Unit)
+    override def fetchInputStream(userId: String, fileId: String): InputStream = new ByteArrayInputStream("some text".getBytes)
   }
 
   it should "parse width and length of an image" in {

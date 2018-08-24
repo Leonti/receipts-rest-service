@@ -1,9 +1,8 @@
 package service
 
-import java.io.File
+import java.io.{File, FileInputStream, InputStream}
 import java.util.concurrent.Executors
 import java.security.{DigestInputStream, MessageDigest}
-import java.io.{File, FileInputStream}
 
 import akka.actor.{ActorSystem, Scheduler}
 import akka.stream.{IOResult, Materializer}
@@ -26,6 +25,8 @@ trait FileService {
   def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]]
 
   def fetch(userId: String, fileId: String): Source[ByteString, Future[IOResult]]
+
+  def fetchInputStream(userId: String, fileId: String): InputStream
 
   def delete(userId: String, fileId: String): Future[Unit]
 
@@ -135,7 +136,6 @@ class S3FileService(config: Config,
 
   val fetchFromS3: (String, String) => Source[ByteString, Future[IOResult]] = (userId, fileId) => {
     val fileStream = () => amazonS3Client.getObject(config.getString("s3.bucket"), s"user/$userId/$fileId").getObjectContent
-
     StreamConverters.fromInputStream(fileStream)
   }
 
@@ -148,6 +148,8 @@ class S3FileService(config: Config,
   override def delete(userId: String, fileId: String): Future[Unit] = {
     Future.successful(amazonS3Client.deleteObject(config.getString("s3.bucket"), s"user/$userId/$fileId"))
   }
+  override def fetchInputStream(userId: String, fileId: String): InputStream =
+    amazonS3Client.getObject(config.getString("s3.bucket"), s"user/$userId/$fileId").getObjectContent
 }
 
 object FileService {

@@ -7,6 +7,7 @@ import model._
 import service._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
+import cats.Monad
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.{Decoder, Encoder}
@@ -14,19 +15,19 @@ import io.circe.{Decoder, Encoder}
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
 
-case class OpenIdToken(token: String)
+case class OpenIdTokenOld(token: String)
 
-object OpenIdToken {
-  implicit val openIdTokenDecoder: Decoder[OpenIdToken] = deriveDecoder
-  implicit val openIdTokenEncoder: Encoder[OpenIdToken] = deriveEncoder
+object OpenIdTokenOld {
+  implicit val openIdTokenDecoderOld: Decoder[OpenIdToken] = deriveDecoder
+  implicit val openIdTokenEncoderOld: Encoder[OpenIdToken] = deriveEncoder
 }
 
-class OauthRouting(userPrograms: UserPrograms[Future])(implicit system: ActorSystem,
+class OauthRouting[F[_]: ToScalaFuture: Monad](userPrograms: UserPrograms[F])(implicit system: ActorSystem,
                                                        executor: ExecutionContextExecutor,
-                                                       materializer: ActorMaterializer) {
+                                                       materializer: ActorMaterializer, tsf: ToScalaFuture[F]) {
 
   private val validateTokenWithUserCreation: OpenIdToken => Route = token => {
-    val userFuture: Future[User] = userPrograms.validateOpenIdUser(AccessToken(token.token))
+    val userFuture: Future[User] = tsf(userPrograms.validateOpenIdUser(AccessToken(token.token)))
 
     onComplete(userFuture) { userTry: Try[User] =>
       userTry match {

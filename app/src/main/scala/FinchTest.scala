@@ -4,7 +4,10 @@ import cats.Id
 import io.finch.Endpoint
 import model.{SubClaim, User}
 import cats.instances.future._
+import com.twitter.finagle.Http
+import com.twitter.util.Await
 import io.finch.syntax.scalaFutures._
+import routing.TestEndpoint
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -26,7 +29,7 @@ object FinchTest {
 
     //   val receiptEndpoints = new ReceiptEndpoints(auth)
 
-    //   Await.ready(Http.server.serve(":8080", receiptEndpoints.test.toService))
+    Await.ready(Http.server.serve(":8080", new TestEndpoint().file.toService))
 
   }
 }

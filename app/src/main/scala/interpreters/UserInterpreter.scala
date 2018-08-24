@@ -2,15 +2,14 @@ package interpreters
 
 import model.{AccessToken, ExternalUserInfo, User}
 import algebras.UserAlg
+import cats.effect.IO
 import repository.UserRepository
 import service.OpenIdService
 
-import scala.concurrent.Future
-
-class UserInterpreter(userRepository: UserRepository, openIdService: OpenIdService) extends UserAlg[Future] {
-  override def findUserByExternalId(id: String): Future[Option[User]]     = userRepository.findUserByExternalId(id)
-  override def findUserByUsername(username: String): Future[Option[User]] = userRepository.findUserByUserName(username)
-  override def saveUser(user: User): Future[User]                         = userRepository.save(user)
-  override def getExternalUserInfoFromAccessToken(accessToken: AccessToken): Future[ExternalUserInfo] =
-    openIdService.fetchAndValidateTokenInfo(accessToken)
+class UserInterpreter(userRepository: UserRepository, openIdService: OpenIdService) extends UserAlg[IO] {
+  override def findUserByExternalId(id: String): IO[Option[User]]     = IO.fromFuture(IO(userRepository.findUserByExternalId(id)))
+  override def findUserByUsername(username: String): IO[Option[User]] = IO.fromFuture(IO(userRepository.findUserByUserName(username)))
+  override def saveUser(user: User): IO[User]                         = IO.fromFuture(IO(userRepository.save(user)))
+  override def getExternalUserInfoFromAccessToken(accessToken: AccessToken): IO[ExternalUserInfo] =
+    IO.fromFuture(IO(openIdService.fetchAndValidateTokenInfo(accessToken)))
 }

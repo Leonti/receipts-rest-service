@@ -18,15 +18,19 @@ import gnieh.diffson.circe._
 import gnieh.diffson.circe.DiffsonProtocol._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.StreamConverters
+import cats.Monad
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import cats.implicits._
 
-class ReceiptRouting(
-    receiptPrograms: ReceiptPrograms[Future],
-    fileUploadPrograms: FileUploadPrograms[Future],
+import scala.language.higherKinds
+
+class ReceiptRouting[F[_]: ToScalaFuture: Monad](
+    receiptPrograms: ReceiptPrograms[F],
+    fileUploadPrograms: FileUploadPrograms[F],
     authenticaton: AuthenticationDirective[User]
-)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) {
+)(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer, tsf: ToScalaFuture[F]) {
 
   val logger = Logger(LoggerFactory.getLogger("ReceiptRouting"))
 
@@ -59,7 +63,7 @@ class ReceiptRouting(
 
   val deleteReceipt: (UserId, String) => Route = (userId, receiptId) => {
 
-    val deletionFuture: Future[Option[Unit]] = receiptPrograms.removeReceipt(userId, receiptId)
+    val deletionFuture: Future[Option[Unit]] = tsf(receiptPrograms.removeReceipt(userId, receiptId))
 
     onComplete(deletionFuture) {
       case Success(deletionOption: Option[Unit]) =>
@@ -87,11 +91,11 @@ class ReceiptRouting(
           authorize(user.id == userId) {
             path(Segment) { receiptId: String =>
               get {
-                respondWithReceipt(receiptPrograms.findById(UserId(userId), receiptId))
+                respondWithReceipt(tsf(receiptPrograms.findById(UserId(userId), receiptId)))
               } ~
               patch {
                 entity(as[JsonPatch]) { receiptPatch =>
-                  val receiptFuture = receiptPrograms.patchReceipt(UserId(userId), receiptId, receiptPatch)
+                  val receiptFuture = tsf(receiptPrograms.patchReceipt(UserId(userId), receiptId, receiptPatch))
                   respondWithReceipt(receiptFuture)
                 }
               } ~
@@ -103,15 +107,15 @@ class ReceiptRouting(
               get {
                 val fileId = fileIdWithExt.split('.')(0)
 
-                val fileToServeFuture = receiptPrograms
-                  .receiptFileWithExtension(UserId(userId), receiptId, fileId)
+                val fileToServeFuture = tsf(receiptPrograms
+                  .receiptFileWithExtension(UserId(userId), receiptId, fileId))
 
                 onComplete(fileToServeFuture) {
                   case Success(fileToServeOption: Option[FileToServe]) =>
                     fileToServeOption match {
                       case Some(fileToServe) =>
                         val contentType = ContentTypeResolver.Default("file." + fileToServe.ext)
-                        complete(HttpResponse(entity = HttpEntity(contentType, fileToServe.source)))
+                        complete(HttpResponse(entity = HttpEntity(contentType, StreamConverters.fromInputStream(() => fileToServe.source))))
                       case None => complete(BadRequest -> ErrorResponse(s"File $fileId was not found in receipt $receiptId"))
                     }
                   case Failure(t: Throwable) => complete(InternalServerError -> ErrorResponse(s"server failure: $t"))
@@ -121,8 +125,8 @@ class ReceiptRouting(
             get {
               parameters("last-modified".as[Long].?, "q".as[String].?) { (lastModified: Option[Long], queryOption: Option[String]) =>
                 val userReceiptsFuture: Future[Seq[ReceiptEntity]] =
-                  receiptPrograms
-                    .findForUser(UserId(userId), lastModified, queryOption)
+                  tsf(receiptPrograms
+                    .findForUser(UserId(userId), lastModified, queryOption))
 
                 onComplete(userReceiptsFuture) { userReceipts =>
                   complete(userReceipts)
@@ -132,11 +136,11 @@ class ReceiptRouting(
             post { //curl -X POST -H 'Content-Type: application/octet-stream' -d @test.txt http://localhost:9000/leonti/receipt
               FileUploadDirective.uploadedFileWithFields("receipt", "total", "description", "transactionTime", "tags") {
                 parsedForm: ParsedForm =>
-                  val receiptFuture = fileUploadPrograms
+                  val receiptFuture = tsf(fileUploadPrograms
                     .toReceiptUpload(parsedForm)
                     .flatMap(receiptUpload =>
                       receiptPrograms
-                        .createReceipt(UserId(userId), receiptUpload))
+                        .createReceipt(UserId(userId), receiptUpload)))
 
                   onComplete(receiptFuture) {
                     case Success(receiptEither: Either[ReceiptErrors.Error, ReceiptEntity]) =>

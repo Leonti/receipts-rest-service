@@ -136,7 +136,8 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
       receiptOption <- getReceipt(userId, receiptId)
       fileToServeOption <- if (receiptOption.isDefined) {
         val extOption = receiptOption.get.files.find(_.id == fileId).map(_.ext)
-        fetchFile(receiptOption.get.userId, fileId).map(source => extOption.map(ext => FileToServe(source, ext)))
+        fetchFileInputStream(receiptOption.get.userId, fileId)
+          .map(stream => extOption.map(ext => FileToServe(stream, ext)))
       } else {
         Monad[F].pure(None)
       }

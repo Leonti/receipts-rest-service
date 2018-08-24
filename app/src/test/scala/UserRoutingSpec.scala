@@ -10,8 +10,6 @@ import scala.concurrent.Future
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.model.headers.{HttpChallenge, HttpCredentials}
 import akka.http.scaladsl.server.directives.{AuthenticationResult, SecurityDirectives}
-import service.UserPrograms
-import cats.implicits._
 
 class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest {
 
@@ -30,7 +28,7 @@ class UserRoutingSpec extends FlatSpec with Matchers with ScalatestRouteTest {
   it should "should show user info" in {
     val user = User(id = "123-user", userName = "name", externalIds = List())
 
-    val userRouting = new UserRouting(new UserPrograms(userInterpreter), createAuthentication(user))
+    val userRouting = new UserRouting(createAuthentication(user))
     Get("/user/info") ~> userRouting.routes ~> check {
       status shouldBe OK
       contentType shouldBe `application/json`

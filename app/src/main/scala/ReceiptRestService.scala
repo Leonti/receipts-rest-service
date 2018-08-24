@@ -7,17 +7,13 @@ import akka.http.scaladsl.Http
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpMethods}
 import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.headers.{
-  `Access-Control-Allow-Credentials`,
-  `Access-Control-Allow-Headers`,
-  `Access-Control-Allow-Methods`,
-  `Access-Control-Max-Age`
-}
+import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`, `Access-Control-Max-Age`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.stream.{ActorMaterializer, Materializer}
 import authentication.JwtAuthenticator
 import authorization.PathAuthorization
+import cats.effect.IO
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import model._
@@ -25,13 +21,13 @@ import repository._
 import routing._
 import service._
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.concurrent.ExecutionContextExecutor
 import interpreters._
 import ocr.service.{GoogleOcrService, OcrServiceStub}
 import processing.{FileProcessorTagless, OcrProcessorTagless, ReceiptFiles}
 import queue.{Queue, QueueProcessor}
 import queue.files.ReceiptFileQueue
-import cats.implicits._
+import instances.catsio._
 // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
 
 trait Service extends CorsSupport {
@@ -64,10 +60,10 @@ trait Service extends CorsSupport {
   //val logger: LoggingAdapter
 
   val userRouting: UserRouting
-  val receiptRouting: ReceiptRouting
+  val receiptRouting: ReceiptRouting[IO]
   val pendingFileRouting: PendingFileRouting
   val appConfigRouting: AppConfigRouting
-  val oauthRouting: OauthRouting
+  val oauthRouting: OauthRouting[IO]
   val backupRouting: BackupRouting
 
   def myRejectionHandler =
@@ -155,12 +151,12 @@ object ReceiptRestService extends App with Service {
                               OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY")))
   val pendingFileInterpreter = new PendingFileInterpreterTagless(pendingFileRepository)
 
-  val userPrograms = new UserPrograms(userInterpreter)
+  val userPrograms = new UserPrograms(userInterpreter, randomInterpreter)
 
   val authenticator = new JwtAuthenticator[User](
     new JwtVerificationInterpreter(config.getString("tokenSecret").getBytes),
     realm = "Example realm",
-    fromBearerTokenClaim = subClaim => userPrograms.findUserByExternalId(subClaim.value)
+    fromBearerTokenClaim = subClaim => userPrograms.findUserByExternalId(subClaim.value).unsafeToFuture()
   )
 
   val pathAuthorization = new PathAuthorization(bearerTokenSecret = config.getString("tokenSecret").getBytes)
@@ -169,17 +165,18 @@ object ReceiptRestService extends App with Service {
   println("Mongo:")
   println(config.getString("mongodb.db"))
 
-  val receiptPrograms = new ReceiptPrograms[Future](
+  val receiptPrograms = new ReceiptPrograms[IO](
     receiptInterpreter,
     fileInterpreter,
     randomInterpreter,
     ocrInterpreter
   )
-  val fileUploadPrograms = new FileUploadPrograms[Future](
+  val fileUploadPrograms = new FileUploadPrograms[IO](
     config.getString("uploadsFolder"),
     fileInterpreter,
     randomInterpreter
   )
+
   override val receiptRouting =
     new ReceiptRouting(receiptPrograms, fileUploadPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
   override val pendingFileRouting = new PendingFileRouting(
@@ -187,7 +184,7 @@ object ReceiptRestService extends App with Service {
     authenticator.bearerTokenOrCookie(acceptExpired = true)
   )
 
-  override val userRouting      = new UserRouting(userPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
+  override val userRouting      = new UserRouting(authenticator.bearerTokenOrCookie(acceptExpired = true))
   override val appConfigRouting = new AppConfigRouting()
   override val oauthRouting     = new OauthRouting(userPrograms)
 
@@ -197,7 +194,7 @@ object ReceiptRestService extends App with Service {
     new BackupRouting(authenticator.bearerTokenOrCookie(acceptExpired = true), pathAuthorization.authorizePath, backupService)
 
   val fileProcessor  = new FileProcessorTagless(receiptInterpreter, fileInterpreter)
-  val ocrProcessor   = new OcrProcessorTagless(fileInterpreter, ocrInterpreter, randomInterpreter, pendingFileInterpreter)
+  val ocrProcessor   = new OcrProcessorTagless[IO](fileInterpreter, ocrInterpreter, randomInterpreter, pendingFileInterpreter)
   val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor, system)
 
   queueProcessor.reserveNextJob()
