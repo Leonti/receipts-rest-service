@@ -3,7 +3,6 @@ import java.io.File
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.Logger
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpMethods}
 import akka.http.scaladsl.model.StatusCodes._
@@ -11,9 +10,15 @@ import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Ac
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.stream.{ActorMaterializer, Materializer}
-import authentication.JwtAuthenticator
+import authentication.{BearerAuth, JwtAuthenticator}
 import authorization.PathAuthorization
 import cats.effect.IO
+import io.finch.circe._
+import com.twitter.finagle.Http
+import com.twitter.finagle.Service
+import com.twitter.finagle.http.{Request, Response}
+import com.twitter.finagle.http.filter.Cors
+import com.twitter.util.Await
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import model._
@@ -28,9 +33,10 @@ import processing.{FileProcessorTagless, OcrProcessorTagless, ReceiptFiles}
 import queue.{Queue, QueueProcessor}
 import queue.files.ReceiptFileQueue
 import instances.catsio._
+import io.finch.Endpoint
 // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
 
-trait Service extends CorsSupport {
+trait AkkaHttpService extends CorsSupport {
   implicit val system: ActorSystem
   implicit def executor: ExecutionContextExecutor
   implicit val materializer: Materializer
@@ -54,6 +60,21 @@ trait Service extends CorsSupport {
     `Access-Control-Max-Age`(60 * 60 * 24 * 20), // cache pre-flight response for 20 days
     `Access-Control-Allow-Credentials`(corsAllowCredentials),
     `Access-Control-Allow-Methods`(corsAllowedMethods)
+  )
+
+  val policy: Cors.Policy = Cors.Policy(
+    allowsOrigin = _ => Some("*"),
+    allowsMethods = _ => Some(Seq("OPTIONS", "PATCH", "POST", "PUT", "GET", "DELETE")),
+    allowsHeaders = _ => Some(Seq("Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Accept-Encoding",
+      "Accept-Language",
+      "Host",
+      "Referer",
+      "User-Agent",
+      "Authorization"))
   )
 
   def config: Config
@@ -107,7 +128,7 @@ trait Service extends CorsSupport {
   }
 }
 
-object ReceiptRestService extends App with Service {
+object ReceiptRestService extends App with AkkaHttpService {
   val logger = Logger(LoggerFactory.getLogger("ReceiptRestService"))
 
   override implicit val system       = ActorSystem()
@@ -140,7 +161,7 @@ object ReceiptRestService extends App with Service {
       new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
 
   val userInterpreter   = new UserInterpreter(userRepository, openIdService)
-  val tokenInterpreter  = new TokenInterpreter()
+  val tokenInterpreter  = new TokenInterpreter[IO]()
   val randomInterpreter = new RandomInterpreterTagless()
   val fileInterpreter =
     new FileInterpreterTagless(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer)
@@ -154,7 +175,7 @@ object ReceiptRestService extends App with Service {
   val userPrograms = new UserPrograms(userInterpreter, randomInterpreter)
 
   val authenticator = new JwtAuthenticator[User](
-    new JwtVerificationInterpreter(config.getString("tokenSecret").getBytes),
+    new JwtVerificationInterpreter(),
     realm = "Example realm",
     fromBearerTokenClaim = subClaim => userPrograms.findUserByExternalId(subClaim.value).unsafeToFuture()
   )
@@ -177,21 +198,35 @@ object ReceiptRestService extends App with Service {
     randomInterpreter
   )
 
+  val auth: Endpoint[User] = new BearerAuth[IO, User](
+    new JwtVerificationInterpreter(),
+    subClaim => userPrograms.findUserByExternalId(subClaim.value)
+  ).auth
+
   override val receiptRouting =
     new ReceiptRouting(receiptPrograms, fileUploadPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
+  val receiptEndpoints =
+    new ReceiptEndpoints[IO](auth, receiptPrograms, fileUploadPrograms)
+
   override val pendingFileRouting = new PendingFileRouting(
     pendingFileService,
     authenticator.bearerTokenOrCookie(acceptExpired = true)
   )
 
+  val pendingFileEndpoints = new PendingFileEndpoints[IO](auth, pendingFileInterpreter)
+
   override val userRouting      = new UserRouting(authenticator.bearerTokenOrCookie(acceptExpired = true))
+  val userEndpoints = new UserEndpoints(auth)
   override val appConfigRouting = new AppConfigRouting()
+  val appConfigEndpoints = new AppConfigEndpoints(config.getString("googleClientId"))
   override val oauthRouting     = new OauthRouting(userPrograms)
+  val oauthEndpoints = new OauthEndpoints[IO](userPrograms)
 
   val backupService = new BackupService(receiptInterpreter, fileInterpreter)
 
   override val backupRouting =
     new BackupRouting(authenticator.bearerTokenOrCookie(acceptExpired = true), pathAuthorization.authorizePath, backupService)
+  val backupEndpoints = new BackupEndpoints[IO](auth, new BackupServiceIO[IO](receiptInterpreter, fileInterpreter), tokenInterpreter)
 
   val fileProcessor  = new FileProcessorTagless(receiptInterpreter, fileInterpreter)
   val ocrProcessor   = new OcrProcessorTagless[IO](fileInterpreter, ocrInterpreter, randomInterpreter, pendingFileInterpreter)
@@ -199,5 +234,18 @@ object ReceiptRestService extends App with Service {
 
   queueProcessor.reserveNextJob()
 
-  Http().bindAndHandle(routes(config), config.getString("http.interface"), config.getInt("http.port"))
+//  Http().bindAndHandle(routes(config), config.getString("http.interface"), config.getInt("http.port"))
+
+  val service: Service[Request, Response] = new Cors.HttpFilter(policy).andThen(
+    ( userEndpoints.userInfo :+:
+      receiptEndpoints.all :+:
+      pendingFileEndpoints.pendingFiles :+:
+      appConfigEndpoints.getAppConfig :+:
+      oauthEndpoints.validateWithUserCreation :+:
+      backupEndpoints.all :+:
+      new VersionEndpoint(System.getenv("VERSION")).version
+      ).toService)
+
+  val port = config.getInt("http.port")
+  Await.ready(Http.server.serve(s"0.0.0.0:$port", service))
 }

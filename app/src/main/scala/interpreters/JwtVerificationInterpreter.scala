@@ -12,7 +12,7 @@ import java.security.interfaces.RSAPublicKey
 
 import scala.util.Try
 
-class JwtVerificationInterpreter(bearerTokenSecret: Array[Byte]) extends JwtVerificationAlg[Id] {
+class JwtVerificationInterpreter() extends JwtVerificationAlg[Id] {
 
   private val httpProvider = new UrlJwkProvider("https://leonti.au.auth0.com/")
   private val jwkProvider  = new GuavaCachedJwkProvider(httpProvider)
