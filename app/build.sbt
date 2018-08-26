@@ -96,3 +96,10 @@ resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositor
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
 
 mainClass in assembly := Some("ReceiptRestService")
+
+assemblyMergeStrategy in assembly := {
+  case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.first
+  case x =>
+    val oldStrategy = (assemblyMergeStrategy in assembly).value
+    oldStrategy(x)
+}
