@@ -36,7 +36,7 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"$appHostPort/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/receipt",
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))

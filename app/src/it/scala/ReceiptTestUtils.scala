@@ -34,7 +34,7 @@ package object ReceiptTestUtils {
       for {
         userPendingFilesResponse <- Http().singleRequest(
           HttpRequest(method = HttpMethods.GET,
-                      uri = s"$appHostPort/user/$userId/pending-file",
+                      uri = s"$appHostPort/pending-file",
                       headers = List(Authorization(OAuth2BearerToken(accessToken)))))
         userPendingFiles <- Unmarshal(userPendingFilesResponse.entity).to[List[PendingFile]]
       } yield userPendingFiles
@@ -44,7 +44,7 @@ package object ReceiptTestUtils {
       for {
         response <- Http().singleRequest(
           HttpRequest(method = HttpMethods.GET,
-                      uri = s"$appHostPort/user/$userId/receipt/$receiptId",
+                      uri = s"$appHostPort/receipt/$receiptId",
                       headers = List(Authorization(OAuth2BearerToken(accessToken)))))
         receipt <- Unmarshal(response.entity).to[ReceiptEntity]
       } yield receipt
