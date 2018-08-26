@@ -65,6 +65,7 @@ trait PendingFileAlg[F[_]] {
 
 trait TokenAlg[F[_]] {
   def generatePathToken(path: String): F[OAuth2AccessTokenResponse]
+  def verifyPathToken(token: String): F[Either[String, SubClaim]]
 }
 
 trait EnvAlg[F[_]] {

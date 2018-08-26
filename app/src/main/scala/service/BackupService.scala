@@ -8,6 +8,7 @@ import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, IOResult}
 import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
+import algebras.{FileAlg, ReceiptAlg}
 import cats.effect.IO
 import model.{FileEntity, ReceiptEntity, UserId}
 
@@ -16,7 +17,7 @@ import io.circe.syntax._
 
 case class ReceiptsBackup(source: Source[ByteString, Future[IOResult]], filename: String)
 
-class BackupService(receiptPrograms: ReceiptPrograms[IO], fileService: FileService)(implicit system: ActorSystem,
+class BackupService(receiptAlg: ReceiptAlg[IO], fileAlg: FileAlg[IO])(implicit system: ActorSystem,
                                                                                         executor: ExecutionContextExecutor,
                                                                                         materializer: ActorMaterializer) {
 
@@ -30,7 +31,7 @@ class BackupService(receiptPrograms: ReceiptPrograms[IO], fileService: FileServi
       fileEntity =>
         FileToZip(
           path = fileEntity.id + "." + fileEntity.ext,
-          source = fileService.fetch(userId, fileEntity.id)
+          source = fileAlg.fetchFileInputStream(userId, fileEntity.id).map(is => StreamConverters.fromInputStream(() => is)).unsafeRunSync()
       )
 
     val receiptJsonEntry: Seq[ReceiptEntity] => FileToZip = receipts => {
@@ -42,7 +43,7 @@ class BackupService(receiptPrograms: ReceiptPrograms[IO], fileService: FileServi
       )
     }
 
-    val userReceipts: Future[Seq[ReceiptEntity]] = receiptPrograms.findForUser(UserId(userId)).unsafeToFuture()
+    val userReceipts: Future[Seq[ReceiptEntity]] = receiptAlg.userReceipts(UserId(userId)).unsafeToFuture()
 
     userReceipts
       .map(_.map(receiptWithMainFiles))
@@ -58,7 +59,7 @@ class BackupService(receiptPrograms: ReceiptPrograms[IO], fileService: FileServi
     val inputStream  = new PipedInputStream()
     val outputStream = new PipedOutputStream(inputStream)
 
-    fetchFilesToZip(userId).map { files =>
+    fetchFilesToZip(userId).map { files: Seq[FileToZip]=>
       val zipOutputStream                      = new ZipOutputStream(outputStream)
       val sink: Sink[ByteString, Future[Done]] = Sink.foreach[ByteString](bs => zipOutputStream.write(bs.toArray))
 

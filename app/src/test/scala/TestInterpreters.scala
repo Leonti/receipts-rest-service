@@ -39,6 +39,8 @@ object TestInterpreters {
     override def generatePathToken(
         path: String): Future[OAuth2AccessTokenResponse] =
       Future.successful(JwtTokenGenerator.generatePathToken(path, currentTimeMillis, bearerTokenSecret.getBytes))
+    override def verifyPathToken(token: String)
+      : Future[Either[String, SubClaim]] = Future.successful(Right(SubClaim("")))
   }
 
   class RandomInterpreterTagless(id: String, time: Long = 0, file: File = new File("")) extends RandomAlg[Future] {

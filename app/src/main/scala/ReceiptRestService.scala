@@ -188,7 +188,7 @@ object ReceiptRestService extends App with Service {
   override val appConfigRouting = new AppConfigRouting()
   override val oauthRouting     = new OauthRouting(userPrograms)
 
-  val backupService = new BackupService(receiptPrograms, fileService)
+  val backupService = new BackupService(receiptInterpreter, fileInterpreter)
 
   override val backupRouting =
     new BackupRouting(authenticator.bearerTokenOrCookie(acceptExpired = true), pathAuthorization.authorizePath, backupService)
