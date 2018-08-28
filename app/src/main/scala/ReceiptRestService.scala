@@ -3,12 +3,6 @@ import java.io.File
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.Logger
 import akka.actor.ActorSystem
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import akka.http.scaladsl.model.{HttpHeader, HttpMethod, HttpMethods}
-import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`, `Access-Control-Max-Age`}
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server._
 import akka.stream.{ActorMaterializer, Materializer}
 import authentication.{BearerAuth, JwtAuthenticator}
 import authorization.PathAuthorization
@@ -37,31 +31,10 @@ import instances.catsio._
 import io.finch.Endpoint
 // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
 
-trait AkkaHttpService extends CorsSupport {
+trait AkkaHttpService  {
   implicit val system: ActorSystem
   implicit def executor: ExecutionContextExecutor
   implicit val materializer: Materializer
-
-  override val corsAllowOrigins: List[String] = List("*")
-  override val corsAllowedHeaders: List[String] = List("Origin",
-                                                       "X-Requested-With",
-                                                       "Content-Type",
-                                                       "Accept",
-                                                       "Accept-Encoding",
-                                                       "Accept-Language",
-                                                       "Host",
-                                                       "Referer",
-                                                       "User-Agent",
-                                                       "Authorization")
-  override val corsAllowCredentials: Boolean = true
-  override val corsAllowedMethods =
-    List[HttpMethod](HttpMethods.OPTIONS, HttpMethods.PATCH, HttpMethods.POST, HttpMethods.PUT, HttpMethods.GET, HttpMethods.DELETE)
-  override val optionsCorsHeaders: List[HttpHeader] = List[HttpHeader](
-    `Access-Control-Allow-Headers`(corsAllowedHeaders.mkString(", ")),
-    `Access-Control-Max-Age`(60 * 60 * 24 * 20), // cache pre-flight response for 20 days
-    `Access-Control-Allow-Credentials`(corsAllowCredentials),
-    `Access-Control-Allow-Methods`(corsAllowedMethods)
-  )
 
   val policy: Cors.Policy = Cors.Policy(
     allowsOrigin = _ => Some("*"),
@@ -79,54 +52,6 @@ trait AkkaHttpService extends CorsSupport {
   )
 
   def config: Config
-  //val logger: LoggingAdapter
-
-  val userRouting: UserRouting
-  val receiptRouting: ReceiptRouting[IO]
-  val pendingFileRouting: PendingFileRouting
-  val appConfigRouting: AppConfigRouting
-  val oauthRouting: OauthRouting[IO]
-  val backupRouting: BackupRouting
-
-  def myRejectionHandler =
-    RejectionHandler
-      .newBuilder()
-      .handle {
-        case AuthorizationFailedRejection =>
-          complete((Forbidden -> ErrorResponse("Access forbidden")))
-      }
-      .handle {
-        case MissingFormFieldRejection(field) =>
-          complete((BadRequest -> ErrorResponse(s"Request is missing required form field '${field}'")))
-      }
-      .handle {
-        case AuthenticationFailedRejection(cause, challenge) =>
-          complete((Unauthorized -> ErrorResponse("The supplied authentication is invalid")))
-      }
-      .result()
-
-  def routes(config: Config) = {
-    //logRequest("receipt-rest-service") {
-    // logRequestResult("receipt-rest-service") {
-    handleRejections(myRejectionHandler) {
-      cors {
-        userRouting.routes ~
-        receiptRouting.routes(config.getString("uploadsFolder")) ~
-        pendingFileRouting.routes ~
-        appConfigRouting.routes ~
-        oauthRouting.routes ~
-        backupRouting.routes ~
-        path("version") {
-          get {
-            complete(Created -> System.getenv("VERSION"))
-          }
-        }
-      }
-    }
-    // }
-    // }
-
-  }
 }
 
 object ReceiptRestService extends App with AkkaHttpService {
@@ -204,29 +129,16 @@ object ReceiptRestService extends App with AkkaHttpService {
     subClaim => userPrograms.findUserByExternalId(subClaim.value)
   ).auth
 
-  override val receiptRouting =
-    new ReceiptRouting(receiptPrograms, fileUploadPrograms, authenticator.bearerTokenOrCookie(acceptExpired = true))
   val receiptEndpoints =
     new ReceiptEndpoints[IO](auth, receiptPrograms, fileUploadPrograms)
 
-  override val pendingFileRouting = new PendingFileRouting(
-    pendingFileService,
-    authenticator.bearerTokenOrCookie(acceptExpired = true)
-  )
-
   val pendingFileEndpoints = new PendingFileEndpoints[IO](auth, pendingFileInterpreter)
 
-  override val userRouting      = new UserRouting(authenticator.bearerTokenOrCookie(acceptExpired = true))
   val userEndpoints = new UserEndpoints(auth)
-  override val appConfigRouting = new AppConfigRouting()
   val appConfigEndpoints = new AppConfigEndpoints(config.getString("googleClientId"))
-  override val oauthRouting     = new OauthRouting(userPrograms)
   val oauthEndpoints = new OauthEndpoints[IO](userPrograms)
 
   val backupService = new BackupService(receiptInterpreter, fileInterpreter)
-
-  override val backupRouting =
-    new BackupRouting(authenticator.bearerTokenOrCookie(acceptExpired = true), pathAuthorization.authorizePath, backupService)
   val backupEndpoints = new BackupEndpoints[IO](auth, new BackupServiceIO[IO](receiptInterpreter, fileInterpreter), tokenInterpreter)
 
   val fileProcessor  = new FileProcessorTagless(receiptInterpreter, fileInterpreter)
@@ -234,8 +146,6 @@ object ReceiptRestService extends App with AkkaHttpService {
   val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor, system)
 
   queueProcessor.reserveNextJob()
-
-//  Http().bindAndHandle(routes(config), config.getString("http.interface"), config.getInt("http.port"))
 
   val service: Service[Request, Response] = new Cors.HttpFilter(policy).andThen(
     ( userEndpoints.userInfo :+:
