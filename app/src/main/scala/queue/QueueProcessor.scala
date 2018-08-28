@@ -4,6 +4,7 @@ import java.io.{PrintWriter, StringWriter}
 import java.util.concurrent.Executors
 
 import akka.actor.ActorSystem
+import cats.effect.IO
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import processing.{FileProcessorTagless, OcrProcessorTagless}
@@ -13,8 +14,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 class QueueProcessor(queue: Queue,
-                     fileProcessor: FileProcessorTagless[Future],
-                     ocrProcessor: OcrProcessorTagless[Future],
+                     fileProcessor: FileProcessorTagless[IO],
+                     ocrProcessor: OcrProcessorTagless[IO],
                      system: ActorSystem) {
 
   val logger              = Logger(LoggerFactory.getLogger("QueueProcessor"))
@@ -42,7 +43,7 @@ class QueueProcessor(queue: Queue,
       }
   }
 
-  private def handleJobResult(job: ReservedJob, childJobs: Future[List[QueueJob]]) = {
+  private def handleJobResult(job: ReservedJob, childJobs: Future[List[QueueJob]]): Unit = {
     childJobs
       .flatMap(jobs => Future.sequence(jobs.map(job => queue.put(job))))
       .onComplete {
@@ -57,14 +58,14 @@ class QueueProcessor(queue: Queue,
       }
   }
 
-  private def process(job: ReservedJob) = {
+  private def process(job: ReservedJob): Unit = {
     logger.info(s"Processing job $job")
 
     job.job match {
-      case (receiptFileJob: ReceiptFileJob) =>
-        handleJobResult(job, fileProcessor.processJob(receiptFileJob))
-      case (ocrJob: OcrJob) =>
-        handleJobResult(job, ocrProcessor.processJob(ocrJob))
+      case receiptFileJob: ReceiptFileJob =>
+        handleJobResult(job, fileProcessor.processJob(receiptFileJob).unsafeToFuture())
+      case ocrJob: OcrJob =>
+        handleJobResult(job, ocrProcessor.processJob(ocrJob).unsafeToFuture())
       case _ => throw new RuntimeException(s"Unknown job $job")
     }
   }

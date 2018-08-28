@@ -16,7 +16,7 @@ import akka.http.scaladsl.server.Directives._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
 class AppConfigRouting {
-  val config                   = ConfigFactory.load()
+  val config = ConfigFactory.load()
 
   val routes = path("config") {
     get {

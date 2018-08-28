@@ -5,7 +5,7 @@ import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 
 case class User(
-    id: String = java.util.UUID.randomUUID.toString,
+    id: String,
     userName: String,
     externalIds: List[String]
 ) extends WithId
@@ -38,8 +38,8 @@ object User {
 
     def write(user: User): BSONDocument = {
       BSONDocument(
-        "_id"      -> user.id,
-        "userName" -> user.userName,
+        "_id"         -> user.id,
+        "userName"    -> user.userName,
         "externalIds" -> user.externalIds
       )
     }

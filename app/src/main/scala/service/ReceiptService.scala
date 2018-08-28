@@ -2,16 +2,12 @@ package service
 
 import java.io.File
 
-import akka.http.scaladsl.server.directives.FileInfo
 import algebras.{FileAlg, OcrAlg, RandomAlg, ReceiptAlg}
 import cats.Monad
 import model._
-import routing.ParsedForm
 import io.circe.syntax._
 import io.circe.parser._
 import gnieh.diffson.circe._
-
-import scala.util.Try
 import cats.implicits._
 import cats.data.EitherT
 
@@ -36,14 +32,14 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
   import receiptAlg._, fileAlg._, randomAlg._, ocrAlg._
   import ReceiptErrors._
 
-  private def receiptsForQuery(userId: String, query: String): F[Seq[ReceiptEntity]] = {
+  private def receiptsForQuery(userId: UserId, query: String): F[Seq[ReceiptEntity]] = {
     for {
-      receiptIds <- findIdsByText(userId, query)
-      receipts   <- getReceipts(receiptIds)
+      receiptIds <- findIdsByText(userId.value, query)
+      receipts   <- getReceipts(userId, receiptIds)
     } yield receipts
   }
 
-  def findForUser(userId: String, lastModifiedOption: Option[Long] = None, queryOption: Option[String] = None): F[Seq[ReceiptEntity]] =
+  def findForUser(userId: UserId, lastModifiedOption: Option[Long] = None, queryOption: Option[String] = None): F[Seq[ReceiptEntity]] =
     for {
 
       unfilteredReceipts <- queryOption
@@ -55,18 +51,17 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
     } yield receipts
 
   private def ext(fileName: String): String = fileName.split("\\.")(1)
-  private def submitPF(uploadsLocation: String, userId: String, receiptId: String, file: File, fileName: String): F[PendingFile] =
+  private def submitPF(userId: UserId, receiptId: String, file: File, fileName: String): F[PendingFile] =
     for {
       pendingFileId <- generateGuid()
       pendingFile <- submitPendingFile(
         PendingFile(
           id = pendingFileId,
-          userId = userId,
+          userId = userId.value,
           receiptId = receiptId
         )
       )
-      _ <- moveFile(file, new File(new File(uploadsLocation), pendingFileId)) // TODO remove new File duplication
-      _ <- submitToFileQueue(userId, receiptId, new File(new File(uploadsLocation), pendingFileId), ext(fileName), pendingFile.id)
+      _ <- submitToFileQueue(userId.value, receiptId, file, ext(fileName), pendingFile.id)
     } yield pendingFile
 
   private def validateExistingFile(haveExisting: Boolean): EitherT[F, Error, Unit] =
@@ -75,28 +70,26 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
     else
       EitherT.right[Error](Monad[F].pure(()))
 
-  def createReceipt(uploadsLocation: String, userId: String, parsedForm: ParsedForm): F[Either[Error, ReceiptEntity]] = {
+  def createReceipt(userId: UserId, receiptUpload: ReceiptUpload): F[Either[Error, ReceiptEntity]] = {
     val eitherT: EitherT[F, Error, ReceiptEntity] = for {
-      md5                     <- EitherT.right[Error](calculateMd5(parsedForm.files("receipt").file))
-      exitingFilesWithSameMd5 <- EitherT.right[Error](findByMd5(userId, md5))
+      md5                     <- EitherT.right[Error](calculateMd5(receiptUpload.receipt))
+      exitingFilesWithSameMd5 <- EitherT.right[Error](findByMd5(userId.value, md5))
       _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
       receiptId               <- EitherT.right[Error](generateGuid())
       currentTimeMillis       <- EitherT.right[Error](getTime())
-      uploadedFile = parsedForm.files("receipt")
-      tags         = parsedForm.fields("tags")
       receipt = ReceiptEntity(
         id = receiptId,
-        userId = userId,
-        total = Try(BigDecimal(parsedForm.fields("total"))).map(Some(_)).getOrElse(None),
-        description = parsedForm.fields("description"),
+        userId = userId.value,
+        total = receiptUpload.total,
+        description = receiptUpload.description,
         timestamp = currentTimeMillis,
         lastModified = currentTimeMillis,
-        transactionTime = parsedForm.fields("transactionTime").toLong,
-        tags = if (tags.trim() == "") List() else tags.split(",").toList,
+        transactionTime = receiptUpload.transactionTime,
+        tags = receiptUpload.tags,
         files = List()
       )
-      _ <- EitherT.right[Error](saveReceipt(receiptId, receipt))
-      _ <- EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, uploadedFile.file, uploadedFile.fileInfo.fileName))
+      _ <- EitherT.right[Error](saveReceipt(userId, receiptId, receipt))
+      _ <- EitherT.right[Error](submitPF(userId, receiptId, receiptUpload.receipt, receiptUpload.fileName))
     } yield receipt
 
     eitherT.value
@@ -104,64 +97,47 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
 
   type OptionalReceipt = Option[ReceiptEntity]
 
-  def addUploadedFileToReceipt(uploadsLocation: String,
-                               userId: String,
-                               receiptId: String,
-                               metadata: FileInfo,
-                               file: File): F[Either[Error, PendingFile]] = {
-    val eitherT: EitherT[F, Error, PendingFile] = for {
-      md5                     <- EitherT.right[Error](calculateMd5(file))
-      exitingFilesWithSameMd5 <- EitherT.right[Error](findByMd5(userId, md5))
-      _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
-      receiptOption           <- EitherT.right[Error](getReceipt(receiptId))
-      pendingFile <- receiptOption
-        .fold(EitherT.left[PendingFile](Monad[F].pure(ReceiptNotFound(receiptId))): EitherT[F, Error, PendingFile])(_ =>
-          EitherT.right[Error](submitPF(uploadsLocation, userId, receiptId, file, metadata.fileName)))
-    } yield pendingFile
-
-    eitherT.value
-  }
-
-  def patchReceipt(receiptId: String, jsonPatch: JsonPatch): F[Option[ReceiptEntity]] =
+  def patchReceipt(userId: UserId, receiptId: String, jsonPatch: JsonPatch): F[Option[ReceiptEntity]] =
     for {
-      receiptOption <- getReceipt(receiptId)
+      receiptOption <- getReceipt(userId, receiptId)
       patchedReceipt = receiptOption.map(r => Patch.applyPatch(r, jsonPatch))
       currentTime <- getTime()
       _ <- if (patchedReceipt.isDefined) {
-        saveReceipt(receiptId, patchedReceipt.get.copy(lastModified = currentTime))
+        saveReceipt(userId, receiptId, patchedReceipt.get.copy(lastModified = currentTime))
       } else {
         Monad[F].pure(())
       }
     } yield patchedReceipt
 
-  def findById(receiptId: String): F[Option[ReceiptEntity]] = getReceipt(receiptId)
+  def findById(userId: UserId, receiptId: String): F[Option[ReceiptEntity]] = getReceipt(userId, receiptId)
 
-  private def removeReceiptFiles(userId: String, files: List[FileEntity]): F[List[Unit]] =
+  private def removeReceiptFiles(userId: UserId, files: List[FileEntity]): F[List[Unit]] =
     files
       .map(file =>
         for {
-          _ <- deleteFile(userId, file.id)
+          _ <- deleteFile(userId.value, file.id)
           r <- deleteStoredFile(file.id)
         } yield r)
       .sequence
 
-  def removeReceipt(receiptId: String): F[Option[Unit]] =
+  def removeReceipt(userId: UserId, receiptId: String): F[Option[Unit]] =
     for {
-      receiptOption <- getReceipt(receiptId)
-      _             <- deleteReceipt(receiptId)
+      receiptOption <- getReceipt(userId, receiptId)
+      _             <- deleteReceipt(userId, receiptId)
       fileDeletionResult <- if (receiptOption.isDefined) {
-        removeReceiptFiles(receiptOption.get.userId, receiptOption.get.files).map(_ => Some(()))
+        removeReceiptFiles(userId, receiptOption.get.files).map(_ => Some(()))
       } else {
         Monad[F].pure(None)
       }
     } yield fileDeletionResult
 
-  def receiptFileWithExtension(receiptId: String, fileId: String): F[Option[FileToServe]] =
+  def receiptFileWithExtension(userId: UserId, receiptId: String, fileId: String): F[Option[FileToServe]] =
     for {
-      receiptOption <- getReceipt(receiptId)
+      receiptOption <- getReceipt(userId, receiptId)
       fileToServeOption <- if (receiptOption.isDefined) {
         val extOption = receiptOption.get.files.find(_.id == fileId).map(_.ext)
-        fetchFile(receiptOption.get.userId, fileId).map(source => extOption.map(ext => FileToServe(source, ext)))
+        fetchFileInputStream(receiptOption.get.userId, fileId)
+          .map(stream => extOption.map(ext => FileToServe(stream, ext)))
       } else {
         Monad[F].pure(None)
       }

@@ -1,9 +1,4 @@
 package model
+import java.io.InputStream
 
-import akka.stream.IOResult
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
-
-import scala.concurrent.Future
-
-case class FileToServe(source: Source[ByteString, Future[IOResult]], ext: String)
+case class FileToServe(source: InputStream, ext: String)

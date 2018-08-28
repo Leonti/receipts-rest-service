@@ -3,19 +3,18 @@ package interpreters
 import java.io.File
 
 import model.{OcrEntity, OcrText}
-import ocr.model.{OcrTextAnnotation, OcrSearchResult, OcrContent}
+import ocr.model.{OcrContent, OcrSearchResult, OcrTextAnnotation}
 import ocr.service.OcrService
 import algebras.OcrAlg
 import repository.OcrRepository
-
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{Uri, HttpRequest, RequestEntity, HttpMethods}
+import akka.http.scaladsl.model.{HttpMethods, HttpRequest, RequestEntity, Uri}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.stream.ActorMaterializer
 import akka.actor.ActorSystem
-
+import cats.effect.IO
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -28,7 +27,7 @@ class OcrInterpreterTagless(ocrRepository: OcrRepository, ocrService: OcrService
     implicit system: ActorSystem,
     executor: ExecutionContextExecutor,
     materializer: ActorMaterializer)
-    extends OcrAlg[Future] {
+    extends OcrAlg[IO] {
 
   def getOcrResults(userId: String, query: String): Future[Seq[String]] =
     for {
@@ -52,11 +51,11 @@ class OcrInterpreterTagless(ocrRepository: OcrRepository, ocrService: OcrService
         ))
     } yield ()
 
-  override def ocrImage(file: File): Future[OcrTextAnnotation] = ocrService.ocrImage(file)
-  override def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): Future[OcrEntity] =
-    ocrRepository.save(OcrEntity(userId = userId, id = receiptId, result = ocrResult))
-  override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): Future[Unit] =
-    addOcrToIndex(userId, receiptId, ocrText.text)
-  override def findIdsByText(userId: String, query: String): Future[Seq[String]] =
-    getOcrResults(userId, query)
+  override def ocrImage(file: File): IO[OcrTextAnnotation] = IO.fromFuture(IO(ocrService.ocrImage(file)))
+  override def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): IO[OcrEntity] =
+    IO.fromFuture(IO(ocrRepository.save(OcrEntity(userId = userId, id = receiptId, result = ocrResult))))
+  override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): IO[Unit] =
+    IO.fromFuture(IO(addOcrToIndex(userId, receiptId, ocrText.text)))
+  override def findIdsByText(userId: String, query: String): IO[Seq[String]] =
+    IO.fromFuture(IO(getOcrResults(userId, query)))
 }

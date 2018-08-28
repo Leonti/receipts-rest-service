@@ -3,10 +3,11 @@ package processing
 import java.io.File
 
 import algebras._
-import model.StoredFile
+import model.{StoredFile, UserId}
 import queue._
 import cats.Monad
 import cats.implicits._
+
 import scala.language.higherKinds
 
 class FileProcessorTagless[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F]) {
@@ -21,7 +22,10 @@ class FileProcessorTagless[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: File
           saveStoredFile(StoredFile(receiptFileJob.userId, fileEntity.id, fileEntity.md5.get, fileEntity.metaData.length)))
         .toList
         .sequence
-      _ <- fileEntities.map(fileEntity => addFileToReceipt(receiptFileJob.receiptId, fileEntity)).toList.sequence
+      _ <- fileEntities
+        .map(fileEntity => addFileToReceipt(UserId(receiptFileJob.userId), receiptFileJob.receiptId, fileEntity))
+        .toList
+        .sequence
       _ <- removeFile(new File(receiptFileJob.filePath))
     } yield
       List(

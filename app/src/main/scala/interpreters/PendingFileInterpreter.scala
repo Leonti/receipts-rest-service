@@ -2,13 +2,12 @@ package interpreters
 
 import model.PendingFile
 import algebras.PendingFileAlg
+import cats.effect.IO
 import repository.PendingFileRepository
 
-import scala.concurrent.Future
-
-class PendingFileInterpreterTagless(pendingFileRepository: PendingFileRepository) extends PendingFileAlg[Future] {
-  override def savePendingFile(pendingFile: PendingFile): Future[PendingFile]      = pendingFileRepository.save(pendingFile)
-  override def findPendingFileForUserId(userId: String): Future[List[PendingFile]] = pendingFileRepository.findForUserId(userId)
-  override def deletePendingFileById(id: String): Future[Unit]                     = pendingFileRepository.deleteById(id)
-  override def deleteAllPendingFiles(): Future[Unit]                               = pendingFileRepository.deleteAll()
+class PendingFileInterpreterTagless(pendingFileRepository: PendingFileRepository) extends PendingFileAlg[IO] {
+  override def savePendingFile(pendingFile: PendingFile): IO[PendingFile]      = IO.fromFuture(IO(pendingFileRepository.save(pendingFile)))
+  override def findPendingFileForUserId(userId: String): IO[List[PendingFile]] = IO.fromFuture(IO(pendingFileRepository.findForUserId(userId)))
+  override def deletePendingFileById(id: String): IO[Unit]                     = IO.fromFuture(IO(pendingFileRepository.deleteById(id)))
+  override def deleteAllPendingFiles(): IO[Unit]                               = IO.fromFuture(IO(pendingFileRepository.deleteAll()))
 }

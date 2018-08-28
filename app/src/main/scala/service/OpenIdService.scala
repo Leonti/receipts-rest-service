@@ -27,7 +27,7 @@ object OpenIdUserInfo {
 
 class OpenIdService()(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) {
 
-  private val config                                               = ConfigFactory.load()
+  private val config = ConfigFactory.load()
 
   val fetchAndValidateTokenInfo: AccessToken => Future[ExternalUserInfo] = accessToken => {
 
