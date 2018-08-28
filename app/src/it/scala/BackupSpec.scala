@@ -24,7 +24,7 @@ import scala.concurrent.Future
 
 class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
   implicit val defaultPatience =
-    PatienceConfig(timeout = Span(60, Seconds), interval = Span(1000, Millis))
+    PatienceConfig(timeout = Span(120, Seconds), interval = Span(1000, Millis))
   implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
@@ -46,7 +46,7 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
         .singleRequest(
           HttpRequest(
             method = HttpMethods.GET,
-            uri = s"$appHostPort/user/${userInfo.id}/backup/token",
+            uri = s"$appHostPort/backup/token",
             headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
           ))
         .flatMap(response => Unmarshal(response.entity).to[OAuth2AccessTokenResponse])

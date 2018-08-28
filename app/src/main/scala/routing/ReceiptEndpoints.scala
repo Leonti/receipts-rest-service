@@ -62,7 +62,7 @@ class ReceiptEndpoints[F[_]: ToTwitterFuture: Monad](
           receiptPrograms.createReceipt(UserId(user.id), receiptUpload).map(eitherResult)
         }
     } handle {
-      case e: NotPresent => BadRequest(e)
+      case e: NotPresent => Output.failure(e, Status.BadRequest)
     }
 
   val patchReceipt: Endpoint[ReceiptEntity] =

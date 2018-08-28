@@ -28,7 +28,6 @@ class BackupEndpoints[F[_]: ToTwitterFuture : Monad](auth: Endpoint[User], backu
 
           backupService.createUserBackup(UserId(userId)).map { receiptsBackup =>
             receiptsBackup.runSource.unsafeRunAsync(r => println(r))
-            println("Serving backup stream")
 
             Ok(AsyncStream.fromReader(Reader.fromStream(receiptsBackup.source), chunkSize = 128.kilobytes.inBytes.toInt))
               .withHeader("Content-Type", "application/zip")

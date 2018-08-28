@@ -73,12 +73,12 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
-          uri = s"$appHostPort/user/${userInfo.id}/receipt",
+          uri = s"$appHostPort/receipt",
           entity = requestEntity,
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
       firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      _                  <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.value)
+      processedReceipt                  <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.value)
       errorResponse <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,

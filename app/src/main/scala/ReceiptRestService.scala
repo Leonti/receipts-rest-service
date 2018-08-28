@@ -23,6 +23,7 @@ import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import model._
 import repository._
+import routing.ExceptionEncoders._
 import routing._
 import service._
 

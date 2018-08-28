@@ -12,7 +12,10 @@ import io.circe.syntax._
 import cats.implicits._
 import fs2.Stream
 
+import scala.concurrent.Future
 import scala.language.postfixOps
+
+import scala.concurrent.ExecutionContext.Implicits.global // FIXME
 
 case class ReceiptsBackupIO(runSource: IO[Unit], source: InputStream, filename: String)
 
@@ -63,8 +66,8 @@ class BackupServiceIO[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
   def createUserBackup(userId: UserId): F[ReceiptsBackupIO] =
     fetchFilesToZip(userId).map(filesToZip => {
       val inputStream  = new PipedInputStream()
-      val outputStream = new PipedOutputStream(inputStream)
-      val runStream = Stream.bracket(IO { new ZipOutputStream(outputStream) })(filesToStream(filesToZip), zipOutputStream => IO { zipOutputStream.close() }).compile.drain
+      val outputStream = IO.fromFuture(IO(Future { new PipedOutputStream(inputStream) }))
+      val runStream = Stream.bracket(outputStream.map(os => new ZipOutputStream(os)))(filesToStream(filesToZip), zipOutputStream => IO { zipOutputStream.close() }).compile.drain
 
       ReceiptsBackupIO(runSource = runStream, source = inputStream, filename = "backup.zip")
     })
