@@ -28,7 +28,7 @@ package object ReceiptTestUtils {
   val tagsAsString    = tags.reduce((acc, tag) => s"$acc,$tag")
 
   // utility functions
-  def getProcessedReceipt(userId: String, receiptId: String, accessToken: String): Future[ReceiptEntity] = {
+  def getProcessedReceipt(receiptId: String, accessToken: String): Future[ReceiptEntity] = {
 
     def pendingFiles(): Future[List[PendingFile]] = {
       for {

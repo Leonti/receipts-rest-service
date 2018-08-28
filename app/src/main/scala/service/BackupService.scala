@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
 import akka.Done
-import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, IOResult}
 import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.util.ByteString
@@ -17,9 +16,8 @@ import io.circe.syntax._
 
 case class ReceiptsBackup(source: Source[ByteString, Future[IOResult]], filename: String)
 
-class BackupService(receiptAlg: ReceiptAlg[IO], fileAlg: FileAlg[IO])(implicit system: ActorSystem,
-                                                                                        executor: ExecutionContextExecutor,
-                                                                                        materializer: ActorMaterializer) {
+class BackupService(receiptAlg: ReceiptAlg[IO], fileAlg: FileAlg[IO])(implicit executor: ExecutionContextExecutor,
+                                                                      materializer: ActorMaterializer) {
 
   case class FileToZip(path: String, source: Source[ByteString, Any])
 
@@ -31,7 +29,8 @@ class BackupService(receiptAlg: ReceiptAlg[IO], fileAlg: FileAlg[IO])(implicit s
       fileEntity =>
         FileToZip(
           path = fileEntity.id + "." + fileEntity.ext,
-          source = fileAlg.fetchFileInputStream(userId, fileEntity.id).map(is => StreamConverters.fromInputStream(() => is)).unsafeRunSync()
+          source =
+            fileAlg.fetchFileInputStream(userId, fileEntity.id).map(is => StreamConverters.fromInputStream(() => is)).unsafeRunSync()
       )
 
     val receiptJsonEntry: Seq[ReceiptEntity] => FileToZip = receipts => {
@@ -59,7 +58,7 @@ class BackupService(receiptAlg: ReceiptAlg[IO], fileAlg: FileAlg[IO])(implicit s
     val inputStream  = new PipedInputStream()
     val outputStream = new PipedOutputStream(inputStream)
 
-    fetchFilesToZip(userId).map { files: Seq[FileToZip]=>
+    fetchFilesToZip(userId).map { files: Seq[FileToZip] =>
       val zipOutputStream                      = new ZipOutputStream(outputStream)
       val sink: Sink[ByteString, Future[Done]] = Sink.foreach[ByteString](bs => zipOutputStream.write(bs.toArray))
 

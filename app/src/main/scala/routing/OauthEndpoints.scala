@@ -16,10 +16,13 @@ object OpenIdToken {
   implicit val openIdTokenEncoder: Encoder[OpenIdToken] = deriveEncoder
 }
 
-class OauthEndpoints[F[_]: ToTwitterFuture : Monad](userPrograms: UserPrograms[F]) {
+class OauthEndpoints[F[_]: ToTwitterFuture: Monad](userPrograms: UserPrograms[F]) {
 
   val validateWithUserCreation: Endpoint[UserInfo] = post("oauth" :: "openid" :: jsonBody[OpenIdToken]) { openIdToken: OpenIdToken =>
-    userPrograms.validateOpenIdUser(AccessToken(openIdToken.token)).map(user => UserInfo(id = user.id, userName = user.userName)).map(Created)
+    userPrograms
+      .validateOpenIdUser(AccessToken(openIdToken.token))
+      .map(user => UserInfo(id = user.id, userName = user.userName))
+      .map(Created)
   }
 
 }

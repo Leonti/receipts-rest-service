@@ -116,9 +116,7 @@ object TestInterpreters {
   }
 
   class ReceiptInterpreterTagless(
-                            receipts: Seq[ReceiptEntity] = List(),
-                            ocrs: Seq[OcrTextOnly] = List()
-                          ) extends ReceiptAlg[Future] {
+                            receipts: Seq[ReceiptEntity] = List()) extends ReceiptAlg[Future] {
     override def getReceipt(userId: UserId,
                             id: String): Future[Option[ReceiptEntity]] = Future.successful(receipts.find(_.id == id))
     override def deleteReceipt(userId: UserId, id: String): Future[Unit] = Future.successful(())
@@ -132,9 +130,7 @@ object TestInterpreters {
   }
 
   class ReceiptInterpreterId(
-                                   receipts: Seq[ReceiptEntity] = List(),
-                                   ocrs: Seq[OcrTextOnly] = List()
-                                 ) extends ReceiptAlg[Id] {
+                                   receipts: Seq[ReceiptEntity] = List()) extends ReceiptAlg[Id] {
     override def getReceipt(userId: UserId,
                             id: String): Id[Option[ReceiptEntity]] = receipts.find(_.id == id)
     override def deleteReceipt(userId: UserId, id: String): Id[Unit] = ()

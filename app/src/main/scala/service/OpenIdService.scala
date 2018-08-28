@@ -8,7 +8,6 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest}
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import com.typesafe.config.ConfigFactory
 import model.{AccessToken, ExternalUserInfo}
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.{Decoder, Encoder}
@@ -26,8 +25,6 @@ object OpenIdUserInfo {
 }
 
 class OpenIdService()(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) {
-
-  private val config = ConfigFactory.load()
 
   val fetchAndValidateTokenInfo: AccessToken => Future[ExternalUserInfo] = accessToken => {
 

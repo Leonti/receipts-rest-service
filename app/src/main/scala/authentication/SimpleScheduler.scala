@@ -26,7 +26,7 @@ private[authentication] class SimpleScheduler(override val maxFrequency: Double)
     }
   }
 
-  private val thread = new Thread(new Runnable {
+  new Thread(new Runnable {
     def run() {
       while (true) {
         lock.synchronized {

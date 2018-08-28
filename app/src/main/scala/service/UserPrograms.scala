@@ -22,7 +22,8 @@ class UserPrograms[F[_]: Monad](userAlg: UserAlg[F], randomAlg: RandomAlg[F]) {
             externalIds = externalUserInfo.sub +: existingUser.get.externalIds.filterNot(id => id == externalUserInfo.sub)
           ))
       } else {
-        generateGuid().flatMap(userId => saveUser(User(id = userId, userName = externalUserInfo.email, externalIds = List(externalUserInfo.sub))))
+        generateGuid().flatMap(userId =>
+          saveUser(User(id = userId, userName = externalUserInfo.email, externalIds = List(externalUserInfo.sub))))
 
       }
     } yield user

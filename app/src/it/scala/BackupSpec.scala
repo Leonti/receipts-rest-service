@@ -41,7 +41,7 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
       firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      receiptEntity      <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.value)
+      receiptEntity      <- getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
       backupToken <- Http()
         .singleRequest(
           HttpRequest(
@@ -50,7 +50,7 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
             headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
           ))
         .flatMap(response => Unmarshal(response.entity).to[OAuth2AccessTokenResponse])
-      backupResponse: HttpResponse <- Http().singleRequest(
+      backupResponse <- Http().singleRequest(
         HttpRequest(method = HttpMethods.GET,
                     uri = s"$appHostPort/user/${userInfo.id}/backup/download?access_token=${backupToken.accessToken}",
                     entity = requestEntity))

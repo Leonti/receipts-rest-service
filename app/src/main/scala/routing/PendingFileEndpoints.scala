@@ -9,7 +9,7 @@ import cats.implicits._
 
 class PendingFileEndpoints[F[_]: Monad: ToTwitterFuture](auth: Endpoint[User], pendingFileAlg: PendingFileAlg[F]) {
 
-  val pendingFiles: Endpoint[List[PendingFile]] = get(auth :: "pending-file") { user:User =>
+  val pendingFiles: Endpoint[List[PendingFile]] = get(auth :: "pending-file") { user: User =>
     pendingFileAlg.findPendingFileForUserId(user.id).map(Ok)
   }
 }

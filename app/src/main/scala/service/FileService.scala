@@ -31,13 +31,12 @@ trait FileService {
   def delete(userId: String, fileId: String): Future[Unit]
 
   protected def toFileEntity(
-      userId: String,
       parentFileId: Option[String],
       fileId: String,
       file: File,
       ext: String,
       md5: Option[String]
-  )(implicit materializer: Materializer, imageResizingService: ImageResizingService): FileEntity = {
+  ): FileEntity = {
 
     FileEntity(
       id = fileId,
@@ -95,7 +94,7 @@ class S3FileService(config: Config,
 
     logger.info(s"Uploading file ${file.getAbsolutePath}")
     val uploadResult = retry(upload(userId, fileId, file), retryIntervals)
-    val fileEntity   = toFileEntity(userId, None, fileId, file, ext, Some(md5(file)))
+    val fileEntity   = toFileEntity(None, fileId, file, ext, Some(md5(file)))
 
     val futures: Seq[Future[FileEntity]] = if (fileEntity.metaData.isInstanceOf[ImageMetadata]) {
       val resizedFileId = java.util.UUID.randomUUID.toString
@@ -106,7 +105,7 @@ class S3FileService(config: Config,
           retry(upload(userId, resizedFileId, resizedFile).map(ur => resizedFile), retryIntervals)
         })
         .map(resizedFile => {
-          val fileEntity = toFileEntity(userId, Some(fileId), resizedFileId, resizedFile, ext, None)
+          val fileEntity = toFileEntity(Some(fileId), resizedFileId, resizedFile, ext, None)
           resizedFile.delete()
           fileEntity
         })

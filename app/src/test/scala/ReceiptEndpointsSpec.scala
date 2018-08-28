@@ -18,7 +18,7 @@ import service.{FileUploadPrograms, ReceiptPrograms}
 
 class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
-  val receiptInt = new ReceiptInterpreterId(List(), List())
+  val receiptInt = new ReceiptInterpreterId(List())
   val fileInt = new FileInterpreterId()
   val randomInt = new RandomInterpreterId("", 0)
   val ocrInt = new OcrInterpreterId()
@@ -35,7 +35,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "create receipt from file upload" in {
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(), List()), fileInt, randomInt, ocrInt),
+      new ReceiptPrograms(new ReceiptInterpreterId(List()), fileInt, randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
 
@@ -72,7 +72,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "reject receipt if file already exists" in {
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(), List()),
+      new ReceiptPrograms(new ReceiptInterpreterId(List()),
         new FileInterpreterId(md5Response = List(StoredFile("123-user", "fileId", "md5", 42))), randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
@@ -102,7 +102,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "reject receipt from file upload if form field is not present" in {
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(), List()), fileInt, randomInt, ocrInt),
+      new ReceiptPrograms(new ReceiptInterpreterId(List()), fileInt, randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
 
@@ -127,7 +127,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt), List()), fileInt, randomInt, ocrInt),
+      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt)), fileInt, randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
 
@@ -142,7 +142,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val receipt = ReceiptEntity(id = "2", userId = USER_ID, files = List(), description = "some description")
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt), List()), fileInt, randomInt, ocrInt),
+      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt)), fileInt, randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
 
@@ -154,7 +154,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val receipt = ReceiptEntity(id = "1", userId = "123-user", files = List(), description = "some description")
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt), List()), fileInt, randomInt, ocrInt),
+      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt)), fileInt, randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
 
@@ -184,7 +184,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt), List()), fileInt, randomInt, ocrInt),
+      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt)), fileInt, randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
 
@@ -208,7 +208,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt), List()), fileInt, randomInt, ocrInt),
+      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt)), fileInt, randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
 
@@ -231,7 +231,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt), List()), fileInt, randomInt, ocrInt),
+      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt)), fileInt, randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
 
@@ -257,7 +257,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt), List()), fileInt, randomInt, ocrInt),
+      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt)), fileInt, randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
 
@@ -273,7 +273,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
-      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt), List()), fileInt, randomInt, ocrInt),
+      new ReceiptPrograms(new ReceiptInterpreterId(List(receipt)), fileInt, randomInt, ocrInt),
       new FileUploadPrograms("", fileInt, randomInt)
     )
 

@@ -38,7 +38,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
       firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      receiptEntity      <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.value)
+      receiptEntity      <- getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
     } yield receiptEntity
 
     whenReady(receiptEntityFuture) { receiptEntity =>
@@ -49,15 +49,14 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
       receiptEntity.transactionTime shouldBe ReceiptTestUtils.transactionTime
       receiptEntity.tags shouldBe ReceiptTestUtils.tags
 
-      receiptEntity.files(0).metaData match {
-        case ImageMetadata(fileType, length, width, height) =>
+      receiptEntity.files.head.metaData match {
+        case ImageMetadata(_, _, width, height) =>
           width shouldBe 50
           height shouldBe 67
-        //length shouldBe 5874
         case _ => fail("Metadata should be of an IMAGE type!")
       }
       receiptEntity.files(1).metaData match {
-        case ImageMetadata(fileType, length, width, height) =>
+        case ImageMetadata(_, _, width, height) =>
           width shouldBe 50
           height shouldBe 67
         case _ => fail("Metadata should be of an IMAGE type!")
@@ -78,7 +77,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
       firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      processedReceipt                  <- getProcessedReceipt(userInfo.id, firstReceiptEntity.id, accessToken.value)
+      processedReceipt                  <- getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
       errorResponse <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
@@ -174,7 +173,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
       initialReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      receiptEntity        <- getProcessedReceipt(userInfo.id, initialReceiptEntity.id, accessToken.value)
+      receiptEntity        <- getProcessedReceipt(initialReceiptEntity.id, accessToken.value)
       fileResponse <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.GET,
@@ -203,7 +202,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
       initialReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      receiptEntity        <- getProcessedReceipt(userInfo.id, initialReceiptEntity.id, accessToken.value)
+      receiptEntity        <- getProcessedReceipt(initialReceiptEntity.id, accessToken.value)
       receiptsBeforeDeleteResponse <- Http().singleRequest(
         HttpRequest(uri = s"$appHostPort/receipt",
                     headers = List(Authorization(OAuth2BearerToken(accessToken.value)))))

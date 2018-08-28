@@ -13,10 +13,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-class QueueProcessor(queue: Queue,
-                     fileProcessor: FileProcessorTagless[IO],
-                     ocrProcessor: OcrProcessorTagless[IO],
-                     system: ActorSystem) {
+class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[IO], ocrProcessor: OcrProcessorTagless[IO], system: ActorSystem) {
 
   val logger              = Logger(LoggerFactory.getLogger("QueueProcessor"))
   private implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
@@ -47,7 +44,7 @@ class QueueProcessor(queue: Queue,
     childJobs
       .flatMap(jobs => Future.sequence(jobs.map(job => queue.put(job))))
       .onComplete {
-        case Success(jobIds) =>
+        case Success(_) =>
           logger.info(s"Job finished succesfully $job")
           queue.delete(job.id)
         case Failure(e) =>

@@ -30,7 +30,7 @@ class FileServiceSpec extends FlatSpec with Matchers with ScalaFutures {
 
     override def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]] = {
       val fileId = "1"
-      Future.successful(Seq(toFileEntity(userId, None, fileId, file, ext, None)))
+      Future.successful(Seq(toFileEntity(None, fileId, file, ext, None)))
     }
 
     override def fetch(userId: String, fileId: String) =
@@ -58,7 +58,7 @@ class FileServiceSpec extends FlatSpec with Matchers with ScalaFutures {
       file.delete
 
       fileEntities.head.metaData match {
-        case ImageMetadata(fileType, length, width, height) =>
+        case ImageMetadata(_, length, width, height) =>
           width shouldBe 50
           height shouldBe 67
           length shouldBe 5874
@@ -83,7 +83,7 @@ class FileServiceSpec extends FlatSpec with Matchers with ScalaFutures {
       file.delete
 
       fileEntities.head.metaData match {
-        case GenericMetadata(fileType, length) =>
+        case GenericMetadata(_, length) =>
           length shouldBe 9
         case _ => fail("Metadata should be of a GENERIC type!")
       }

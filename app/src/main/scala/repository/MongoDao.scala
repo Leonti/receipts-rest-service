@@ -20,8 +20,8 @@ trait MongoDao[T <: WithId] extends MongoConnection {
         .cursor[T]()
         .collect[List](-1, Cursor.FailOnError[List[T]]())
         .map {
-          case x :: xs => Some(x)
-          case _       => None
+          case x :: _ => Some(x)
+          case _      => None
         })
   }
 
@@ -31,7 +31,7 @@ trait MongoDao[T <: WithId] extends MongoConnection {
         .cursor[T]()
         .collect[List](-1, Cursor.FailOnError[List[T]]()))
   }
-
+  /*
   def findList(collectionFuture: Future[BSONCollection], query: BSONDocument, projection: BSONDocument)(
       implicit reader: BSONDocumentReader[T]): Future[List[T]] = {
     collectionFuture.flatMap(
@@ -39,6 +39,6 @@ trait MongoDao[T <: WithId] extends MongoConnection {
         .cursor[T]()
         .collect[List](-1, Cursor.FailOnError[List[T]]()))
   }
-
+   */
   def queryById(id: String) = BSONDocument("_id" -> id)
 }

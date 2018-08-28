@@ -46,8 +46,9 @@ class ReceiptEndpoints[F[_]: ToTwitterFuture: Monad](
     }
 
   val getReceipts: Endpoint[Seq[ReceiptEntity]] =
-    get(auth :: "receipt" :: paramOption[Long]("last-modified") :: paramOption[String]("q")) { (user: User, lastModified: Option[Long], query: Option[String]) =>
-      receiptPrograms.findForUser(UserId(user.id), lastModified, query).map(Ok)
+    get(auth :: "receipt" :: paramOption[Long]("last-modified") :: paramOption[String]("q")) {
+      (user: User, lastModified: Option[Long], query: Option[String]) =>
+        receiptPrograms.findForUser(UserId(user.id), lastModified, query).map(Ok)
     }
 
   val createReceipt: Endpoint[ReceiptEntity] =
@@ -74,9 +75,9 @@ class ReceiptEndpoints[F[_]: ToTwitterFuture: Monad](
     get(auth :: "receipt" :: path[String] :: "file" :: path[String]) { (user: User, receiptId: String, fileIdWithExt: String) =>
       val fileId = fileIdWithExt.split('.')(0)
 
-      receiptPrograms.receiptFileWithExtension(UserId(user.id), receiptId, fileId).map(_.fold[Output[AsyncStream[Buf]]]
-        (Output.failure(new Exception("Receipt not found")))
-        (fileToServe => {
+      receiptPrograms
+        .receiptFileWithExtension(UserId(user.id), receiptId, fileId)
+        .map(_.fold[Output[AsyncStream[Buf]]](Output.failure(new Exception("Receipt not found")))(fileToServe => {
           val contentType = ContentTypeResolver.Default("file." + fileToServe.ext)
           Ok(AsyncStream.fromReader(Reader.fromStream(fileToServe.source), chunkSize = 128.kilobytes.inBytes.toInt))
             .withHeader("Content-Type", contentType.value)
@@ -84,10 +85,12 @@ class ReceiptEndpoints[F[_]: ToTwitterFuture: Monad](
     }
 
   val deleteReceipt: Endpoint[Unit] = delete(auth :: "receipt" :: path[String]) { (user: User, receiptId: String) =>
-    receiptPrograms.removeReceipt(UserId(user.id), receiptId).map({
-      case Some(_) => Output.unit(Status.NoContent)
-      case None => Output.failure(new Exception("Entity not found"), Status.NotFound)
-    })
+    receiptPrograms
+      .removeReceipt(UserId(user.id), receiptId)
+      .map({
+        case Some(_) => Output.unit(Status.NoContent)
+        case None    => Output.failure(new Exception("Entity not found"), Status.NotFound)
+      })
   }
 
   val all = createReceipt :+: getReceipt :+: getReceipts :+: getReceiptFile :+: patchReceipt :+: deleteReceipt

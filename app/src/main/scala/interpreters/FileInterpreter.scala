@@ -35,23 +35,24 @@ class FileInterpreterTagless(
     Files.move(src.toPath, dst.toPath)
     ()
   }
-  override def saveFile(userId: String, file: File, ext: String): IO[Seq[FileEntity]] = IO.fromFuture(IO(fileService.save(userId, file, ext)))
-  override def saveStoredFile(storedFile: StoredFile): IO[Unit]                       = IO.fromFuture(IO(storedFileRepository.save(storedFile).map(_ => ())))
-  override def findByMd5(userId: String, md5: String): IO[Seq[StoredFile]]            = IO.fromFuture(IO(storedFileRepository.findForUserIdAndMd5(userId, md5)))
-  override def deleteStoredFile(storedFileId: String): IO[Unit]                       = IO.fromFuture(IO(storedFileRepository.deleteById(storedFileId)))
+  override def saveFile(userId: String, file: File, ext: String): IO[Seq[FileEntity]] =
+    IO.fromFuture(IO(fileService.save(userId, file, ext)))
+  override def saveStoredFile(storedFile: StoredFile): IO[Unit] = IO.fromFuture(IO(storedFileRepository.save(storedFile).map(_ => ())))
+  override def findByMd5(userId: String, md5: String): IO[Seq[StoredFile]] =
+    IO.fromFuture(IO(storedFileRepository.findForUserIdAndMd5(userId, md5)))
+  override def deleteStoredFile(storedFileId: String): IO[Unit] = IO.fromFuture(IO(storedFileRepository.deleteById(storedFileId)))
   override def fetchFile(userId: String, fileId: String): IO[Source[ByteString, Future[IOResult]]] =
     IO(fileService.fetch(userId, fileId))
-  override def fetchFileInputStream(
-                             userId: String,
-                             fileId: String): IO[InputStream] = IO(fileService.fetchInputStream(userId, fileId))
-  override def sourceToFile(source: Source[ByteString, Future[IOResult]], file: File): IO[File] = IO.fromFuture(IO {
-    source
-      .to(FileIO.toPath(file.toPath))
-      .run()
-      .map(_ => file)
-  })
-  override def fs2StreamToFile(source: Stream[IO, Byte],
-                               file: File): IO[File] = source.to(fs2.io.file.writeAll(file.toPath)).compile.drain.map(_ => file)
+  override def fetchFileInputStream(userId: String, fileId: String): IO[InputStream] = IO(fileService.fetchInputStream(userId, fileId))
+  override def sourceToFile(source: Source[ByteString, Future[IOResult]], file: File): IO[File] =
+    IO.fromFuture(IO {
+      source
+        .to(FileIO.toPath(file.toPath))
+        .run()
+        .map(_ => file)
+    })
+  override def fs2StreamToFile(source: Stream[IO, Byte], file: File): IO[File] =
+    source.to(fs2.io.file.writeAll(file.toPath)).compile.drain.map(_ => file)
   override def deleteFile(userId: String, fileId: String): IO[Unit] = IO.fromFuture(IO(fileService.delete(userId, fileId)))
   override def removeFile(file: File): IO[Unit]                     = IO { file.delete }.map(_ => ()) // TODO use pure
   override def calculateMd5(file: File): IO[String]                 = IO { fileService.md5(file) } // TODO use pure

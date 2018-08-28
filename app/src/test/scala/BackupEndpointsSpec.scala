@@ -16,7 +16,7 @@ import service.BackupServiceIO
 
 class BackupEndpointsSpec extends FlatSpec with Matchers {
 
-  val receiptInt = new ReceiptInterpreterId(List(), List())
+  val receiptInt = new ReceiptInterpreterId(List())
   val fileInt = new FileInterpreterId()
   val randomInt = new RandomInterpreterId("", 0)
   val ocrInt = new OcrInterpreterId()
@@ -39,7 +39,7 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
 
     val backupEndpoints = new BackupEndpoints[Id](
       successfulAuth,
-      new BackupServiceIO[Id](new ReceiptInterpreterId(List(receipt), List()), fileInt),
+      new BackupServiceIO[Id](new ReceiptInterpreterId(List(receipt)), fileInt),
       tokenInt
     )
 

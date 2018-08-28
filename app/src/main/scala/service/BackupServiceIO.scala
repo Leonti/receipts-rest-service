@@ -30,7 +30,8 @@ class BackupServiceIO[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
     def fileToZip(fileEntity: FileEntity): F[FileToZip] =
       for {
         source <- fileAlg.fetchFileInputStream(userId.value, fileEntity.id)
-      } yield FileToZip(
+      } yield
+        FileToZip(
           path = fileEntity.id + "." + fileEntity.ext,
           source = source
         )
@@ -45,29 +46,36 @@ class BackupServiceIO[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
 
     for {
       receipts <- receiptAlg.userReceipts(userId).map(_.map(receiptWithMainFiles))
-      files <- receipts.flatMap(_.files).toList.traverse(fileToZip)
+      files    <- receipts.flatMap(_.files).toList.traverse(fileToZip)
     } yield files.++(List(receiptJsonEntry(receipts)))
   }
 
   private def filesToStream(filesToZip: List[FileToZip])(zipOutputStream: ZipOutputStream): Stream[IO, Unit] =
-    fs2.Stream.emits(filesToZip).evalMap[IO, Unit](fileToZip => IO {
-      val zipEntry = new ZipEntry(fileToZip.path)
-      zipOutputStream.putNextEntry(zipEntry)
+    fs2.Stream
+      .emits(filesToZip)
+      .evalMap[IO, Unit](fileToZip =>
+        IO {
+          val zipEntry = new ZipEntry(fileToZip.path)
+          zipOutputStream.putNextEntry(zipEntry)
 
-      val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
-      Iterator
-        .continually(fileToZip.source.read(bytes))
-        .takeWhile(-1 !=)
-        .foreach(read => zipOutputStream.write(bytes,0,read))
+          val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+          Iterator
+            .continually(fileToZip.source.read(bytes))
+            .takeWhile(-1 !=)
+            .foreach(read => zipOutputStream.write(bytes, 0, read))
 
-      zipOutputStream.closeEntry()
-  })
+          zipOutputStream.closeEntry()
+      })
 
   def createUserBackup(userId: UserId): F[ReceiptsBackupIO] =
     fetchFilesToZip(userId).map(filesToZip => {
       val inputStream  = new PipedInputStream()
       val outputStream = IO.fromFuture(IO(Future { new PipedOutputStream(inputStream) }))
-      val runStream = Stream.bracket(outputStream.map(os => new ZipOutputStream(os)))(filesToStream(filesToZip), zipOutputStream => IO { zipOutputStream.close() }).compile.drain
+      val runStream = Stream
+        .bracket(outputStream.map(os => new ZipOutputStream(os)))(filesToStream(filesToZip),
+                                                                  zipOutputStream => IO { zipOutputStream.close() })
+        .compile
+        .drain
 
       ReceiptsBackupIO(runSource = runStream, source = inputStream, filename = "backup.zip")
     })

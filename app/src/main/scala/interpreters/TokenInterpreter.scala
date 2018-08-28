@@ -32,8 +32,7 @@ class TokenInterpreter[F[_]: Monad] extends TokenAlg[F] {
       OAuth2AccessTokenResponse("bearer", token, bearerPathTokenLifetime.toSeconds)
     }
 
-  override def verifyPathToken(
-      token: String): F[Either[String, SubClaim]] = Monad[F].pure {
+  override def verifyPathToken(token: String): F[Either[String, SubClaim]] = Monad[F].pure {
     val algorithmHS = Algorithm.HMAC256(bearerTokenSecret)
     val verifier = JWT
       .require(algorithmHS)
