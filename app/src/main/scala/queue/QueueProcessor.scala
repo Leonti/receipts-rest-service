@@ -2,9 +2,8 @@ package queue
 
 import java.io.{PrintWriter, StringWriter}
 import java.util.concurrent.Executors
-
-import akka.actor.ActorSystem
 import cats.effect.IO
+import cats.syntax.all._
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import processing.{FileProcessorTagless, OcrProcessorTagless}
@@ -13,7 +12,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[IO], ocrProcessor: OcrProcessorTagless[IO], system: ActorSystem) {
+class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[IO], ocrProcessor: OcrProcessorTagless[IO]) {
 
   val logger              = Logger(LoggerFactory.getLogger("QueueProcessor"))
   private implicit val ec = ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
@@ -30,12 +29,12 @@ class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[IO], ocrP
           case None => 10.seconds
         }
 
-        system.scheduler.scheduleOnce(nextPickupTimeout)(reserveNextJob())
+        IO.sleep(nextPickupTimeout) *> IO(reserveNextJob())
       })
       .onComplete {
         case Failure(e: Throwable) =>
           logger.error(s"Exception on reserving next job $e")
-          system.scheduler.scheduleOnce(10.seconds)(reserveNextJob())
+          IO.sleep(10.seconds) *> IO(reserveNextJob())
         case Success(_) => ()
       }
   }

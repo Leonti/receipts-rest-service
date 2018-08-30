@@ -136,7 +136,7 @@ object ReceiptRestService extends App with AkkaHttpService {
 
   val fileProcessor  = new FileProcessorTagless(receiptInterpreter, fileInterpreter)
   val ocrProcessor   = new OcrProcessorTagless[IO](fileInterpreter, ocrInterpreter, randomInterpreter, pendingFileInterpreter)
-  val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor, system)
+  val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor)
 
   queueProcessor.reserveNextJob()
 
