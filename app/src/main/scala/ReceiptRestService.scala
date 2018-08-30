@@ -71,7 +71,7 @@ object ReceiptRestService extends App with AkkaHttpService {
   val imageResizingService  = new ImageResizingService()
   val pendingFileRepository = new PendingFileRepository()
   val pendingFileService    = new PendingFileService(pendingFileRepository)
-  val fileService           = FileService.s3(config, system, materializer, fileCachingService, imageResizingService)
+  val fileService           = FileService.s3(config, materializer, fileCachingService, imageResizingService)
 
   val queue            = new Queue()
   val receiptFileQueue = new ReceiptFileQueue(queue)

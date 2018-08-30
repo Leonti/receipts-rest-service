@@ -3,11 +3,10 @@ package service
 import java.io.{File, FileInputStream, InputStream}
 import java.util.concurrent.Executors
 import java.security.{DigestInputStream, MessageDigest}
-
-import akka.actor.{ActorSystem, Scheduler}
 import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.{Source, _}
 import akka.util.ByteString
+import cats.effect.IO
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
@@ -60,7 +59,6 @@ trait FileService {
 }
 
 class S3FileService(config: Config,
-                    system: ActorSystem,
                     materializer: Materializer,
                     fileCachingService: FileCachingService,
                     imageResizingService: ImageResizingService)
@@ -89,16 +87,15 @@ class S3FileService(config: Config,
   override def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]] = {
     val fileId = java.util.UUID.randomUUID.toString
 
-    implicit val scheduler: Scheduler = system.scheduler
     val retryIntervals                = Seq(1.seconds, 10.seconds, 30.seconds)
 
     logger.info(s"Uploading file ${file.getAbsolutePath}")
     val uploadResult = retry(upload(userId, fileId, file), retryIntervals)
     val fileEntity   = toFileEntity(None, fileId, file, ext, Some(md5(file)))
 
-    val futures: Seq[Future[FileEntity]] = if (fileEntity.metaData.isInstanceOf[ImageMetadata]) {
+    val futures: Seq[IO[FileEntity]] = if (fileEntity.metaData.isInstanceOf[ImageMetadata]) {
       val resizedFileId = java.util.UUID.randomUUID.toString
-      val resizedFileEntity: Future[FileEntity] = imageResizingService
+      val resizedFileEntity: IO[FileEntity] = imageResizingService
         .resize(file, WebSize)
         .flatMap(resizedFile => {
           logger.info(s"Starting to upload a resized file $resizedFileId")
@@ -121,16 +118,18 @@ class S3FileService(config: Config,
       }))
     }
 
-    Future.sequence(futures)
+    // FIXME - remove Future
+    Future.sequence(futures.map(iof => iof.unsafeToFuture()))
   }
 
-  val upload: (String, String, File) => Future[PutObjectResult] = (userId, fileId, file) => {
+  val upload: (String, String, File) => IO[PutObjectResult] = (userId, fileId, file) => {
     val putObjectRequest = new PutObjectRequest(config.getString("s3.bucket"), s"user/$userId/$fileId", file)
 
-    Future {
+    // FIXME - remove Future
+    IO.fromFuture(IO(Future {
       fileCachingService.cacheFile(userId, fileId, file)
       amazonS3Client.putObject(putObjectRequest)
-    }
+    }))
   }
 
   val fetchFromS3: (String, String) => Source[ByteString, Future[IOResult]] = (userId, fileId) => {
@@ -154,10 +153,9 @@ class S3FileService(config: Config,
 object FileService {
 
   def s3(config: Config,
-         system: ActorSystem,
          materializer: Materializer,
          fileCachingService: FileCachingService,
          imageResizingService: ImageResizingService) =
-    new S3FileService(config, system, materializer, fileCachingService, imageResizingService)
+    new S3FileService(config, materializer, fileCachingService, imageResizingService)
 
 }

@@ -3,6 +3,7 @@ package service
 import java.io.File
 import java.util.concurrent.Executors
 
+import cats.effect.IO
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import io.circe.{Decoder, Encoder}
@@ -31,11 +32,12 @@ class ImageResizingService {
   val logger      = Logger(LoggerFactory.getLogger("ImageResizingService"))
   implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
-  val resize: (File, ImageSize) => Future[File] = (originalFile, imageSize: ImageSize) => {
+  val resize: (File, ImageSize) => IO[File] = (originalFile, imageSize: ImageSize) => {
     val resized = new File(originalFile.getAbsolutePath + s"_resized_${imageSize.pixels}")
     val cmd     = s"convert ${originalFile.getAbsolutePath} -resize ${imageSize.pixels}@> ${resized.getAbsolutePath}"
 
-    Future {
+    //FIXME remove Future
+    IO.fromFuture(IO(Future {
 
       if (cmd.! != 0) {
         logger.error("Could not resize image:", cmd)
@@ -43,16 +45,17 @@ class ImageResizingService {
       }
 
       resized
-    }
+    }))
   }
 
-  val resizeToSize: (File, Double) => Future[File] = (originalFile, sizeInMb) => {
+  val resizeToSize: (File, Double) => IO[File] = (originalFile, sizeInMb) => {
     // convert original.jpeg -define jpeg:extent=300kb output.jpg
 
     val resized = new File(originalFile.getAbsolutePath + s"_resized_${sizeInMb}")
     val cmd     = s"convert ${originalFile.getAbsolutePath} -define jpeg:extent=${sizeInMb}MB ${resized.getAbsolutePath}"
 
-    Future {
+    //FIXME remove Future
+    IO.fromFuture(IO(Future {
 
       if (cmd.! != 0) {
         logger.error("Could not resize image:", cmd)
@@ -60,6 +63,6 @@ class ImageResizingService {
       }
 
       resized
-    }
+    }))
   }
 }

@@ -1,15 +1,24 @@
 package service
 
-import akka.actor.Scheduler
+import cats.effect._
+import cats.syntax.all._
+import scala.concurrent.duration._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
-import akka.pattern.after
+import cats.effect.IO
 
 trait Retry {
 
-  def retry[T](f: => Future[T], delays: Seq[FiniteDuration])(implicit ec: ExecutionContext, s: Scheduler): Future[T] = {
-    f recoverWith { case _ if delays.nonEmpty => after(delays.head, s)(retry(f, delays.tail)) }
+  def retry[T](ioa: => IO[T], delays: Seq[FiniteDuration])(implicit ec: ExecutionContext): IO[T] = {
+
+    ioa.handleErrorWith { error =>
+      if (delays.nonEmpty) {
+        IO.sleep(delays.head) *> retry(ioa, delays.tail)
+      } else {
+        IO.raiseError(error)
+      }
+    }
   }
 
 }
