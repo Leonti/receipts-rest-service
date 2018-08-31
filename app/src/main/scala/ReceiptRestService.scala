@@ -71,7 +71,7 @@ object ReceiptRestService extends App with AkkaHttpService {
   val imageResizingService  = new ImageResizingService()
   val pendingFileRepository = new PendingFileRepository()
   val pendingFileService    = new PendingFileService(pendingFileRepository)
-  val fileService           = FileService.s3(config, materializer, fileCachingService, imageResizingService)
+  val fileService           = FileService.s3(materializer, fileCachingService, imageResizingService)
 
   val queue            = new Queue()
   val receiptFileQueue = new ReceiptFileQueue(queue)
@@ -81,11 +81,11 @@ object ReceiptRestService extends App with AkkaHttpService {
   val ocrRepository     = new OcrRepository()
 
   val ocrService =
-    if (config.getBoolean("useOcrStub")) {
+    if (sys.env("USE_OCR_STUB").toBoolean) {
       println("Using OCR stub")
       new OcrServiceStub()
     } else
-      new GoogleOcrService(new File(config.getString("googleApiCredentials")), imageResizingService)
+      new GoogleOcrService(new File(sys.env("GOOGLE_API_CREDENTIALS")), imageResizingService)
 
   val userInterpreter   = new UserInterpreter(userRepository, openIdService)
   val tokenInterpreter  = new TokenInterpreter[IO]()
@@ -102,8 +102,6 @@ object ReceiptRestService extends App with AkkaHttpService {
   val userPrograms = new UserPrograms(userInterpreter, randomInterpreter)
 
   logger.info("Testing logging")
-  println("Mongo:")
-  println(config.getString("mongodb.db"))
 
   val receiptPrograms = new ReceiptPrograms[IO](
     receiptInterpreter,
@@ -112,7 +110,7 @@ object ReceiptRestService extends App with AkkaHttpService {
     ocrInterpreter
   )
   val fileUploadPrograms = new FileUploadPrograms[IO](
-    config.getString("uploadsFolder"),
+    sys.env("UPLOADS_FOLDER"),
     fileInterpreter,
     randomInterpreter
   )
@@ -128,7 +126,7 @@ object ReceiptRestService extends App with AkkaHttpService {
   val pendingFileEndpoints = new PendingFileEndpoints[IO](auth, pendingFileInterpreter)
 
   val userEndpoints      = new UserEndpoints(auth)
-  val appConfigEndpoints = new AppConfigEndpoints(config.getString("googleClientId"))
+  val appConfigEndpoints = new AppConfigEndpoints(sys.env("GOOGLE_CLIENT_ID"))
   val oauthEndpoints     = new OauthEndpoints[IO](userPrograms)
 
   val backupService   = new BackupService(receiptInterpreter, fileInterpreter)
@@ -138,7 +136,10 @@ object ReceiptRestService extends App with AkkaHttpService {
   val ocrProcessor   = new OcrProcessorTagless[IO](fileInterpreter, ocrInterpreter, randomInterpreter, pendingFileInterpreter)
   val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor)
 
-  queueProcessor.reserveNextJob()
+  queueProcessor.reserveNextJob().unsafeRunAsync {
+    case Right(_) => println("Queue processor finished running")
+    case Left(e)  => println(s"Queue processor stopped with an error $e")
+  }
 
   val service: Service[Request, Response] = new Cors.HttpFilter(policy).andThen(
     (userEndpoints.userInfo :+:

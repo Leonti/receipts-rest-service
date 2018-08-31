@@ -30,7 +30,7 @@ class FileInterpreterTagless(
 
   override def submitPendingFile(pendingFile: PendingFile): IO[PendingFile] = IO.fromFuture(IO(pendingFileRepository.save(pendingFile)))
   override def submitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String): IO[JobId] =
-    IO.fromFuture(IO(receiptFileQueue.submitFile(userId, receiptId, file, fileExt, pendingFileId)))
+    receiptFileQueue.submitFile(userId, receiptId, file, fileExt, pendingFileId)
   override def moveFile(src: File, dst: File): IO[Unit] = IO {
     Files.move(src.toPath, dst.toPath)
     ()

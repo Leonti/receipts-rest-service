@@ -2,7 +2,6 @@ package interpreters
 
 import java.time.Instant
 
-import com.typesafe.config.ConfigFactory
 import algebras.TokenAlg
 import authentication.OAuth2AccessTokenResponse
 import cats.Monad
@@ -17,8 +16,7 @@ import scala.util.Try
 class TokenInterpreter[F[_]: Monad] extends TokenAlg[F] {
   private val bearerPathTokenLifetime: FiniteDuration = 5.minutes
 
-  private val config                         = ConfigFactory.load()
-  private val bearerTokenSecret: Array[Byte] = config.getString("tokenSecret").getBytes
+  private val bearerTokenSecret: Array[Byte] = sys.env("AUTH_TOKEN_SECRET").getBytes
   override def generatePathToken(path: String): F[OAuth2AccessTokenResponse] =
     Monad[F].pure {
       val algorithmHS = Algorithm.HMAC256(bearerTokenSecret)

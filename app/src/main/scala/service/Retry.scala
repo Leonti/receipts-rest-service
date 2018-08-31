@@ -14,6 +14,7 @@ trait Retry {
 
     ioa.handleErrorWith { error =>
       if (delays.nonEmpty) {
+        println("Failed, retrying") // FIXME - remove
         IO.sleep(delays.head) *> retry(ioa, delays.tail)
       } else {
         IO.raiseError(error)

@@ -3,11 +3,12 @@ package queue.files
 import java.io.File
 import java.util.concurrent.Executors
 
+import cats.effect.IO
 import model.PendingFile.PendingFileId
 import queue.Models.JobId
 import queue.{Queue, ReceiptFileJob}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class ReceiptFileQueue(queue: Queue) {
   implicit val ec = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
@@ -18,7 +19,7 @@ class ReceiptFileQueue(queue: Queue) {
       file: File,
       fileExt: String,
       pendingFileId: PendingFileId
-  ): Future[JobId] = {
+  ): IO[JobId] = {
 
     queue.put(
       ReceiptFileJob(

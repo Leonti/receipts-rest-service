@@ -11,7 +11,6 @@ import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.{PutObjectRequest, PutObjectResult}
-import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
 import model.{FileEntity, ImageMetadata}
 import org.slf4j.LoggerFactory
@@ -58,36 +57,35 @@ trait FileService {
 
 }
 
-class S3FileService(config: Config,
-                    materializer: Materializer,
-                    fileCachingService: FileCachingService,
-                    imageResizingService: ImageResizingService)
+class S3FileService(materializer: Materializer, fileCachingService: FileCachingService, imageResizingService: ImageResizingService)
     extends FileService
     with Retry {
-  val logger = Logger(LoggerFactory.getLogger("S3FileService"))
+  val s3Bucket = sys.env("S3_BUCKET")
+  val s3Region = sys.env("S3_REGION")
+  val logger   = Logger(LoggerFactory.getLogger("S3FileService"))
 
   implicit val mat: Materializer = materializer
   implicit val irs               = imageResizingService
   implicit val ec                = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
   lazy val amazonS3Client = {
-    val credentials = new BasicAWSCredentials(config.getString("s3.accessKey"), config.getString("s3.secretAccessKey"))
+    val credentials = new BasicAWSCredentials(sys.env("S3_ACCESS_KEY"), sys.env("S3_SECRET_ACCESS_KEY"))
 
     val amazonS3ClientBuilder = AmazonS3ClientBuilder
       .standard()
       .withCredentials(new AWSStaticCredentialsProvider(credentials))
-    val customS3Endpoint = config.getString("s3.customEndpoint")
+    val customS3Endpoint = sys.env("S3_CUSTOM_ENDPOINT")
     if (customS3Endpoint.length > 0) {
-      amazonS3ClientBuilder.withEndpointConfiguration(new EndpointConfiguration(customS3Endpoint, config.getString("s3.region"))).build()
+      amazonS3ClientBuilder.withEndpointConfiguration(new EndpointConfiguration(customS3Endpoint, s3Region)).build()
     } else {
-      amazonS3ClientBuilder.withRegion(config.getString("s3.region")).build()
+      amazonS3ClientBuilder.withRegion(s3Region).build()
     }
   }
 
   override def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]] = {
     val fileId = java.util.UUID.randomUUID.toString
 
-    val retryIntervals                = Seq(1.seconds, 10.seconds, 30.seconds)
+    val retryIntervals = Seq(1.seconds, 10.seconds, 30.seconds)
 
     logger.info(s"Uploading file ${file.getAbsolutePath}")
     val uploadResult = retry(upload(userId, fileId, file), retryIntervals)
@@ -123,7 +121,7 @@ class S3FileService(config: Config,
   }
 
   val upload: (String, String, File) => IO[PutObjectResult] = (userId, fileId, file) => {
-    val putObjectRequest = new PutObjectRequest(config.getString("s3.bucket"), s"user/$userId/$fileId", file)
+    val putObjectRequest = new PutObjectRequest(s3Bucket, s"user/$userId/$fileId", file)
 
     // FIXME - remove Future
     IO.fromFuture(IO(Future {
@@ -133,7 +131,7 @@ class S3FileService(config: Config,
   }
 
   val fetchFromS3: (String, String) => Source[ByteString, Future[IOResult]] = (userId, fileId) => {
-    val fileStream = () => amazonS3Client.getObject(config.getString("s3.bucket"), s"user/$userId/$fileId").getObjectContent
+    val fileStream = () => amazonS3Client.getObject(s3Bucket, s"user/$userId/$fileId").getObjectContent
     StreamConverters.fromInputStream(fileStream)
   }
 
@@ -144,18 +142,15 @@ class S3FileService(config: Config,
   }
 
   override def delete(userId: String, fileId: String): Future[Unit] = {
-    Future.successful(amazonS3Client.deleteObject(config.getString("s3.bucket"), s"user/$userId/$fileId"))
+    Future.successful(amazonS3Client.deleteObject(s3Bucket, s"user/$userId/$fileId"))
   }
   override def fetchInputStream(userId: String, fileId: String): InputStream =
-    amazonS3Client.getObject(config.getString("s3.bucket"), s"user/$userId/$fileId").getObjectContent
+    amazonS3Client.getObject(s3Bucket, s"user/$userId/$fileId").getObjectContent
 }
 
 object FileService {
 
-  def s3(config: Config,
-         materializer: Materializer,
-         fileCachingService: FileCachingService,
-         imageResizingService: ImageResizingService) =
-    new S3FileService(config, materializer, fileCachingService, imageResizingService)
+  def s3(materializer: Materializer, fileCachingService: FileCachingService, imageResizingService: ImageResizingService) =
+    new S3FileService(materializer, fileCachingService, imageResizingService)
 
 }
