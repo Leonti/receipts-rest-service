@@ -35,7 +35,7 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
     val fileEntity =
       FileEntity(id = "1", parentId = None, ext = "txt", md5 = None, metaData = GenericMetadata(fileType = "TXT", length = 11))
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
-    val tokenInt = new TokenInterpreter[Id]()
+    val tokenInt = new TokenInterpreter[Id]("secret".getBytes)
 
     val backupEndpoints = new BackupEndpoints[Id](
       successfulAuth,

@@ -88,7 +88,7 @@ object ReceiptRestService extends App with AkkaHttpService {
       new GoogleOcrService(new File(sys.env("GOOGLE_API_CREDENTIALS")), imageResizingService)
 
   val userInterpreter   = new UserInterpreter(userRepository, openIdService)
-  val tokenInterpreter  = new TokenInterpreter[IO]()
+  val tokenInterpreter  = new TokenInterpreter[IO](sys.env("AUTH_TOKEN_SECRET").getBytes)
   val randomInterpreter = new RandomInterpreterTagless()
   val fileInterpreter =
     new FileInterpreterTagless(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer)

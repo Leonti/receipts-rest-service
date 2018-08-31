@@ -13,10 +13,9 @@ import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
 import scala.util.Try
 
-class TokenInterpreter[F[_]: Monad] extends TokenAlg[F] {
+class TokenInterpreter[F[_]: Monad](bearerTokenSecret: Array[Byte]) extends TokenAlg[F] {
   private val bearerPathTokenLifetime: FiniteDuration = 5.minutes
 
-  private val bearerTokenSecret: Array[Byte] = sys.env("AUTH_TOKEN_SECRET").getBytes
   override def generatePathToken(path: String): F[OAuth2AccessTokenResponse] =
     Monad[F].pure {
       val algorithmHS = Algorithm.HMAC256(bearerTokenSecret)
