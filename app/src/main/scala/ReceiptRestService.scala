@@ -11,8 +11,6 @@ import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
 import com.twitter.finagle.http.filter.Cors
 import com.twitter.util.Await
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigFactory
 import model._
 import repository._
 import routing.ExceptionEncoders._
@@ -32,8 +30,8 @@ import org.http4s.client.blaze.{BlazeClientConfig, Http1Client}
 
 import scala.concurrent.duration._
 
-trait AkkaHttpService {
-  implicit def executor: ExecutionContextExecutor
+object ReceiptRestService extends App {
+  val logger = Logger(LoggerFactory.getLogger("ReceiptRestService"))
 
   val policy: Cors.Policy = Cors.Policy(
     allowsOrigin = _ => Some("*"),
@@ -41,26 +39,18 @@ trait AkkaHttpService {
     allowsHeaders = _ =>
       Some(
         Seq("Origin",
-            "X-Requested-With",
-            "Content-Type",
-            "Accept",
-            "Accept-Encoding",
-            "Accept-Language",
-            "Host",
-            "Referer",
-            "User-Agent",
-            "Authorization"))
+          "X-Requested-With",
+          "Content-Type",
+          "Accept",
+          "Accept-Encoding",
+          "Accept-Language",
+          "Host",
+          "Referer",
+          "User-Agent",
+          "Authorization"))
   )
 
-  def config: Config
-}
-
-object ReceiptRestService extends App with AkkaHttpService {
-  val logger = Logger(LoggerFactory.getLogger("ReceiptRestService"))
-
-  override implicit val executor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
-
-  override val config = ConfigFactory.load()
+  implicit val executor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
   val userRepository = new UserRepository()
   val httpClient: Client[IO] = Http1Client[IO](
@@ -151,6 +141,5 @@ object ReceiptRestService extends App with AkkaHttpService {
       backupEndpoints.all :+:
       new VersionEndpoint(System.getenv("VERSION")).version).toService)
 
-  val port = config.getInt("http.port")
-  Await.ready(Http.server.serve(s"0.0.0.0:$port", service))
+  Await.ready(Http.server.serve(s"0.0.0.0:9000", service))
 }

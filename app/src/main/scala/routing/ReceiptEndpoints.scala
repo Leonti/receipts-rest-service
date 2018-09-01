@@ -1,6 +1,7 @@
 package routing
 
-import akka.http.scaladsl.server.directives.ContentTypeResolver
+import java.net.URLConnection
+
 import cats.Monad
 import io.finch._
 import io.finch.circe._
@@ -78,9 +79,9 @@ class ReceiptEndpoints[F[_]: ToTwitterFuture: Monad](
       receiptPrograms
         .receiptFileWithExtension(UserId(user.id), receiptId, fileId)
         .map(_.fold[Output[AsyncStream[Buf]]](Output.failure(new Exception("Receipt not found")))(fileToServe => {
-          val contentType = ContentTypeResolver.Default("file." + fileToServe.ext)
+          val mimeType = Option(URLConnection.guessContentTypeFromName("file." + fileToServe.ext)).getOrElse("application/octet-stream")
           Ok(AsyncStream.fromReader(Reader.fromStream(fileToServe.source), chunkSize = 128.kilobytes.inBytes.toInt))
-            .withHeader("Content-Type", contentType.value)
+            .withHeader("Content-Type", mimeType)
         }))
     }
 

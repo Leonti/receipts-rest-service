@@ -134,7 +134,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val input = Input.get(s"/receipt/2/file/${fileEntity.id}.txt").withHeaders("Authorization" -> "Bearer token")
 
     val output = receiptRouting.getReceiptFile(input).awaitOutputUnsafe()
-    output.flatMap(_.headers.get("Content-Type")) shouldBe Some("text/plain; charset=UTF-8")
+    output.flatMap(_.headers.get("Content-Type")) shouldBe Some("text/plain")
     output.map(o => asyncStreamToString(o.value)) shouldBe Some("some text")
   }
 
