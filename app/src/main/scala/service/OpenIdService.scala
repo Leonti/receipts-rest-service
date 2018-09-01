@@ -4,10 +4,11 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.concurrent.ExecutionContextExecutor
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest}
 import akka.http.scaladsl.unmarshalling.Unmarshal
+import cats.effect.IO
 import model.{AccessToken, ExternalUserInfo}
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.{Decoder, Encoder}
@@ -26,9 +27,8 @@ object OpenIdUserInfo {
 
 class OpenIdService()(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) {
 
-  val fetchAndValidateTokenInfo: AccessToken => Future[ExternalUserInfo] = accessToken => {
-
-    for {
+  val fetchAndValidateTokenInfo: AccessToken => IO[ExternalUserInfo] = accessToken => {
+    IO.fromFuture(IO(for {
       response <- Http().singleRequest(
         HttpRequest(
           method = HttpMethods.POST,
@@ -36,6 +36,6 @@ class OpenIdService()(implicit system: ActorSystem, executor: ExecutionContextEx
           headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
         ))
       userInfo <- Unmarshal(response.entity).to[OpenIdUserInfo]
-    } yield ExternalUserInfo(email = userInfo.email, sub = userInfo.sub)
+    } yield ExternalUserInfo(email = userInfo.email, sub = userInfo.sub)))
   }
 }
