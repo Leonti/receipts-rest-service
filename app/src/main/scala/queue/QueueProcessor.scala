@@ -45,8 +45,8 @@ class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[IO], ocrP
           queue.delete(job.id)
         case Left(e) =>
           val sw = new StringWriter
-          logger.error(s"Job failed to complete $job ${sw.toString}")
           e.printStackTrace(new PrintWriter(sw))
+          logger.error(s"Job failed to complete $job ${sw.toString}")
           queue.bury(job.id)
       }
   }
