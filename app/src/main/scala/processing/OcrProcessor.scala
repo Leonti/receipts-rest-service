@@ -16,9 +16,9 @@ class OcrProcessorTagless[F[_]: Monad](fileAlg: FileAlg[F],
 
   def processJob(ocrJob: OcrJob): F[List[QueueJob]] =
     for {
-      fileSource <- fetchFile(ocrJob.userId, ocrJob.fileId)
+      fileSource <- fetchFileInputStream(ocrJob.userId, ocrJob.fileId)
       tmpFile    <- tmpFile()
-      _          <- sourceToFile(fileSource, tmpFile)
+      _          <- streamToFile(fileSource, tmpFile)
       ocrResult  <- ocrImage(tmpFile)
       _          <- saveOcrResult(ocrJob.userId, ocrJob.receiptId, ocrResult)
       _          <- addOcrToIndex(ocrJob.userId, ocrJob.receiptId, OcrText(ocrResult.text))

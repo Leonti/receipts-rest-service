@@ -10,10 +10,10 @@ import com.twitter.io.{Buf, Reader}
 import io.finch._
 import io.finch.syntax._
 import model.{SubClaim, User, UserId}
-import service.BackupServiceIO
+import service.BackupService
 import com.twitter.conversions.storage._
 
-class BackupEndpoints[F[_]: ToTwitterFuture: Monad](auth: Endpoint[User], backupService: BackupServiceIO[F], tokenAlg: TokenAlg[F]) {
+class BackupEndpoints[F[_]: ToTwitterFuture: Monad](auth: Endpoint[User], backupService: BackupService[F], tokenAlg: TokenAlg[F]) {
 
   val getBackupToken: Endpoint[OAuth2AccessTokenResponse] = get(auth :: "backup" :: "token") { user: User =>
     tokenAlg.generatePathToken(s"/user/${user.id}/backup/download").map(Created)

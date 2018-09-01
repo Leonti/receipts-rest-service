@@ -1,18 +1,11 @@
 package algebras
 
 import java.io.{File, InputStream}
-
-import akka.stream.IOResult
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
 import authentication.OAuth2AccessTokenResponse
 import com.twitter.io.Buf
 import model._
 import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
-import fs2.Stream
-
-import scala.concurrent.Future
 import scala.language.higherKinds
 
 trait ReceiptAlg[F[_]] {
@@ -40,10 +33,8 @@ trait FileAlg[F[_]] {
   def saveStoredFile(storedFile: StoredFile): F[Unit]
   def findByMd5(userId: String, md5: String): F[Seq[StoredFile]]
   def deleteStoredFile(storedFileId: String): F[Unit]
-  def fetchFile(userId: String, fileId: String): F[Source[ByteString, Future[IOResult]]]
   def fetchFileInputStream(userId: String, fileId: String): F[InputStream]
-  def sourceToFile(source: Source[ByteString, Future[IOResult]], file: File): F[File]
-  def fs2StreamToFile(source: Stream[F, Byte], file: File): F[File]
+  def streamToFile(source: InputStream, file: File): F[File]
   def deleteFile(userId: String, fileId: String): F[Unit]
   def removeFile(file: File): F[Unit]
   def calculateMd5(file: File): F[String]

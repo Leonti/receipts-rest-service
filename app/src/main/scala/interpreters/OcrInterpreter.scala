@@ -23,22 +23,33 @@ object OcrIntepreter {
   case class OcrConfig(ocrHost: String, apiKey: String)
 }
 
-class OcrInterpreterTagless(httpClient: Client[IO], ocrRepository: OcrRepository, ocrService: OcrService, ocrConfig: OcrIntepreter.OcrConfig)(
-    implicit executor: ExecutionContextExecutor) extends OcrAlg[IO] {
+class OcrInterpreterTagless(httpClient: Client[IO],
+                            ocrRepository: OcrRepository,
+                            ocrService: OcrService,
+                            ocrConfig: OcrIntepreter.OcrConfig)(implicit executor: ExecutionContextExecutor)
+    extends OcrAlg[IO] {
 
   private implicit val ocrSearchResultDecoder: EntityDecoder[IO, OcrSearchResult] = jsonOf[IO, OcrSearchResult]
 
   override def ocrImage(file: File): IO[OcrTextAnnotation] = IO.fromFuture(IO(ocrService.ocrImage(file)))
   override def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): IO[OcrEntity] =
     IO.fromFuture(IO(ocrRepository.save(OcrEntity(userId = userId, id = receiptId, result = ocrResult))))
-  override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): IO[Unit] = httpClient.expect[String](POST(
-      Uri.unsafeFromString(s"${ocrConfig.ocrHost}/api/search/$userId/$receiptId"),
-      OcrContent(ocrText.text).asJson,
-      Authorization(Credentials.Token(CaseInsensitiveString("ApiKey"), ocrConfig.apiKey))))
-    .map(_ => ())
+  override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): IO[Unit] =
+    httpClient
+      .expect[String](
+        POST(
+          Uri.unsafeFromString(s"${ocrConfig.ocrHost}/api/search/$userId/$receiptId"),
+          OcrContent(ocrText.text).asJson,
+          Authorization(Credentials.Token(CaseInsensitiveString("ApiKey"), ocrConfig.apiKey))
+        ))
+      .map(_ => ())
 
-  override def findIdsByText(userId: String, query: String): IO[Seq[String]] = httpClient.expect[OcrSearchResult](GET(
-      Uri.unsafeFromString(s"${ocrConfig.ocrHost}/api/search/$userId").withQueryParam("q", query),
-      Authorization(Credentials.Token(CaseInsensitiveString("ApiKey"), ocrConfig.apiKey))))
-    .map(_.ids)
+  override def findIdsByText(userId: String, query: String): IO[Seq[String]] =
+    httpClient
+      .expect[OcrSearchResult](
+        GET(
+          Uri.unsafeFromString(s"${ocrConfig.ocrHost}/api/search/$userId").withQueryParam("q", query),
+          Authorization(Credentials.Token(CaseInsensitiveString("ApiKey"), ocrConfig.apiKey))
+        ))
+      .map(_.ids)
 }

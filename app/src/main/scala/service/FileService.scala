@@ -3,9 +3,6 @@ package service
 import java.io.{File, FileInputStream, InputStream}
 import java.util.concurrent.Executors
 import java.security.{DigestInputStream, MessageDigest}
-import akka.stream.{IOResult, Materializer}
-import akka.stream.scaladsl.{Source, _}
-import akka.util.ByteString
 import cats.effect.IO
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
@@ -21,8 +18,6 @@ import scala.concurrent.{ExecutionContext, Future}
 trait FileService {
 
   def save(userId: String, file: File, ext: String): Future[Seq[FileEntity]]
-
-  def fetch(userId: String, fileId: String): Source[ByteString, Future[IOResult]]
 
   def fetchInputStream(userId: String, fileId: String): InputStream
 
@@ -57,16 +52,13 @@ trait FileService {
 
 }
 
-class S3FileService(materializer: Materializer, fileCachingService: FileCachingService, imageResizingService: ImageResizingService)
-    extends FileService
-    with Retry {
+class S3FileService(imageResizingService: ImageResizingService) extends FileService with Retry {
   val s3Bucket = sys.env("S3_BUCKET")
   val s3Region = sys.env("S3_REGION")
   val logger   = Logger(LoggerFactory.getLogger("S3FileService"))
 
-  implicit val mat: Materializer = materializer
-  implicit val irs               = imageResizingService
-  implicit val ec                = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+  implicit val irs = imageResizingService
+  implicit val ec  = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
   lazy val amazonS3Client = {
     val credentials = new BasicAWSCredentials(sys.env("S3_ACCESS_KEY"), sys.env("S3_SECRET_ACCESS_KEY"))
@@ -125,20 +117,8 @@ class S3FileService(materializer: Materializer, fileCachingService: FileCachingS
 
     // FIXME - remove Future
     IO.fromFuture(IO(Future {
-      fileCachingService.cacheFile(userId, fileId, file)
       amazonS3Client.putObject(putObjectRequest)
     }))
-  }
-
-  val fetchFromS3: (String, String) => Source[ByteString, Future[IOResult]] = (userId, fileId) => {
-    val fileStream = () => amazonS3Client.getObject(s3Bucket, s"user/$userId/$fileId").getObjectContent
-    StreamConverters.fromInputStream(fileStream)
-  }
-
-  override def fetch(userId: String, fileId: String): Source[ByteString, Future[IOResult]] = {
-    fileCachingService
-      .get(userId, fileId)
-      .getOrElse(fetchFromS3(userId, fileId).via(fileCachingService.cacheFlow(userId, fileId)))
   }
 
   override def delete(userId: String, fileId: String): Future[Unit] = {
@@ -146,11 +126,4 @@ class S3FileService(materializer: Materializer, fileCachingService: FileCachingS
   }
   override def fetchInputStream(userId: String, fileId: String): InputStream =
     amazonS3Client.getObject(s3Bucket, s"user/$userId/$fileId").getObjectContent
-}
-
-object FileService {
-
-  def s3(materializer: Materializer, fileCachingService: FileCachingService, imageResizingService: ImageResizingService) =
-    new S3FileService(materializer, fileCachingService, imageResizingService)
-
 }

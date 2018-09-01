@@ -12,7 +12,7 @@ import io.finch.{Endpoint, Input}
 import model._
 import org.scalatest.{FlatSpec, Matchers}
 import routing.BackupEndpoints
-import service.BackupServiceIO
+import service.BackupService
 
 class BackupEndpointsSpec extends FlatSpec with Matchers {
 
@@ -39,7 +39,7 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
 
     val backupEndpoints = new BackupEndpoints[Id](
       successfulAuth,
-      new BackupServiceIO[Id](new ReceiptInterpreterId(List(receipt)), fileInt),
+      new BackupService[Id](new ReceiptInterpreterId(List(receipt)), fileInt),
       tokenInt
     )
 

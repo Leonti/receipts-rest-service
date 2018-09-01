@@ -1,9 +1,8 @@
 import java.io.File
+import java.util.concurrent.Executors
 
 import org.slf4j.LoggerFactory
 import com.typesafe.scalalogging.Logger
-import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, Materializer}
 import authentication.BearerAuth
 import cats.effect.IO
 import io.finch.circe._
@@ -20,7 +19,7 @@ import routing.ExceptionEncoders._
 import routing._
 import service._
 
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import interpreters._
 import ocr.service.{GoogleOcrService, OcrServiceStub}
 import processing.{FileProcessorTagless, OcrProcessorTagless, ReceiptFiles}
@@ -30,13 +29,11 @@ import instances.catsio._
 import io.finch.Endpoint
 import org.http4s.client.Client
 import org.http4s.client.blaze.{BlazeClientConfig, Http1Client}
+
 import scala.concurrent.duration._
-// http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
 
 trait AkkaHttpService {
-  implicit val system: ActorSystem
   implicit def executor: ExecutionContextExecutor
-  implicit val materializer: Materializer
 
   val policy: Cors.Policy = Cors.Policy(
     allowsOrigin = _ => Some("*"),
@@ -61,9 +58,7 @@ trait AkkaHttpService {
 object ReceiptRestService extends App with AkkaHttpService {
   val logger = Logger(LoggerFactory.getLogger("ReceiptRestService"))
 
-  override implicit val system       = ActorSystem()
-  override implicit val executor     = system.dispatcher
-  override implicit val materializer = ActorMaterializer()
+  override implicit val executor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
   override val config = ConfigFactory.load()
 
@@ -75,11 +70,10 @@ object ReceiptRestService extends App with AkkaHttpService {
     )).unsafeRunSync
   val openIdService = new OpenIdService(httpClient)
 
-  val fileCachingService    = new FileCachingService()
   val imageResizingService  = new ImageResizingService()
   val pendingFileRepository = new PendingFileRepository()
   val pendingFileService    = new PendingFileService(pendingFileRepository)
-  val fileService           = FileService.s3(materializer, fileCachingService, imageResizingService)
+  val fileService           = new S3FileService(imageResizingService)
 
   val queue            = new Queue()
   val receiptFileQueue = new ReceiptFileQueue(queue)
@@ -99,7 +93,7 @@ object ReceiptRestService extends App with AkkaHttpService {
   val tokenInterpreter  = new TokenInterpreter[IO](sys.env("AUTH_TOKEN_SECRET").getBytes)
   val randomInterpreter = new RandomInterpreterTagless()
   val fileInterpreter =
-    new FileInterpreterTagless(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer)
+    new FileInterpreterTagless(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)
   val receiptInterpreter = new ReceiptInterpreterTagless(receiptRepository)
   val ocrInterpreter =
     new OcrInterpreterTagless(httpClient,
@@ -137,9 +131,7 @@ object ReceiptRestService extends App with AkkaHttpService {
   val userEndpoints      = new UserEndpoints(auth)
   val appConfigEndpoints = new AppConfigEndpoints(sys.env("GOOGLE_CLIENT_ID"))
   val oauthEndpoints     = new OauthEndpoints[IO](userPrograms)
-
-  val backupService   = new BackupService(receiptInterpreter, fileInterpreter)
-  val backupEndpoints = new BackupEndpoints[IO](auth, new BackupServiceIO[IO](receiptInterpreter, fileInterpreter), tokenInterpreter)
+  val backupEndpoints    = new BackupEndpoints[IO](auth, new BackupService[IO](receiptInterpreter, fileInterpreter), tokenInterpreter)
 
   val fileProcessor  = new FileProcessorTagless(receiptInterpreter, fileInterpreter)
   val ocrProcessor   = new OcrProcessorTagless[IO](fileInterpreter, ocrInterpreter, randomInterpreter, pendingFileInterpreter)
