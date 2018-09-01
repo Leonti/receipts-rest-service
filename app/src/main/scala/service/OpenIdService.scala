@@ -1,18 +1,16 @@
 package service
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.stream.ActorMaterializer
-
 import scala.concurrent.ExecutionContextExecutor
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest}
-import akka.http.scaladsl.unmarshalling.Unmarshal
 import cats.effect.IO
 import model.{AccessToken, ExternalUserInfo}
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import org.http4s._
+import org.http4s.client.Client
+import org.http4s.dsl.io._
+import org.http4s.client.dsl.io._
+import org.http4s.headers._
+import org.http4s.circe.CirceEntityCodec._
 
 case class OpenIdUserInfo(
     sub: String,
@@ -25,17 +23,14 @@ object OpenIdUserInfo {
   implicit val openIdUserInfoEncoder: Encoder[OpenIdUserInfo] = deriveEncoder
 }
 
-class OpenIdService()(implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: ActorMaterializer) {
+class OpenIdService(httpClient: Client[IO])(implicit ec: ExecutionContextExecutor) {
 
-  val fetchAndValidateTokenInfo: AccessToken => IO[ExternalUserInfo] = accessToken => {
-    IO.fromFuture(IO(for {
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = s"https://leonti.au.auth0.com/userinfo",
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
+  def fetchAndValidateTokenInfo(accessToken: AccessToken): IO[ExternalUserInfo] =
+    httpClient
+      .expect[OpenIdUserInfo](
+        GET(
+          Uri.uri("https://leonti.au.auth0.com/userinfo"),
+          Authorization(Credentials.Token(AuthScheme.Bearer, accessToken.value))
         ))
-      userInfo <- Unmarshal(response.entity).to[OpenIdUserInfo]
-    } yield ExternalUserInfo(email = userInfo.email, sub = userInfo.sub)))
-  }
+      .map(userInfo => ExternalUserInfo(email = userInfo.email, sub = userInfo.sub))
 }

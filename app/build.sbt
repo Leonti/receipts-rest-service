@@ -34,7 +34,8 @@ val diffsonV        = "3.0.0"
 val catsV           = "1.2.0"
 val circeVersion = "0.9.3"
 val finchV = "0.23.0"
-val fs2V = "0.10.5"
+val fs2V = "1.0.0-M1"
+val http4sVersion = "1.0.0-SNAPSHOT"
 
 val logging = Seq(
   "ch.qos.logback"             % "logback-classic"          % logbackV,
@@ -84,6 +85,13 @@ libraryDependencies ++= {
 }
 
 libraryDependencies ++= Seq(
+  "org.http4s" %% "http4s-dsl" % http4sVersion,
+  "org.http4s" %% "http4s-blaze-server" % http4sVersion,
+  "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+  "org.http4s" %% "http4s-circe" % http4sVersion
+)
+
+libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
@@ -97,6 +105,8 @@ resolvers ++= Seq(
 
 resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
+
+updateOptions := updateOptions.value.withLatestSnapshots(false)
 
 mainClass in assembly := Some("ReceiptRestService")
 

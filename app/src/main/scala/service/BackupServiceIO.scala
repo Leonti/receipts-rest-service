@@ -72,8 +72,8 @@ class BackupServiceIO[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F
       val inputStream  = new PipedInputStream()
       val outputStream = IO.fromFuture(IO(Future { new PipedOutputStream(inputStream) }))
       val runStream = Stream
-        .bracket(outputStream.map(os => new ZipOutputStream(os)))(filesToStream(filesToZip),
-                                                                  zipOutputStream => IO { zipOutputStream.close() })
+        .bracket(outputStream.map(os => new ZipOutputStream(os)))(zipOutputStream => IO { zipOutputStream.close() })
+        .flatMap(filesToStream(filesToZip))
         .compile
         .drain
 

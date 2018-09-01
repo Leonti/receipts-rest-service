@@ -28,6 +28,9 @@ import queue.{Queue, QueueProcessor}
 import queue.files.ReceiptFileQueue
 import instances.catsio._
 import io.finch.Endpoint
+import org.http4s.client.Client
+import org.http4s.client.blaze.{BlazeClientConfig, Http1Client}
+import scala.concurrent.duration._
 // http://bandrzejczak.com/blog/2015/12/06/sso-for-your-single-page-application-part-2-slash-2-akka-http/
 
 trait AkkaHttpService {
@@ -65,7 +68,12 @@ object ReceiptRestService extends App with AkkaHttpService {
   override val config = ConfigFactory.load()
 
   val userRepository = new UserRepository()
-  val openIdService  = new OpenIdService()
+  val httpClient: Client[IO] = Http1Client[IO](
+    BlazeClientConfig.defaultConfig.copy(
+      responseHeaderTimeout = 60.seconds,
+      requestTimeout = 60.second
+    )).unsafeRunSync
+  val openIdService = new OpenIdService(httpClient)
 
   val fileCachingService    = new FileCachingService()
   val imageResizingService  = new ImageResizingService()
@@ -94,7 +102,8 @@ object ReceiptRestService extends App with AkkaHttpService {
     new FileInterpreterTagless(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)(materializer)
   val receiptInterpreter = new ReceiptInterpreterTagless(receiptRepository)
   val ocrInterpreter =
-    new OcrInterpreterTagless(ocrRepository,
+    new OcrInterpreterTagless(httpClient,
+                              ocrRepository,
                               ocrService,
                               OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY")))
   val pendingFileInterpreter = new PendingFileInterpreterTagless(pendingFileRepository)
