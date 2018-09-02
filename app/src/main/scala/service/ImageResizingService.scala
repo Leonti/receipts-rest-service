@@ -4,8 +4,6 @@ import java.io.File
 import java.util.concurrent.Executors
 
 import cats.effect.IO
-import com.typesafe.scalalogging.Logger
-import org.slf4j.LoggerFactory
 import io.circe.{Decoder, Encoder}
 import cats.syntax.either._
 
@@ -29,7 +27,6 @@ object ImageSizeJson {
 }
 
 class ImageResizingService {
-  val logger      = Logger(LoggerFactory.getLogger("ImageResizingService"))
   implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
   val resize: (File, ImageSize) => IO[File] = (originalFile, imageSize: ImageSize) => {
@@ -40,7 +37,8 @@ class ImageResizingService {
     IO.fromFuture(IO(Future {
 
       if (cmd.! != 0) {
-        logger.error("Could not resize image:", cmd)
+        // FIXME - log error
+        println("Could not resize image:", cmd)
         throw new RuntimeException(s"Could not resize the image ${originalFile.getAbsolutePath}")
       }
 
@@ -58,7 +56,8 @@ class ImageResizingService {
     IO.fromFuture(IO(Future {
 
       if (cmd.! != 0) {
-        logger.error("Could not resize image:", cmd)
+        // TODO log error
+        println("Could not resize image:", cmd)
         throw new RuntimeException(s"Could not resize the image ${originalFile.getAbsolutePath}")
       }
 

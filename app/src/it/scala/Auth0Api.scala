@@ -1,15 +1,13 @@
 import TestConfig._
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshalling.Marshal
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, RequestEntity, StatusCode}
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.ActorMaterializer
+import cats.effect.IO
 import io.circe.generic.auto._
+import org.http4s._
+import org.http4s.client.Client
+import org.http4s.dsl.io._
+import org.http4s.client.dsl.io._
+import org.http4s.headers._
+import org.http4s.circe.CirceEntityCodec._
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class Auth0TokenRequest(
@@ -41,68 +39,50 @@ case class Auth0CreateUserRequest(
     email_verified: Boolean = true
                                  )
 
-object Auth0Api {
-  implicit val system       = ActorSystem()
-  implicit val materializer = ActorMaterializer()
+class Auth0Api(httpClient: Client[IO]) {
 
-  private def requestAuth0RequestToken(): Future[Auth0TokenResponse] = {
-    val tokenRequest = Auth0TokenRequest(
-      client_id = auth0ApiClientId,
-      client_secret = auth0ApiClientSecret,
-      audience = auth0ApiAudience
+  private def requestAuth0AccessToken(): IO[Auth0TokenResponse] = httpClient.expect[Auth0TokenResponse](
+    POST(
+     Uri.uri("https://leonti.au.auth0.com/oauth/token"),
+      Auth0TokenRequest(
+        client_id = auth0ApiClientId,
+        client_secret = auth0ApiClientSecret,
+        audience = auth0ApiAudience
+      )
     )
+  )
 
-    for {
-      requestEntity <- Marshal(tokenRequest).to[RequestEntity]
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = "https://leonti.au.auth0.com/oauth/token",
-          entity = requestEntity
-        ))
-      auth0Token <- Unmarshal(response.entity).to[Auth0TokenResponse]
-    } yield auth0Token
+  private def requestUserToken(email: String, password: String): IO[Auth0TokenResponse] = httpClient.expect[Auth0TokenResponse](
+    POST(
+      Uri.uri("https://leonti.au.auth0.com/oauth/token"),
+      PasswordGrantRequest(
+        username = email,
+        password = password,
+        client_id = auth0ApiClientId,
+        client_secret = auth0ApiClientSecret
+      )
+    )
+  )
+
+  private def createAuth0User(auth0CreateUserRequest: Auth0CreateUserRequest, accessToken: String): IO[Unit] = httpClient.fetch(
+    POST(
+      Uri.unsafeFromString(s"${auth0BaseUrl}users"),
+      auth0CreateUserRequest,
+      Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
+    )
+  ) {
+    case Status.Created(_) => IO.pure(())
+    case _ => IO.raiseError(new RuntimeException("Failed to create a user in auth0"))
   }
 
-  private def requestUserToken(email: String, password: String): Future[Auth0TokenResponse] = {
-    val passwordGrantRequest = PasswordGrantRequest(
-      username = email,
-      password = password,
-      client_id = auth0ApiClientId,
-      client_secret = auth0ApiClientSecret
-    )
-
-    for {
-      requestEntity <- Marshal(passwordGrantRequest).to[RequestEntity]
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = "https://leonti.au.auth0.com/oauth/token",
-          entity = requestEntity
-        ))
-      auth0Token <- Unmarshal(response.entity).to[Auth0TokenResponse]
-    } yield auth0Token
-  }
-
-  def createUserAndGetAccessToken(): Future[String] = {
+  def createUserAndGetAccessToken(): IO[String] = {
     val auth0CreateUserRequest = Auth0CreateUserRequest(
       email = s"ci_user_${java.util.UUID.randomUUID()}@mailinator.com"
     )
 
     for {
-      auth0Token <- requestAuth0RequestToken()
-      requestEntity <- Marshal(auth0CreateUserRequest).to[RequestEntity]
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = s"${auth0BaseUrl}users",
-          entity = requestEntity,
-          headers = List(Authorization(OAuth2BearerToken(auth0Token.access_token)))
-        ))
-      _ <- if (response.status == StatusCode.int2StatusCode(201)) Future.successful(()) else {
-        println("Failed to create a user in auth0")
-        Future.failed(new RuntimeException("Failed to create a user in auth0"))
-      }
+      auth0Token <- requestAuth0AccessToken()
+      _ <- createAuth0User(auth0CreateUserRequest, auth0Token.access_token)
       userAccessToken <- requestUserToken(auth0CreateUserRequest.email, auth0CreateUserRequest.password)
     } yield userAccessToken.access_token
   }

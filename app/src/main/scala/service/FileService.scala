@@ -8,10 +8,7 @@ import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.{PutObjectRequest, PutObjectResult}
-import com.typesafe.scalalogging.Logger
 import model.{FileEntity, ImageMetadata}
-import org.slf4j.LoggerFactory
-
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -55,7 +52,6 @@ trait FileService {
 class S3FileService(imageResizingService: ImageResizingService) extends FileService with Retry {
   val s3Bucket = sys.env("S3_BUCKET")
   val s3Region = sys.env("S3_REGION")
-  val logger   = Logger(LoggerFactory.getLogger("S3FileService"))
 
   implicit val irs = imageResizingService
   implicit val ec  = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
@@ -79,7 +75,7 @@ class S3FileService(imageResizingService: ImageResizingService) extends FileServ
 
     val retryIntervals = Seq(1.seconds, 10.seconds, 30.seconds)
 
-    logger.info(s"Uploading file ${file.getAbsolutePath}")
+    println(s"Uploading file ${file.getAbsolutePath}")
     val uploadResult = retry(upload(userId, fileId, file), retryIntervals)
     val fileEntity   = toFileEntity(None, fileId, file, ext, Some(md5(file)))
 
@@ -88,7 +84,7 @@ class S3FileService(imageResizingService: ImageResizingService) extends FileServ
       val resizedFileEntity: IO[FileEntity] = imageResizingService
         .resize(file, WebSize)
         .flatMap(resizedFile => {
-          logger.info(s"Starting to upload a resized file $resizedFileId")
+          println(s"Starting to upload a resized file $resizedFileId")
           retry(upload(userId, resizedFileId, resizedFile).map(ur => resizedFile), retryIntervals)
         })
         .map(resizedFile => {
@@ -98,12 +94,12 @@ class S3FileService(imageResizingService: ImageResizingService) extends FileServ
         })
 
       Seq(uploadResult.map(ur => {
-        logger.info(s"File uploaded to S3 with $ur")
+        println(s"File uploaded to S3 with $ur")
         fileEntity
       }), resizedFileEntity)
     } else {
       Seq(uploadResult.map(ur => {
-        logger.info(s"File uploaded to S3 with $ur")
+        println(s"File uploaded to S3 with $ur")
         fileEntity
       }))
     }

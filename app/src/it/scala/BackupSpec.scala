@@ -2,7 +2,6 @@ import java.io.ByteArrayInputStream
 import java.util.zip.{ZipEntry, ZipInputStream}
 
 import ReceiptTestUtils._
-import UserTestUtils._
 import TestConfig._
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -18,6 +17,8 @@ import org.scalatest.{FlatSpec, Matchers}
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import akka.stream.scaladsl.Sink
 import akka.util.ByteString
+import cats.effect.IO
+import org.http4s.client.blaze.Http1Client
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -27,6 +28,9 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
     PatienceConfig(timeout = Span(120, Seconds), interval = Span(1000, Millis))
   implicit val system       = ActorSystem()
   implicit val materializer = ActorMaterializer()
+
+  val userTestUtils = new UserTestUtils(Http1Client[IO]().unsafeRunSync())
+  import userTestUtils._
 
   it should "test downloading a backup" in {
 

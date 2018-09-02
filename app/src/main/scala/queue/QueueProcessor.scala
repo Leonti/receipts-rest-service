@@ -5,8 +5,6 @@ import java.util.concurrent.Executors
 import cats.effect.IO
 import cats.syntax.all._
 import cats.instances.list._
-import com.typesafe.scalalogging.Logger
-import org.slf4j.LoggerFactory
 import processing.{FileProcessorTagless, OcrProcessorTagless}
 
 import scala.concurrent.duration._
@@ -14,12 +12,11 @@ import scala.concurrent.ExecutionContext
 
 class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[IO], ocrProcessor: OcrProcessorTagless[IO]) {
 
-  val logger = Logger(LoggerFactory.getLogger("QueueProcessor"))
   // FIXME - figure out how to pick up job in a single thread, but process in multiple
   private implicit val ec = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
   def reserveNextJob(): IO[Unit] = {
-    logger.info("Checking for new jobs")
+    println("Checking for new jobs")
     queue
       .reserve()
       .flatMap({
@@ -31,7 +28,8 @@ class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[IO], ocrP
         IO.sleep(nextPickupTimeout) *> reserveNextJob()
       })
       .handleError(e => {
-        logger.error(s"Exception on reserving next job $e")
+        // FIXME - log error
+        println(s"Exception on reserving next job $e")
         IO.sleep(10.seconds) *> reserveNextJob()
       })
   }
@@ -41,18 +39,19 @@ class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[IO], ocrP
       .flatMap(jobs => jobs.map(job => queue.put(job)).sequence)
       .runAsync {
         case Right(_) =>
-          logger.info(s"Job finished succesfully $job")
+          println(s"Job finished succesfully $job")
           queue.delete(job.id)
         case Left(e) =>
           val sw = new StringWriter
           e.printStackTrace(new PrintWriter(sw))
-          logger.error(s"Job failed to complete $job ${sw.toString}")
+          // FXIME log error
+          println(s"Job failed to complete $job ${sw.toString}")
           queue.bury(job.id)
       }
   }
 
   private def process(job: ReservedJob): IO[Unit] = {
-    logger.info(s"Processing job $job")
+    println(s"Processing job $job")
 
     job.job match {
       case receiptFileJob: ReceiptFileJob =>

@@ -1,8 +1,5 @@
 import java.io.File
 import java.util.concurrent.Executors
-
-import org.slf4j.LoggerFactory
-import com.typesafe.scalalogging.Logger
 import authentication.BearerAuth
 import cats.effect.IO
 import io.finch.circe._
@@ -31,8 +28,6 @@ import org.http4s.client.blaze.{BlazeClientConfig, Http1Client}
 import scala.concurrent.duration._
 
 object ReceiptRestService extends App {
-  val logger = Logger(LoggerFactory.getLogger("ReceiptRestService"))
-
   val policy: Cors.Policy = Cors.Policy(
     allowsOrigin = _ => Some("*"),
     allowsMethods = _ => Some(Seq("OPTIONS", "PATCH", "POST", "PUT", "GET", "DELETE")),
@@ -93,8 +88,6 @@ object ReceiptRestService extends App {
   val pendingFileInterpreter = new PendingFileInterpreterTagless(pendingFileRepository)
 
   val userPrograms = new UserPrograms(userInterpreter, randomInterpreter)
-
-  logger.info("Testing logging")
 
   val receiptPrograms = new ReceiptPrograms[IO](
     receiptInterpreter,
