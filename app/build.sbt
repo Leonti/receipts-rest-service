@@ -59,10 +59,8 @@ libraryDependencies ++= {
     "com.google.api-client" % "google-api-client"          % googleApiClient excludeAll (
       ExclusionRule(organization="com.google.guava", name="guava-jdk5")
       ),
-    "com.typesafe" % "config" % "1.3.2", // needed for reactrivemongo
-  "org.reactivemongo"     %% "reactivemongo"             % reactiveMongoV excludeAll (
-      ExclusionRule(organization = "com.typesafe.akka")
-    ),
+//    "com.typesafe" % "config" % "1.3.2", // needed for reactrivemongo
+    "org.reactivemongo"     %% "reactivemongo"             % reactiveMongoV,
     "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
     "org.typelevel"        %% "cats-core"              % catsV,
     "org.gnieh"     %% "diffson-circe" % diffsonV,
