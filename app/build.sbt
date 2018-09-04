@@ -21,8 +21,6 @@ scalacOptions := Seq("-unchecked",
 
 addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersion.binary)
 
-val akkaV           = "2.4.20"
-val akkaHttpV       = "10.0.11"
 val amazonS3V       = "1.11.241"
 val scalaTestV      = "3.0.4"
 val reactiveMongoV  = "0.12.6"
@@ -41,8 +39,7 @@ val logging = Seq(
   "ch.qos.logback"             % "logback-classic"          % logbackV,
   "com.typesafe.scala-logging" %% "scala-logging"           % scalaLoggingV,
   "org.slf4j"                  % "slf4j-api"                % "1.7.12",
-  "net.logstash.logback"       % "logstash-logback-encoder" % "4.8",
-  "com.typesafe.akka"          %% "akka-slf4j"              % akkaV
+  "net.logstash.logback"       % "logstash-logback-encoder" % "4.8"
 )
 
 lazy val root = (project in file("."))
@@ -53,12 +50,6 @@ lazy val root = (project in file("."))
 
 libraryDependencies ++= {
   Seq(
-    "com.typesafe.akka"     %% "akka-actor"                % akkaV,
-    "com.typesafe.akka"     %% "akka-stream"               % akkaV,
-    "com.typesafe.akka"     %% "akka-http-core"            % akkaHttpV,
-    "com.typesafe.akka"     %% "akka-http"                 % akkaHttpV,
-    "com.typesafe.akka"     %% "akka-http-testkit"         % akkaHttpV,
-    "de.heikoseeberger" %% "akka-http-circe" % "1.21.0",
     "com.github.finagle" %% "finch-core" % finchV,
     "com.github.finagle" %% "finch-circe" % finchV,
     "com.amazonaws"         % "aws-java-sdk-s3"            % amazonS3V,
@@ -68,7 +59,8 @@ libraryDependencies ++= {
     "com.google.api-client" % "google-api-client"          % googleApiClient excludeAll (
       ExclusionRule(organization="com.google.guava", name="guava-jdk5")
       ),
-    "org.reactivemongo"     %% "reactivemongo"             % reactiveMongoV excludeAll (
+    "com.typesafe" % "config" % "1.3.2", // needed for reactrivemongo
+  "org.reactivemongo"     %% "reactivemongo"             % reactiveMongoV excludeAll (
       ExclusionRule(organization = "com.typesafe.akka")
     ),
     "com.drewnoakes"       % "metadata-extractor" % "2.9.0",

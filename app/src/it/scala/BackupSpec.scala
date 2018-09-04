@@ -1,77 +1,56 @@
 import java.io.ByteArrayInputStream
 import java.util.zip.{ZipEntry, ZipInputStream}
 
-import ReceiptTestUtils._
 import TestConfig._
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.ActorMaterializer
 import authentication.OAuth2AccessTokenResponse
-import model.ReceiptEntity
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FlatSpec, Matchers}
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import akka.stream.scaladsl.Sink
-import akka.util.ByteString
 import cats.effect.IO
 import org.http4s.client.blaze.Http1Client
+import org.http4s._
+import org.http4s.dsl.io._
+import org.http4s.client.dsl.io._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
-  implicit val defaultPatience =
+  implicit val defaultPatience: PatienceConfig =
     PatienceConfig(timeout = Span(120, Seconds), interval = Span(1000, Millis))
-  implicit val system       = ActorSystem()
-  implicit val materializer = ActorMaterializer()
 
-  val userTestUtils = new UserTestUtils(Http1Client[IO]().unsafeRunSync())
-  import userTestUtils._
+  private val httpClient = Http1Client[IO]().unsafeRunSync()
+  val userTestUtils = new UserTestUtils(httpClient)
+  val receiptTestUtils = new ReceiptTestUtils(httpClient)
 
-  it should "test downloading a backup" in {
+  private def getBackupToken(accessToken: String): IO[OAuth2AccessTokenResponse] = {
+    import org.http4s.circe.CirceEntityCodec._
 
-    val zipEntriesFuture: Future[List[ZipEntry]] = for {
-      (userInfo, accessToken)      <- createUser()
-      requestEntity <- createImageFileContent()
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = s"$appHostPort/receipt",
-          entity = requestEntity,
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
-      firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      receiptEntity      <- getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
-      backupToken <- Http()
-        .singleRequest(
-          HttpRequest(
-            method = HttpMethods.GET,
-            uri = s"$appHostPort/backup/token",
-            headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-          ))
-        .flatMap(response => Unmarshal(response.entity).to[OAuth2AccessTokenResponse])
-      backupResponse <- Http().singleRequest(
-        HttpRequest(method = HttpMethods.GET,
-                    uri = s"$appHostPort/user/${userInfo.id}/backup/download?access_token=${backupToken.accessToken}",
-                    entity = requestEntity))
-      backupBytes <- responseToBytes(backupResponse)
-      zipEntries  <- Future.successful(toZipEntries(backupBytes))
-    } yield zipEntries
-
-    whenReady(zipEntriesFuture) { zipEntries: List[ZipEntry] =>
-      zipEntries.length shouldBe 2
-    }
-
+    httpClient.expect[OAuth2AccessTokenResponse](
+      GET(
+        org.http4s.Uri.unsafeFromString(s"$appHostPort/backup/token"),
+        org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
+      )
+    )
   }
 
-  def responseToBytes(httpResponse: HttpResponse): Future[Array[Byte]] = {
-    val reduceSink = Sink.reduce[ByteString](_ ++ _)
-    val byteString = httpResponse.entity.getDataBytes().runWith(reduceSink, materializer)
-    byteString.map(_.toArray)
+  private def getBackup(userId: String, backupToken: String): IO[Array[Byte]] = httpClient.expect[Array[Byte]](
+    GET(org.http4s.Uri.unsafeFromString(s"$appHostPort/user/$userId/backup/download?access_token=$backupToken"))
+  )
+
+  it should "download a backup" in {
+
+    val zipEntriesIO: IO[List[ZipEntry]] = for {
+      r      <- userTestUtils.createUser
+      (userInfo, accessToken) = r
+      firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContentNew, accessToken.value)
+      _ <- receiptTestUtils.getProcessedReceiptNew(firstReceiptEntity.id, accessToken.value)
+      backupToken <- getBackupToken(accessToken.value)
+      backupBytes <- getBackup(userInfo.id, backupToken.accessToken)
+    } yield toZipEntries(backupBytes)
+
+    whenReady(zipEntriesIO.unsafeToFuture()) { zipEntries: List[ZipEntry] =>
+      zipEntries.length shouldBe 2
+    }
   }
 
   def toZipEntries(bytes: Array[Byte]): List[ZipEntry] = {

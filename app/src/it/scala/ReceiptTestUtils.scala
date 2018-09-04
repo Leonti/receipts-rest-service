@@ -1,103 +1,157 @@
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
 import model.{PendingFile, ReceiptEntity}
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model.ContentTypes._
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.model.{ContentTypes, _}
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.ActorMaterializer
-import akka.util.ByteString
 import TestConfig._
+import cats.effect.IO
+import cats.syntax.all._
+import org.http4s._
+import org.http4s.client.Client
+import org.http4s.dsl.io._
+import org.http4s.client.dsl.io._
+import org.http4s.headers._
+import org.http4s.multipart.Part
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.io.BufferedSource
 
-package object ReceiptTestUtils {
-
-  implicit val system       = ActorSystem()
-  implicit val materializer = ActorMaterializer()
-
+object ReceiptTestUtils {
   val total           = Some(BigDecimal(12.38))
   val description     = "some description"
   val transactionTime = 1480130712396l
   val tags            = List("veggies", "food")
   val tagsAsString    = tags.reduce((acc, tag) => s"$acc,$tag")
+}
 
-  // utility functions
-  def getProcessedReceipt(receiptId: String, accessToken: String): Future[ReceiptEntity] = {
+class ReceiptTestUtils(httpClient: Client[IO]) {
 
-    def pendingFiles(): Future[List[PendingFile]] = {
+  def getProcessedReceiptNew(receiptId: String, accessToken: String): IO[ReceiptEntity] = {
+    val pfs = pendingFilesNew(accessToken)
+
+    pendingFilesToReceiptNew(receiptId, pfs, accessToken, 0)
+  }
+
+  private def pendingFilesNew(accessToken: String): IO[List[PendingFile]] = {
+    import org.http4s.circe.CirceEntityCodec._
+
+    httpClient.expect[List[PendingFile]](
+      GET(
+        org.http4s.Uri.unsafeFromString(s"$appHostPort/pending-file"),
+        org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
+      )
+    )
+  }
+
+  private def pendingFilesToReceiptNew(receiptId: String, pendingFilesIO: IO[List[PendingFile]], accessToken: String, retry: Int): IO[ReceiptEntity] = {
+    val checkInterval = 1.second
+
+    if (retry > 60) {
+      IO.raiseError(new RuntimeException("Could not get receipt entity in time"))
+    } else {
       for {
-        userPendingFilesResponse <- Http().singleRequest(
-          HttpRequest(method = HttpMethods.GET,
-                      uri = s"$appHostPort/pending-file",
-                      headers = List(Authorization(OAuth2BearerToken(accessToken)))))
-        userPendingFiles <- Unmarshal(userPendingFilesResponse.entity).to[List[PendingFile]]
-      } yield userPendingFiles
-    }
-
-    def receiptEntity(): Future[ReceiptEntity] = {
-      for {
-        response <- Http().singleRequest(
-          HttpRequest(method = HttpMethods.GET,
-                      uri = s"$appHostPort/receipt/$receiptId",
-                      headers = List(Authorization(OAuth2BearerToken(accessToken)))))
-        receipt <- Unmarshal(response.entity).to[ReceiptEntity]
+        pending <- pendingFilesIO
+        receipt <- if (pending.exists(_.receiptId == receiptId))
+          IO.sleep(checkInterval) *> pendingFilesToReceiptNew(receiptId, pendingFilesIO, accessToken, retry + 1)
+        else
+          fetchReceipt(receiptId, accessToken)
       } yield receipt
     }
-
-    def pendingFilesToReceipt(pendingFilesFuture: Future[List[PendingFile]], retry: Int = 0): Future[ReceiptEntity] = {
-      val checkInterval = 1.seconds
-
-      if (retry > 60) Future.failed(new RuntimeException("Could not get receipt entity in time"))
-      else {
-        for {
-          pending <- pendingFilesFuture
-          receipt <- if (pending.exists(_.receiptId == receiptId))
-            akka.pattern.after(checkInterval, using = system.scheduler)(pendingFilesToReceipt(pendingFiles(), retry + 1))
-          else
-            receiptEntity()
-        } yield receipt
-      }
-    }
-
-    pendingFilesToReceipt(pendingFiles())
   }
 
-  def createTextFileContent(text: String): Future[RequestEntity] = {
-    val content = text.getBytes
-    val multipartForm =
-      Multipart.FormData(
-        Multipart.FormData.BodyPart.Strict("receipt", HttpEntity(`application/octet-stream`, content), Map("filename" -> "receipt.txt")),
-        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity(s"${total.get}")),
-        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity(description)),
-        Multipart.FormData.BodyPart.Strict("transactionTime", utf8TextEntity(s"$transactionTime")),
-        Multipart.FormData.BodyPart.Strict("tags", utf8TextEntity(tagsAsString))
+  def createReceipt(formBody: org.http4s.multipart.Multipart[IO], accessToken: String): IO[ReceiptEntity] = createReceiptEither(formBody, accessToken).flatMap({
+    case Left(statusCode) => IO.raiseError(new Exception(s"Creating receipt failed, response code: $statusCode"))
+    case Right(receipt) => IO.pure(receipt)
+  })
+
+  def createReceiptEither(formBody: org.http4s.multipart.Multipart[IO], accessToken: String): IO[Either[Int, ReceiptEntity]] = {
+    import org.http4s.circe.CirceEntityCodec._
+
+    val headers: Headers = formBody.headers.put(org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken)))
+    httpClient.fetch(
+      POST(
+        org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt"),
+        formBody
+      ).map(_.replaceAllHeaders(headers))
+    )({
+      case Status.Successful(r) => r.attemptAs[ReceiptEntity].leftMap(_ => r.status.code).value
+      case r => IO.pure(Left(r.status.code))
+    })
+  }
+
+  def fetchReceipt(receiptId: String, accessToken: String): IO[ReceiptEntity] = {
+    import org.http4s.circe.CirceEntityCodec._
+
+    httpClient.expect[ReceiptEntity](
+      GET(
+        org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt/$receiptId"),
+        org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
       )
-    Marshal(multipartForm).to[RequestEntity]
+    )
   }
 
-  def createImageFileContent(): Future[RequestEntity] = {
-    val receiptImage: BufferedSource = scala.io.Source.fromURL(getClass.getResource("/receipt.png"), "ISO-8859-1")
-    val content                      = receiptImage.map(_.toByte).toArray
-    val multipartForm =
-      Multipart.FormData(
-        Multipart.FormData.BodyPart.Strict("receipt", HttpEntity(`application/octet-stream`, content), Map("filename" -> "receipt.png")),
-        Multipart.FormData.BodyPart.Strict("total", utf8TextEntity(s"${total.get}")),
-        Multipart.FormData.BodyPart.Strict("description", utf8TextEntity(description)),
-        Multipart.FormData.BodyPart.Strict("transactionTime", utf8TextEntity(s"$transactionTime")),
-        Multipart.FormData.BodyPart.Strict("tags", utf8TextEntity(tagsAsString))
+  def fetchReceiptFile(receiptId: String, fileId: String, accessToken: String): IO[Array[Byte]] = httpClient.expect[Array[Byte]](
+    GET(
+      org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt/$receiptId/file/$fileId"),
+      org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
+    )
+  )
+
+  def patchReceipt(receiptId: String, patch: String, accessToken: String): IO[ReceiptEntity] = {
+    import org.http4s.circe.CirceEntityDecoder._
+
+    httpClient.expect[ReceiptEntity](
+      PATCH(
+        org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt/$receiptId"),
+        patch,
+        org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken)),
+        Accept(org.http4s.MediaType.application.json)
       )
-    Marshal(multipartForm).to[RequestEntity]
+    )
   }
 
-  private def utf8TextEntity(content: String) = {
-    val bytes = ByteString(content)
-    HttpEntity.Strict(ContentTypes.`text/plain(UTF-8)`, bytes)
+  def fetchReceiptList(accessToken: String): IO[List[ReceiptEntity]] = {
+    import org.http4s.circe.CirceEntityCodec._
+
+    httpClient.expect[List[ReceiptEntity]](
+      GET(
+        org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt"),
+        org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
+      )
+    )
+  }
+
+  def deleteReceipt(receiptId: String, accessToken: String): IO[String] = {
+
+    httpClient.expect[String](
+      DELETE(
+        org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt/$receiptId"),
+        org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
+      )
+    )
+  }
+
+  def createTextFileContentNew(content: String): org.http4s.multipart.Multipart[IO] = {
+
+    val textContent: EntityBody[IO] = EntityEncoder[IO, String].toEntity(content).body
+    org.http4s.multipart.Multipart[IO](
+      Vector(
+        Part.fileData("receipt", "receipt.txt", textContent, `Content-Type`(org.http4s.MediaType.application.`octet-stream`)),
+        Part.formData("total", s"${ReceiptTestUtils.total.get}"),
+        Part.formData("description", ReceiptTestUtils.description),
+        Part.formData("transactionTime", s"${ReceiptTestUtils.transactionTime}"),
+        Part.formData("tags", ReceiptTestUtils.tagsAsString)
+      )
+    )
+  }
+
+  def createImageFileContentNew: org.http4s.multipart.Multipart[IO] = {
+    val receipt = getClass.getResource("/receipt.png")
+    org.http4s.multipart.Multipart[IO](
+      Vector(
+        Part.fileData("receipt", receipt, `Content-Type`(org.http4s.MediaType.image.png)),
+        Part.formData("total", s"${ReceiptTestUtils.total.get}"),
+        Part.formData("description", ReceiptTestUtils.description),
+        Part.formData("transactionTime", s"${ReceiptTestUtils.transactionTime}"),
+        Part.formData("tags", ReceiptTestUtils.tagsAsString)
+      )
+    )
   }
 
 }

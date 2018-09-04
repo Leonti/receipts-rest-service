@@ -3,50 +3,29 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import ReceiptTestUtils._
-import TestConfig._
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import akka.http.scaladsl.model.ContentTypes._
-import akka.http.scaladsl.model.StatusCodes.BadRequest
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.ActorMaterializer
 import cats.effect.IO
 import org.http4s.client.blaze.Http1Client
 
-import scala.concurrent.duration.DurationInt
 import org.scalatest.time.{Millis, Seconds, Span}
 
 class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
 
-  implicit val defaultPatience =
+  implicit val defaultPatience: PatienceConfig =
     PatienceConfig(timeout = Span(120, Seconds), interval = Span(1000, Millis))
-  implicit val system       = ActorSystem()
-  implicit val materializer = ActorMaterializer()
 
-  val userTestUtils = new UserTestUtils(Http1Client[IO]().unsafeRunSync())
-  import userTestUtils._
+  private val httpClient = Http1Client[IO]().unsafeRunSync()
+  val userTestUtils = new UserTestUtils(httpClient)
+  val receiptTestUtils = new ReceiptTestUtils(httpClient)
 
   it should "create a receipt from an image" in {
 
-    val receiptEntityFuture = for {
-      (userInfo, accessToken)      <- createUser()
-      requestEntity <- createImageFileContent()
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = s"$appHostPort/receipt",
-          entity = requestEntity,
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
-      firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      receiptEntity      <- getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
+    val receiptAction = for {
+      accessToken      <- userTestUtils.createUser.map(_._2)
+      firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContentNew, accessToken.value)
+      receiptEntity <- receiptTestUtils.getProcessedReceiptNew(firstReceiptEntity.id, accessToken.value)
     } yield receiptEntity
 
-    whenReady(receiptEntityFuture) { receiptEntity =>
+    whenReady(receiptAction.unsafeToFuture()) { receiptEntity =>
       receiptEntity.files.length shouldBe 2
 
       receiptEntity.total shouldBe ReceiptTestUtils.total
@@ -71,69 +50,38 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
 
   it should "reject receipt with the same file" in {
 
-    val errorResponseFuture = for {
-      (userInfo, accessToken)      <- createUser()
-      requestEntity <- createImageFileContent()
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = s"$appHostPort/receipt",
-          entity = requestEntity,
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
-      firstReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      processedReceipt                  <- getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
-      errorResponse <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = s"$appHostPort/receipt",
-          entity = requestEntity,
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
-    } yield errorResponse
+    val rejectedReceiptAction = for {
+      accessToken      <- userTestUtils.createUser.map(_._2)
+      firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContentNew, accessToken.value)
+      _ <- receiptTestUtils.getProcessedReceiptNew(firstReceiptEntity.id, accessToken.value)
+      secondReceipt <- receiptTestUtils.createReceiptEither(receiptTestUtils.createImageFileContentNew, accessToken.value)
+    } yield secondReceipt
 
-    whenReady(errorResponseFuture) { errorResponse =>
-      errorResponse.status shouldBe BadRequest
+    whenReady(rejectedReceiptAction.unsafeToFuture()) { errorResponse =>
+      errorResponse shouldBe Left(400)
     }
   }
 
   it should "list receipts for a user" in {
 
-    val receiptsFuture = for {
-      (userInfo, accessToken)      <- createUser()
-      requestEntity <- createTextFileContent("receipt content")
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = s"$appHostPort/receipt",
-          entity = requestEntity,
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
-      receiptsResponse <- Http().singleRequest(
-        HttpRequest(uri = s"$appHostPort/receipt",
-                    headers = List(Authorization(OAuth2BearerToken(accessToken.value)))))
-      receipts <- Unmarshal(receiptsResponse.entity).to[List[ReceiptEntity]]
-    } yield receipts
+    val receiptListAction = for {
+      accessToken      <- userTestUtils.createUser.map(_._2)
+      firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContentNew, accessToken.value)
+      _ <- receiptTestUtils.getProcessedReceiptNew(firstReceiptEntity.id, accessToken.value)
+      receiptList <- receiptTestUtils.fetchReceiptList(accessToken.value)
+    } yield receiptList
 
-    whenReady(receiptsFuture) { receipts =>
+    whenReady(receiptListAction.unsafeToFuture()) { receipts =>
       receipts.length shouldBe 1
     }
   }
 
   it should "patch a receipt" in {
 
-    val receiptEntityFuture = for {
-      (userInfo, accessToken)      <- createUser()
-      firstFileEntity <- createTextFileContent("first file")
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = s"$appHostPort/receipt",
-          entity = firstFileEntity,
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
-      receiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-
+    val patchedReceiptAction = for {
+      accessToken      <- userTestUtils.createUser.map(_._2)
+      firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContentNew, accessToken.value)
+      receipt <- receiptTestUtils.getProcessedReceiptNew(firstReceiptEntity.id, accessToken.value)
       _ <- {
         val patch = """[
                       |  {
@@ -142,93 +90,45 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
                       |    "value": "some new description"
                       |  }
                       |]""".stripMargin
-        Http().singleRequest(
-          HttpRequest(
-            method = HttpMethods.PATCH,
-            uri = s"$appHostPort/receipt/${receiptEntity.id}",
-            entity = HttpEntity(`application/json`, patch),
-            headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-          ))
+        receiptTestUtils.patchReceipt(receipt.id, patch, accessToken.value)
       }
-
-      secondResponse <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.GET,
-          uri = s"$appHostPort/receipt/${receiptEntity.id}",
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
-      updatedReceipt <- Unmarshal(secondResponse.entity).to[ReceiptEntity]
+      updatedReceipt <- receiptTestUtils.fetchReceipt(receipt.id, accessToken.value)
     } yield updatedReceipt
 
-    whenReady(receiptEntityFuture) { receiptEntity =>
+    whenReady(patchedReceiptAction.unsafeToFuture()) { receiptEntity =>
       receiptEntity.description shouldBe "some new description"
     }
   }
 
   it should "serve a file for a receipt" in {
 
-    val fileFuture = for {
-      (userInfo, accessToken)      <- createUser()
-      requestEntity <- createTextFileContent("receipt content")
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = s"$appHostPort/receipt",
-          entity = requestEntity,
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
-      initialReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      receiptEntity        <- getProcessedReceipt(initialReceiptEntity.id, accessToken.value)
-      fileResponse <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.GET,
-          uri = s"$appHostPort/receipt/${receiptEntity.id}/file/${receiptEntity.files.head.id}",
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
+    val receiptFileAction = for {
+      accessToken      <- userTestUtils.createUser.map(_._2)
+      firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createTextFileContentNew("receipt content"), accessToken.value)
+      receipt <- receiptTestUtils.getProcessedReceiptNew(firstReceiptEntity.id, accessToken.value)
+      fileResponse <- receiptTestUtils.fetchReceiptFile(receipt.id, receipt.files.head.id, accessToken.value)
     } yield fileResponse
 
-    val responseEntity = fileFuture.flatMap(r => r.entity.toStrict(1.second).map { _.data }.map(_.utf8String))
-
-    whenReady(responseEntity) { stringResponse =>
-      stringResponse should include("receipt content")
+    whenReady(receiptFileAction.unsafeToFuture()) { bytes =>
+      bytes.map(_.toChar).mkString should include("receipt content")
     }
   }
 
   it should "delete a receipt" in {
 
-    val receiptsFuture = for {
-      (userInfo, accessToken)      <- createUser()
-      requestEntity <- createTextFileContent("receipt content")
-      response <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.POST,
-          uri = s"$appHostPort/receipt",
-          entity = requestEntity,
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
-      initialReceiptEntity <- Unmarshal(response.entity).to[ReceiptEntity]
-      receiptEntity        <- getProcessedReceipt(initialReceiptEntity.id, accessToken.value)
-      receiptsBeforeDeleteResponse <- Http().singleRequest(
-        HttpRequest(uri = s"$appHostPort/receipt",
-                    headers = List(Authorization(OAuth2BearerToken(accessToken.value)))))
-      receiptsBeforeDelete <- Unmarshal(receiptsBeforeDeleteResponse.entity).to[List[ReceiptEntity]]
-      _ <- Http().singleRequest(
-        HttpRequest(
-          method = HttpMethods.DELETE,
-          uri = s"$appHostPort/receipt/${receiptEntity.id}",
-          headers = List(Authorization(OAuth2BearerToken(accessToken.value)))
-        ))
-      receiptsResponse <- Http().singleRequest(
-        HttpRequest(uri = s"$appHostPort/receipt",
-                    headers = List(Authorization(OAuth2BearerToken(accessToken.value)))))
-      receipts <- Unmarshal(receiptsResponse.entity).to[List[ReceiptEntity]]
-    } yield (receiptsBeforeDelete, receipts)
+    val receiptDeleteAction = for {
+      accessToken      <- userTestUtils.createUser.map(_._2)
+      firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContentNew, accessToken.value)
+      receipt <- receiptTestUtils.getProcessedReceiptNew(firstReceiptEntity.id, accessToken.value)
+      receiptListBefore <- receiptTestUtils.fetchReceiptList(accessToken.value)
+      _ <- receiptTestUtils.deleteReceipt(receipt.id, accessToken.value)
+      receiptListAfter <- receiptTestUtils.fetchReceiptList(accessToken.value)
+    } yield (receiptListBefore, receiptListAfter)
 
-    whenReady(receiptsFuture) {
-      case (receiptsBeforeDelete, receipts) => {
+    whenReady(receiptDeleteAction.unsafeToFuture()) {
+      case (receiptsBeforeDelete, receipts) =>
         receiptsBeforeDelete.length shouldBe 1
         receipts.length shouldBe 0
-      }
     }
   }
 
