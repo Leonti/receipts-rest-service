@@ -125,7 +125,7 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
     )
   }
 
-  def createTextFileContentNew(content: String): org.http4s.multipart.Multipart[IO] = {
+  def createTextFileContent(content: String): org.http4s.multipart.Multipart[IO] = {
 
     val textContent: EntityBody[IO] = EntityEncoder[IO, String].toEntity(content).body
     org.http4s.multipart.Multipart[IO](
@@ -139,7 +139,7 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
     )
   }
 
-  def createImageFileContentNew: org.http4s.multipart.Multipart[IO] = {
+  def createImageFileContent: org.http4s.multipart.Multipart[IO] = {
     val receipt = getClass.getResource("/receipt.png")
     org.http4s.multipart.Multipart[IO](
       Vector(
