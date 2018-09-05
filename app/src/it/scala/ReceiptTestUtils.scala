@@ -22,13 +22,11 @@ object ReceiptTestUtils {
 
 class ReceiptTestUtils(httpClient: Client[IO]) {
 
-  def getProcessedReceiptNew(receiptId: String, accessToken: String): IO[ReceiptEntity] = {
-    val pfs = pendingFilesNew(accessToken)
-
-    pendingFilesToReceiptNew(receiptId, pfs, accessToken, 0)
+  def getProcessedReceipt(receiptId: String, accessToken: String): IO[ReceiptEntity] = {
+    pendingFilesToReceipt(receiptId, pendingFiles(accessToken), accessToken, 0)
   }
 
-  private def pendingFilesNew(accessToken: String): IO[List[PendingFile]] = {
+  private def pendingFiles(accessToken: String): IO[List[PendingFile]] = {
     import org.http4s.circe.CirceEntityCodec._
 
     httpClient.expect[List[PendingFile]](
@@ -39,7 +37,7 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
     )
   }
 
-  private def pendingFilesToReceiptNew(receiptId: String, pendingFilesIO: IO[List[PendingFile]], accessToken: String, retry: Int): IO[ReceiptEntity] = {
+  private def pendingFilesToReceipt(receiptId: String, pendingFilesIO: IO[List[PendingFile]], accessToken: String, retry: Int): IO[ReceiptEntity] = {
     val checkInterval = 1.second
 
     if (retry > 60) {
@@ -48,7 +46,7 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
       for {
         pending <- pendingFilesIO
         receipt <- if (pending.exists(_.receiptId == receiptId))
-          IO.sleep(checkInterval) *> pendingFilesToReceiptNew(receiptId, pendingFilesIO, accessToken, retry + 1)
+          IO.sleep(checkInterval) *> pendingFilesToReceipt(receiptId, pendingFilesIO, accessToken, retry + 1)
         else
           fetchReceipt(receiptId, accessToken)
       } yield receipt
@@ -127,7 +125,7 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
     )
   }
 
-  def createTextFileContentNew(content: String): org.http4s.multipart.Multipart[IO] = {
+  def createTextFileContent(content: String): org.http4s.multipart.Multipart[IO] = {
 
     val textContent: EntityBody[IO] = EntityEncoder[IO, String].toEntity(content).body
     org.http4s.multipart.Multipart[IO](
@@ -141,7 +139,7 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
     )
   }
 
-  def createImageFileContentNew: org.http4s.multipart.Multipart[IO] = {
+  def createImageFileContent: org.http4s.multipart.Multipart[IO] = {
     val receipt = getClass.getResource("/receipt.png")
     org.http4s.multipart.Multipart[IO](
       Vector(

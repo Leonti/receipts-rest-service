@@ -42,8 +42,8 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
     val zipEntriesIO: IO[List[ZipEntry]] = for {
       r      <- userTestUtils.createUser
       (userInfo, accessToken) = r
-      firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContentNew, accessToken.value)
-      _ <- receiptTestUtils.getProcessedReceiptNew(firstReceiptEntity.id, accessToken.value)
+      firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContent, accessToken.value)
+      _ <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
       backupToken <- getBackupToken(accessToken.value)
       backupBytes <- getBackup(userInfo.id, backupToken.accessToken)
     } yield toZipEntries(backupBytes)
