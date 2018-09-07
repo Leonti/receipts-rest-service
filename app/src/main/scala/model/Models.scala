@@ -13,3 +13,7 @@ case class ExternalUserInfo(email: String, sub: String)
 case class AccessToken(value: String)
 
 case class UserId(value: String)
+
+case class RemoteFileId(userId: UserId, fileId: String)
+
+case class FileMeta(md5: String, size: Long)

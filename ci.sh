@@ -18,17 +18,19 @@ docker-compose down
 
 echo "==== Unit tests ===="
 docker-compose run test
+echp "==== Integration tests ===="
+docker-compose run integration-tests
 echo "==== Assembly ===="
 docker-compose run assembly
 echo "==== Build docker image ===="
 docker-compose build app
 
-echo "==== Integration tests ===="
+echo "==== E2E tests ===="
 set +e
-docker-compose run integration-tests
+docker-compose run e2e-tests
 if [ $? -ne 0 ]
 then
-  echo "Integrtion tests failed"
+  echo "E2E tests failed"
   docker-compose logs app
   exit 1
 fi

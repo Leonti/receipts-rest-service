@@ -1,3 +1,6 @@
+import sbt.Defaults.testSettings
+import sbt.librarymanagement.Configuration
+import sbt.librarymanagement.Configurations.Runtime
 //enablePlugins(JavaAppPackaging)
 
 name := "receipts-rest-service"
@@ -42,10 +45,12 @@ val logging = Seq(
   "net.logstash.logback"       % "logstash-logback-encoder" % "4.8"
 )
 
+lazy val End2EndTest = Configuration.of("End2EndTest", "e2e") extend Runtime
 lazy val root = (project in file("."))
-  .configs(IntegrationTest)
+  .configs(IntegrationTest, End2EndTest)
   .settings(
-    Defaults.itSettings
+    Defaults.itSettings,
+    inConfig(End2EndTest)(testSettings)
   )
 
 libraryDependencies ++= {
@@ -59,7 +64,6 @@ libraryDependencies ++= {
     "com.google.api-client" % "google-api-client"          % googleApiClient excludeAll (
       ExclusionRule(organization="com.google.guava", name="guava-jdk5")
       ),
-//    "com.typesafe" % "config" % "1.3.2", // needed for reactrivemongo
     "org.reactivemongo"     %% "reactivemongo"             % reactiveMongoV,
     "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
     "org.typelevel"        %% "cats-core"              % catsV,
@@ -70,7 +74,7 @@ libraryDependencies ++= {
     "com.auth0" % "jwks-rsa" % "0.6.0",
     "co.fs2" %% "fs2-core" % fs2V,
     "co.fs2" %% "fs2-io" % fs2V,
-    "org.scalatest" %% "scalatest"          % scalaTestV % "it,test"
+    "org.scalatest" %% "scalatest"          % scalaTestV % "e2e,it,test"
   )
 }
 

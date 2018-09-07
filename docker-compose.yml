@@ -55,6 +55,18 @@ services:
 
   integration-tests:
     image: leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
+    working_dir: /app
+    volumes:
+      - ./app/src:/app/src
+      - ./app/project:/app/project
+      - ./app/build.sbt:/app/build.sbt
+      - /tmp/receipts-target-tests:/app/target
+      - $HOME/.ivy2:/root/.ivy2
+      - $HOME/.sbt:/root/.sbt
+    command: bash -c "rm -rf /app/target/* && sbt clean && sbt it:test"
+
+  e2e-tests:
+    image: leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
     environment:
       - APP_HOST_PORT=http://app:9000
       - AUTH0_API_CLIENT_ID
@@ -72,4 +84,4 @@ services:
       - /tmp/receipts-target-tests:/app/target
       - $HOME/.ivy2:/root/.ivy2
       - $HOME/.sbt:/root/.sbt
-    command: bash -c "rm -rf /app/target/* && sbt clean && sbt it:test"
+    command: bash -c "rm -rf /app/target/* && sbt clean && sbt e2e:test"

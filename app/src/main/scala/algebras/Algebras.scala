@@ -24,6 +24,25 @@ trait OcrAlg[F[_]] {
   def findIdsByText(userId: String, query: String): F[Seq[String]]
 }
 
+trait RemoteFileAlg[F[_]] {
+  def saveRemoteFile(file: File, fileId: RemoteFileId): F[Unit]
+  def fetchRemoteFileInputStream(fileId: RemoteFileId): F[InputStream]
+  def deleteRemoteFile(fileId: RemoteFileId): F[Unit]
+}
+
+trait LocalFileAlg[F[_]] {
+  def getFileMeta(file: File): F[FileMeta]
+  def moveFile(src: File, dst: File): F[Unit]
+  def bufToFile(src: Buf, dst: File): F[Unit]
+  def streamToFile(source: InputStream, file: File): F[File]
+  def removeFile(file: File): F[Unit]
+}
+
+trait FileStoreAlg[F[_]] {
+  def saveStoredFile(storedFile: StoredFile): F[Unit]
+  def findByMd5(userId: String, md5: String): F[Seq[StoredFile]]
+}
+
 trait FileAlg[F[_]] {
   def submitPendingFile(pendingFile: PendingFile): F[PendingFile]
   def submitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String): F[JobId]
