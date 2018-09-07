@@ -18,7 +18,7 @@ docker-compose down
 
 echo "==== Unit tests ===="
 docker-compose run test
-echp "==== Integration tests ===="
+echo "==== Integration tests ===="
 docker-compose run integration-tests
 echo "==== Assembly ===="
 docker-compose run assembly
