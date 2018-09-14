@@ -4,6 +4,7 @@ import java.io.{File, FileInputStream}
 import java.nio.file.Files
 import java.util.concurrent.Executors
 
+import algebras.ImageResizeAlg
 import cats.effect.IO
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
@@ -12,7 +13,6 @@ import com.google.api.services.vision.v1.model.{AnnotateImageRequest, BatchAnnot
 import com.google.api.services.vision.v1.{Vision, VisionScopes}
 import com.google.common.collect.ImmutableList
 import ocr.model.OcrTextAnnotation
-import service.ImageResizingService
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -20,7 +20,7 @@ trait OcrService {
   def ocrImage(file: File): Future[OcrTextAnnotation]
 }
 
-class GoogleOcrService(credentialsFile: File, imageResizeService: ImageResizingService) extends OcrService {
+class GoogleOcrService(credentialsFile: File, imageResizeAlg: ImageResizeAlg[IO]) extends OcrService {
 
   private implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
 
@@ -30,7 +30,7 @@ class GoogleOcrService(credentialsFile: File, imageResizeService: ImageResizingS
       println(s"File is too damn big, resizing ${file.getAbsolutePath}")
       // FIXME remove Future
       (for {
-        resized    <- imageResizeService.resizeToSize(file, 3.7)
+        resized    <- imageResizeAlg.resizeToFileSize(file, 3.7)
         annotation <- ocrResizedImage(resized)
         _ = resized.delete()
       } yield annotation).unsafeToFuture()

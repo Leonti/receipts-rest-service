@@ -1,7 +1,7 @@
 package service
 import java.io.File
 
-import algebras.{FileAlg, RandomAlg}
+import algebras.{LocalFileAlg, RandomAlg}
 import cats.Monad
 import com.twitter.finagle.http.exp.Multipart.{FileUpload, InMemoryFileUpload, OnDiskFileUpload}
 import model.ReceiptUpload
@@ -10,8 +10,8 @@ import cats.implicits._
 import scala.language.higherKinds
 import scala.util.Try
 
-class FileUploadPrograms[F[_]: Monad](uploadsLocation: String, fileAlg: FileAlg[F], randomAlg: RandomAlg[F]) {
-  import fileAlg._, randomAlg._
+class FileUploadPrograms[F[_]: Monad](uploadsLocation: String, localFileAlg: LocalFileAlg[F], randomAlg: RandomAlg[F]) {
+  import randomAlg._
 
   def toReceiptUpload(fileUpload: FileUpload,
                       total: String,
@@ -23,8 +23,8 @@ class FileUploadPrograms[F[_]: Monad](uploadsLocation: String, fileAlg: FileAlg[
       randomGuid <- generateGuid()
       filePath = new File(new File(uploadsLocation), randomGuid)
       _ <- fileUpload match {
-        case d: OnDiskFileUpload   => moveFile(d.content, filePath)
-        case m: InMemoryFileUpload => bufToFile(m.content, filePath)
+        case d: OnDiskFileUpload   => localFileAlg.moveFile(d.content, filePath)
+        case m: InMemoryFileUpload => localFileAlg.bufToFile(m.content, filePath)
       }
     } yield
       ReceiptUpload(

@@ -1,26 +1,23 @@
-package queue.files
+package interpreters
 
 import java.util.concurrent.Executors
 
+import algebras.QueueAlg
 import cats.effect.IO
-import model.PendingFile.PendingFileId
 import model.RemoteFileId
 import queue.Models.JobId
 import queue.{Queue, ReceiptFileJob}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
-class ReceiptFileQueue(queue: Queue) {
-  implicit val ec = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+class ReceiptFileQueue(queue: Queue) extends QueueAlg[IO] {
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
-  def submitFile(
-      userId: String,
-      receiptId: String,
-      remoteFileId: RemoteFileId,
-      fileExt: String,
-      pendingFileId: PendingFileId
-  ): IO[JobId] = {
-
+  override def submitToFileQueue(userId: String,
+                                 receiptId: String,
+                                 remoteFileId: RemoteFileId,
+                                 fileExt: String,
+                                 pendingFileId: String): IO[JobId] =
     queue.put(
       ReceiptFileJob(
         userId = userId,
@@ -29,6 +26,4 @@ class ReceiptFileQueue(queue: Queue) {
         fileExt = fileExt,
         pendingFileId = pendingFileId
       ))
-  }
-
 }

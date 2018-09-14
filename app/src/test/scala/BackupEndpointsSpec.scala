@@ -17,7 +17,7 @@ import service.BackupService
 class BackupEndpointsSpec extends FlatSpec with Matchers {
 
   val receiptInt = new ReceiptInterpreterId(List())
-  val fileInt = new FileInterpreterId()
+  val remoteFileInt = new RemoteInterpreterId()
   val randomInt = new RandomInterpreterId("", 0)
   val ocrInt = new OcrInterpreterId()
 
@@ -33,13 +33,13 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
 
   it should "return the backup stream" in {
     val fileEntity =
-      FileEntity(id = "1", parentId = None, ext = "txt", md5 = None, metaData = GenericMetadata(fileType = "TXT", length = 11))
+      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", md5 = "", length = 11), timestamp = 0l)
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
     val tokenInt = new TokenInterpreter[Id]("secret".getBytes)
 
     val backupEndpoints = new BackupEndpoints[Id](
       successfulAuth,
-      new BackupService[Id](new ReceiptInterpreterId(List(receipt)), fileInt),
+      new BackupService[Id](new ReceiptInterpreterId(List(receipt)), remoteFileInt),
       tokenInt
     )
 

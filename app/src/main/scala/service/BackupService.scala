@@ -4,22 +4,21 @@ import java.io._
 import java.nio.charset.StandardCharsets
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
-import algebras.{FileAlg, ReceiptAlg}
+import algebras.{ReceiptAlg, RemoteFileAlg}
 import cats.Monad
 import cats.effect.IO
-import model.{FileEntity, ReceiptEntity, UserId}
+import model.{FileEntity, ReceiptEntity, RemoteFileId, UserId}
 import io.circe.syntax._
 import cats.implicits._
 import fs2.Stream
 
 import scala.concurrent.Future
 import scala.language.postfixOps
-
 import scala.concurrent.ExecutionContext.Implicits.global // FIXME
 
 case class ReceiptsBackupIO(runSource: IO[Unit], source: InputStream, filename: String)
 
-class BackupService[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F]) {
+class BackupService[F[_]: Monad](receiptAlg: ReceiptAlg[F], remoteFileAlg: RemoteFileAlg[F]) {
 
   case class FileToZip(path: String, source: InputStream)
 
@@ -29,7 +28,7 @@ class BackupService[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F])
 
     def fileToZip(fileEntity: FileEntity): F[FileToZip] =
       for {
-        source <- fileAlg.fetchFileInputStream(userId.value, fileEntity.id)
+        source <- remoteFileAlg.fetchRemoteFileInputStream(RemoteFileId(userId, fileEntity.id))
       } yield
         FileToZip(
           path = fileEntity.id + "." + fileEntity.ext,

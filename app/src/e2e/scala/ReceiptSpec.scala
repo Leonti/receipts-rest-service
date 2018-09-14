@@ -34,13 +34,13 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
       receiptEntity.tags shouldBe ReceiptTestUtils.tags
 
       receiptEntity.files.head.metaData match {
-        case ImageMetadata(_, _, width, height) =>
+        case ImageMetaData(_, _, width, height) =>
           width shouldBe 50
           height shouldBe 67
         case _ => fail("Metadata should be of an IMAGE type!")
       }
       receiptEntity.files(1).metaData match {
-        case ImageMetadata(_, _, width, height) =>
+        case ImageMetaData(_, _, width, height) =>
           width shouldBe 50
           height shouldBe 67
         case _ => fail("Metadata should be of an IMAGE type!")

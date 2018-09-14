@@ -1,5 +1,6 @@
 import java.io.File
 import java.util.concurrent.Executors
+
 import authentication.BearerAuth
 import cats.effect.IO
 import io.finch.circe._
@@ -15,11 +16,10 @@ import routing._
 import service._
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
-import interpreters._
+import interpreters.{ReceiptFileQueue, _}
 import ocr.service.{GoogleOcrService, OcrServiceStub}
-import processing.{FileProcessorTagless, OcrProcessorTagless, ReceiptFiles}
+import processing.{FileProcessor, OcrProcessor}
 import queue.{Queue, QueueProcessor}
-import queue.files.ReceiptFileQueue
 import instances.catsio._
 import io.finch.Endpoint
 import org.http4s.client.Client
@@ -34,15 +34,15 @@ object ReceiptRestService extends App {
     allowsHeaders = _ =>
       Some(
         Seq("Origin",
-          "X-Requested-With",
-          "Content-Type",
-          "Accept",
-          "Accept-Encoding",
-          "Accept-Language",
-          "Host",
-          "Referer",
-          "User-Agent",
-          "Authorization"))
+            "X-Requested-With",
+            "Content-Type",
+            "Accept",
+            "Accept-Encoding",
+            "Accept-Language",
+            "Host",
+            "Referer",
+            "User-Agent",
+            "Authorization"))
   )
 
   implicit val executor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
@@ -55,49 +55,59 @@ object ReceiptRestService extends App {
     )).unsafeRunSync
   val openIdService = new OpenIdService(httpClient)
 
-  val imageResizingService  = new ImageResizingService()
   val pendingFileRepository = new PendingFileRepository()
-  val pendingFileService    = new PendingFileService(pendingFileRepository)
-  val fileService           = new S3FileService(imageResizingService)
 
   val queue            = new Queue()
   val receiptFileQueue = new ReceiptFileQueue(queue)
-  val receiptFiles     = new ReceiptFiles(pendingFileService, receiptFileQueue)
 
   val receiptRepository = new ReceiptRepository()
   val ocrRepository     = new OcrRepository()
 
+  val imageResizer = new ImageMagickResizer()
   val ocrService =
     if (sys.env("USE_OCR_STUB").toBoolean) {
       println("Using OCR stub")
       new OcrServiceStub()
     } else
-      new GoogleOcrService(new File(sys.env("GOOGLE_API_CREDENTIALS")), imageResizingService)
+      new GoogleOcrService(new File(sys.env("GOOGLE_API_CREDENTIALS")), imageResizer)
 
-  val userInterpreter   = new UserInterpreter(userRepository, openIdService)
-  val tokenInterpreter  = new TokenInterpreter[IO](sys.env("AUTH_TOKEN_SECRET").getBytes)
-  val randomInterpreter = new RandomInterpreterTagless()
-  val fileInterpreter =
-    new FileInterpreterTagless(new StoredFileRepository(), new PendingFileRepository(), receiptFileQueue, fileService)
+  val userInterpreter    = new UserInterpreter(userRepository, openIdService)
+  val tokenInterpreter   = new TokenInterpreter[IO](sys.env("AUTH_TOKEN_SECRET").getBytes)
+  val randomInterpreter  = new RandomInterpreterTagless()
   val receiptInterpreter = new ReceiptInterpreterTagless(receiptRepository)
   val ocrInterpreter =
     new OcrInterpreterTagless(httpClient,
                               ocrRepository,
                               ocrService,
                               OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY")))
-  val pendingFileInterpreter = new PendingFileInterpreterTagless(pendingFileRepository)
 
   val userPrograms = new UserPrograms(userInterpreter, randomInterpreter)
 
+  val localFile = new LocalFileInterpreter()
+  val remoteFile = new RemoteFileS3(
+    S3Config(
+      region = sys.env("S3_REGION"),
+      bucket = sys.env("S3_BUCKET"),
+      accessKey = sys.env("S3_ACCESS_KEY"),
+      secretKey = sys.env("S3_SECRET_ACCESS_KEY")
+    ))
+  val fileStore    = new FileStoreMongo(new StoredFileRepository())
+  val pendingFile  = new PendingFileMongo(new PendingFileRepository())
+  val receiptQueue = new ReceiptFileQueue(queue)
+
   val receiptPrograms = new ReceiptPrograms[IO](
     receiptInterpreter,
-    fileInterpreter,
+    localFile,
+    remoteFile,
+    fileStore,
+    pendingFile,
+    receiptQueue,
     randomInterpreter,
     ocrInterpreter
   )
   val fileUploadPrograms = new FileUploadPrograms[IO](
     sys.env("UPLOADS_FOLDER"),
-    fileInterpreter,
+    localFile,
     randomInterpreter
   )
 
@@ -109,15 +119,21 @@ object ReceiptRestService extends App {
   val receiptEndpoints =
     new ReceiptEndpoints[IO](auth, receiptPrograms, fileUploadPrograms)
 
-  val pendingFileEndpoints = new PendingFileEndpoints[IO](auth, pendingFileInterpreter)
+  val pendingFileEndpoints = new PendingFileEndpoints[IO](auth, pendingFile)
 
   val userEndpoints      = new UserEndpoints(auth)
   val appConfigEndpoints = new AppConfigEndpoints(sys.env("GOOGLE_CLIENT_ID"))
   val oauthEndpoints     = new OauthEndpoints[IO](userPrograms)
-  val backupEndpoints    = new BackupEndpoints[IO](auth, new BackupService[IO](receiptInterpreter, fileInterpreter), tokenInterpreter)
+  val backupEndpoints    = new BackupEndpoints[IO](auth, new BackupService[IO](receiptInterpreter, remoteFile), tokenInterpreter)
 
-  val fileProcessor  = new FileProcessorTagless(receiptInterpreter, fileInterpreter)
-  val ocrProcessor   = new OcrProcessorTagless[IO](fileInterpreter, ocrInterpreter, randomInterpreter, pendingFileInterpreter)
+  val fileProcessor = new FileProcessor(
+    receiptInterpreter,
+    localFile,
+    remoteFile,
+    imageResizer,
+    randomInterpreter
+  )
+  val ocrProcessor   = new OcrProcessor[IO](remoteFile, localFile, ocrInterpreter, randomInterpreter, pendingFile)
   val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor)
 
   queueProcessor.reserveNextJob().unsafeRunAsync {

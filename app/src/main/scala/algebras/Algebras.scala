@@ -31,32 +31,26 @@ trait RemoteFileAlg[F[_]] {
 }
 
 trait LocalFileAlg[F[_]] {
-  def getFileMeta(file: File): F[FileMeta]
+  def getFileMetaData(file: File): F[FileMetaData]
   def moveFile(src: File, dst: File): F[Unit]
   def bufToFile(src: Buf, dst: File): F[Unit]
   def streamToFile(source: InputStream, file: File): F[File]
   def removeFile(file: File): F[Unit]
+}
+
+trait ImageResizeAlg[F[_]] {
+  def resizeToPixelSize(file: File, pixels: Long): F[File]
+  def resizeToFileSize(file: File, sizeInMb: Double): F[File]
 }
 
 trait FileStoreAlg[F[_]] {
   def saveStoredFile(storedFile: StoredFile): F[Unit]
   def findByMd5(userId: String, md5: String): F[Seq[StoredFile]]
+  def deleteStoredFile(storedFileId: String): F[Unit]
 }
 
-trait FileAlg[F[_]] {
-  def submitPendingFile(pendingFile: PendingFile): F[PendingFile]
-  def submitToFileQueue(userId: String, receiptId: String, file: File, fileExt: String, pendingFileId: String): F[JobId]
-  def moveFile(src: File, dst: File): F[Unit]
-  def bufToFile(src: Buf, dst: File): F[Unit]
-  def saveFile(userId: String, file: File, ext: String): F[Seq[FileEntity]]
-  def saveStoredFile(storedFile: StoredFile): F[Unit]
-  def findByMd5(userId: String, md5: String): F[Seq[StoredFile]]
-  def deleteStoredFile(storedFileId: String): F[Unit]
-  def fetchFileInputStream(userId: String, fileId: String): F[InputStream]
-  def streamToFile(source: InputStream, file: File): F[File]
-  def deleteFile(userId: String, fileId: String): F[Unit]
-  def removeFile(file: File): F[Unit]
-  def calculateMd5(file: File): F[String]
+trait QueueAlg[F[_]] {
+  def submitToFileQueue(userId: String, receiptId: String, remoteFileId: RemoteFileId, fileExt: String, pendingFileId: String): F[JobId]
 }
 
 trait UserAlg[F[_]] {

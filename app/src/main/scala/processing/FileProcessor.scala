@@ -1,39 +1,62 @@
 package processing
 
-import java.io.File
-
 import algebras._
-import model.{StoredFile, UserId}
+import model._
 import queue._
 import cats.Monad
 import cats.implicits._
 
 import scala.language.higherKinds
 
-class FileProcessorTagless[F[_]: Monad](receiptAlg: ReceiptAlg[F], fileAlg: FileAlg[F]) {
-  import receiptAlg._, fileAlg._
+class FileProcessor[F[_]: Monad](
+    receiptAlg: ReceiptAlg[F],
+    localFileAlg: LocalFileAlg[F],
+    remoteFileAlg: RemoteFileAlg[F],
+    imageResizeAlg: ImageResizeAlg[F],
+    randomAlg: RandomAlg[F]
+) {
 
   def processJob(receiptFileJob: ReceiptFileJob): F[List[QueueJob]] =
     for {
-      fileEntities <- saveFile(receiptFileJob.userId, new File(receiptFileJob.filePath), receiptFileJob.fileExt)
-      _ <- fileEntities
-        .filter(_.md5.isDefined)
-        .map(fileEntity =>
-          saveStoredFile(StoredFile(receiptFileJob.userId, fileEntity.id, fileEntity.md5.get, fileEntity.metaData.length)))
-        .toList
-        .sequence
-      _ <- fileEntities
-        .map(fileEntity => addFileToReceipt(UserId(receiptFileJob.userId), receiptFileJob.receiptId, fileEntity))
-        .toList
-        .sequence
-      _ <- removeFile(new File(receiptFileJob.filePath))
+      fileStream   <- remoteFileAlg.fetchRemoteFileInputStream(receiptFileJob.remoteFileId)
+      tmpFile      <- randomAlg.tmpFile()
+      _            <- localFileAlg.streamToFile(fileStream, tmpFile)
+      fileMetaData <- localFileAlg.getFileMetaData(tmpFile)
+      _ <- fileMetaData match {
+        case _: ImageMetaData =>
+          for {
+            resizedFile   <- imageResizeAlg.resizeToPixelSize(tmpFile, WebSize.pixels)
+            resizedFileId <- randomAlg.generateGuid()
+            timestamp     <- randomAlg.getTime()
+            _             <- remoteFileAlg.saveRemoteFile(resizedFile, RemoteFileId(UserId(receiptFileJob.userId), resizedFileId))
+            _             <- localFileAlg.removeFile(resizedFile)
+            _ <- receiptAlg.addFileToReceipt(
+              UserId(receiptFileJob.userId),
+              receiptFileJob.receiptId,
+              FileEntity(
+                id = resizedFileId,
+                parentId = None,
+                ext = receiptFileJob.fileExt,
+                metaData = fileMetaData,
+                timestamp = timestamp
+              )
+            )
+          } yield ()
+        case _ => Monad[F].pure(())
+      }
+      _              <- localFileAlg.removeFile(tmpFile)
+      updatedReceipt <- receiptAlg.getReceipt(UserId(receiptFileJob.userId), receiptFileJob.receiptId)
     } yield
-      List(
-        OcrJob(
-          userId = receiptFileJob.userId,
-          receiptId = receiptFileJob.receiptId,
-          fileId = fileEntities.filter(_.parentId.isEmpty).head.id,
-          pendingFileId = receiptFileJob.pendingFileId
-        ))
+      updatedReceipt
+        .map { receipt =>
+          List(
+            OcrJob(
+              userId = receiptFileJob.userId,
+              receiptId = receiptFileJob.receiptId,
+              fileId = receipt.files.filter(_.parentId.isEmpty).head.id,
+              pendingFileId = receiptFileJob.pendingFileId
+            ))
+        }
+        .getOrElse(List())
 
 }
