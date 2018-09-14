@@ -5,7 +5,7 @@ import algebras.PendingFileAlg
 import cats.effect.IO
 import repository.PendingFileRepository
 
-class PendingFileInterpreterTagless(pendingFileRepository: PendingFileRepository) extends PendingFileAlg[IO] {
+class PendingFileMongo(pendingFileRepository: PendingFileRepository) extends PendingFileAlg[IO] {
   override def savePendingFile(pendingFile: PendingFile): IO[PendingFile] = IO.fromFuture(IO(pendingFileRepository.save(pendingFile)))
   override def findPendingFileForUserId(userId: String): IO[List[PendingFile]] =
     IO.fromFuture(IO(pendingFileRepository.findForUserId(userId)))

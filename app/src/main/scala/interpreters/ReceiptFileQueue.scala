@@ -1,10 +1,10 @@
 package queue.files
 
-import java.io.File
 import java.util.concurrent.Executors
 
 import cats.effect.IO
 import model.PendingFile.PendingFileId
+import model.RemoteFileId
 import queue.Models.JobId
 import queue.{Queue, ReceiptFileJob}
 
@@ -16,7 +16,7 @@ class ReceiptFileQueue(queue: Queue) {
   def submitFile(
       userId: String,
       receiptId: String,
-      file: File,
+      remoteFileId: RemoteFileId,
       fileExt: String,
       pendingFileId: PendingFileId
   ): IO[JobId] = {
@@ -25,7 +25,7 @@ class ReceiptFileQueue(queue: Queue) {
       ReceiptFileJob(
         userId = userId,
         receiptId = receiptId,
-        filePath = file.getAbsolutePath,
+        remoteFileId = remoteFileId,
         fileExt = fileExt,
         pendingFileId = pendingFileId
       ))
