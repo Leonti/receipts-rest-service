@@ -77,8 +77,8 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F],
 
   def createReceipt(userId: UserId, receiptUpload: ReceiptUpload): F[Either[Error, ReceiptEntity]] = {
     val eitherT: EitherT[F, Error, ReceiptEntity] = for {
-      fileMetadata            <- EitherT.right[Error](localFileAlg.getFileMetaData(receiptUpload.receipt))
-      exitingFilesWithSameMd5 <- EitherT.right[Error](fileStoreAlg.findByMd5(userId.value, fileMetadata.md5))
+      md5                     <- EitherT.right[Error](localFileAlg.getMd5(receiptUpload.receipt))
+      exitingFilesWithSameMd5 <- EitherT.right[Error](fileStoreAlg.findByMd5(userId.value, md5))
       _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
       receiptId               <- EitherT.right[Error](generateGuid())
       fileId                  <- EitherT.right[Error](generateGuid())
@@ -90,8 +90,9 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F],
           StoredFile(
             userId = userId.value,
             id = fileId,
-            md5 = fileMetadata.md5,
+            md5 = md5,
           )))
+      fileMetadata <- EitherT.right[Error](localFileAlg.getFileMetaData(receiptUpload.receipt))
       receipt = ReceiptEntity(
         id = receiptId,
         userId = userId.value,

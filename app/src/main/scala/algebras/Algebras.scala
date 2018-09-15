@@ -32,6 +32,7 @@ trait RemoteFileAlg[F[_]] {
 
 trait LocalFileAlg[F[_]] {
   def getFileMetaData(file: File): F[FileMetaData]
+  def getMd5(file: File): F[String]
   def moveFile(src: File, dst: File): F[Unit]
   def bufToFile(src: Buf, dst: File): F[Unit]
   def streamToFile(source: InputStream, file: File): F[File]

@@ -21,12 +21,11 @@ case class StoredFile(
 
 sealed trait FileMetaData {
   def fileType: String
-  def md5: String
   def length: Long
 }
 
-case class ImageMetaData(fileType: String = "IMAGE", md5: String, length: Long, width: Int, height: Int) extends FileMetaData
-case class GenericMetaData(fileType: String = "UNKNOWN", md5: String, length: Long)                      extends FileMetaData
+case class ImageMetaData(fileType: String = "IMAGE", length: Long, width: Int, height: Int) extends FileMetaData
+case class GenericMetaData(fileType: String = "UNKNOWN", length: Long)                      extends FileMetaData
 
 object FileMetaData {
 
@@ -35,7 +34,6 @@ object FileMetaData {
       case imageMetadata: ImageMetaData =>
         Json.obj(
           ("fileType", Json.fromString(imageMetadata.fileType)),
-          ("md5", Json.fromString(imageMetadata.md5)),
           ("length", Json.fromLong(imageMetadata.length)),
           ("width", Json.fromInt(imageMetadata.width)),
           ("height", Json.fromInt(imageMetadata.height))
@@ -43,7 +41,6 @@ object FileMetaData {
       case _ =>
         Json.obj(
           ("fileType", Json.fromString(a.fileType)),
-          ("md5", Json.fromString(a.md5)),
           ("length", Json.fromLong(a.length))
         )
     }
@@ -62,7 +59,6 @@ object FileMetaData {
               height <- c.downField("height").as[Int]
             } yield
               ImageMetaData(
-                md5 = md5,
                 length = length,
                 width = width,
                 height = height
@@ -74,7 +70,6 @@ object FileMetaData {
             } yield
               GenericMetaData(
                 fileType = fileType,
-                md5 = md5,
                 length = length
               )
         })
@@ -89,14 +84,12 @@ object FileMetaData {
           doc.getAs[String]("fileType").get match {
             case "IMAGE" =>
               ImageMetaData(
-                md5 = doc.getAs[String]("md5").get,
                 length = doc.getAs[Long]("length").get,
                 width = doc.getAs[Int]("width").get,
                 height = doc.getAs[Int]("height").get
               )
             case _ =>
               GenericMetaData(
-                md5 = doc.getAs[String]("md5").get,
                 fileType = doc.getAs[String]("fileType").get,
                 length = doc.getAs[Long]("length").get
               )
@@ -112,7 +105,6 @@ object FileMetaData {
           case imageMetadata: ImageMetaData =>
             BSONDocument(
               "fileType" -> imageMetadata.fileType,
-              "md5"      -> imageMetadata.md5,
               "length"   -> imageMetadata.length,
               "width"    -> imageMetadata.width,
               "height"   -> imageMetadata.height
@@ -120,7 +112,6 @@ object FileMetaData {
           case _ =>
             BSONDocument(
               "fileType" -> fileMetadata.fileType,
-              "md5"      -> fileMetadata.md5,
               "length"   -> fileMetadata.length
             )
         }

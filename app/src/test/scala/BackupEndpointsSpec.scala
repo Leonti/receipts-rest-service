@@ -33,7 +33,7 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
 
   it should "return the backup stream" in {
     val fileEntity =
-      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", md5 = "", length = 11), timestamp = 0l)
+      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0l)
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
     val tokenInt = new TokenInterpreter[Id]("secret".getBytes)
 

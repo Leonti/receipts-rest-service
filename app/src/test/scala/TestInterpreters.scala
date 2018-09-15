@@ -31,7 +31,8 @@ object TestInterpreters {
   }
 
   class LocalFileId extends LocalFileAlg[Id] {
-    override def getFileMetaData(file: File): Id[FileMetaData] = GenericMetaData(md5 = "", length = 0)
+    override def getFileMetaData(file: File): Id[FileMetaData] = GenericMetaData(length = 0)
+    override def getMd5(file: File): Id[String] = ""
     override def moveFile(src: File, dst: File): Id[Unit]        = ()
     override def bufToFile(src: Buf, dst: File): Id[Unit]                        = ()
     override def streamToFile(source: InputStream, file: File): Id[File] = file

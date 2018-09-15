@@ -13,7 +13,17 @@ import scala.util.Try
 
 class LocalFileInterpreter extends LocalFileAlg[IO] {
 
-  private def md5(file: File): IO[String] =
+  override def getFileMetaData(file: File): IO[FileMetaData] = IO {
+    val image: Option[SimpleImageInfo] = Try {
+      Some(new SimpleImageInfo(file))
+    } getOrElse None
+
+    image
+      .map(i => ImageMetaData(length = file.length, width = i.getWidth, height = i.getHeight))
+      .getOrElse(GenericMetaData(length = file.length))
+  }
+
+  override def getMd5(file: File): IO[String] =
     for {
       md5 <- IO(MessageDigest.getInstance("MD5"))
       result <- IO(new DigestInputStream(new FileInputStream(file), md5))
@@ -24,17 +34,6 @@ class LocalFileInterpreter extends LocalFileAlg[IO] {
         })(dis => IO(dis.close()))
         .map(_ => md5.digest.map("%02x".format(_)).mkString)
     } yield result
-
-  override def getFileMetaData(file: File): IO[FileMetaData] =
-    md5(file).map(hash => {
-      val image: Option[SimpleImageInfo] = Try {
-        Some(new SimpleImageInfo(file))
-      } getOrElse None
-
-      image
-        .map(i => ImageMetaData(length = file.length, md5 = hash, width = i.getWidth, height = i.getHeight))
-        .getOrElse(GenericMetaData(length = file.length, md5 = hash))
-    })
 
   override def moveFile(src: File, dst: File): IO[Unit] = IO(Files.move(src.toPath, dst.toPath)).map(_ => ())
 

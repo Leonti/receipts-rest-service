@@ -69,7 +69,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       lastModified = 0,
       transactionTime = 1480130712396l,
       tags = List("veggies", "food"),
-      files = List(FileEntity("", None, "png", GenericMetaData(md5 = "", length = 0), timestamp = 0))
+      files = List(FileEntity("", None, "png", GenericMetaData(length = 0), timestamp = 0))
     ))
   }
 
@@ -126,7 +126,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
   it should "return a file content" in {
     val fileEntity =
-      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", md5 = "", length = 11), timestamp = 0l)
+      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0l)
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
@@ -256,7 +256,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
   it should "delete a receipt" in {
     val fileEntity =
-      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", md5 = "", length = 11), timestamp = 0l)
+      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0l)
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
     val receiptRouting = new ReceiptEndpoints[Id](
       successfulAuth,
