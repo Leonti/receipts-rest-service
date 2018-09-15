@@ -8,7 +8,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 import cats.effect.IO
 
-trait Retry {
+object Retry {
 
   def retry[T](ioa: => IO[T], delays: Seq[FiniteDuration])(implicit ec: ExecutionContext): IO[T] = {
 

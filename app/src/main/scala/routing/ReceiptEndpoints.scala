@@ -31,7 +31,7 @@ class ReceiptEndpoints[F[_]: ToTwitterFuture: Monad](
     o.fold[Output[A]](Output.failure(new Exception("Entity not found"), Status.NotFound))(v => Ok(v))
 
   private def eitherResult(e: Either[Error, ReceiptEntity]): Output[ReceiptEntity] = e match {
-    case Right(receipt) => Ok(receipt)
+    case Right(receipt) => Created(receipt)
     case Left(error) =>
       error match {
         case ReceiptErrors.FileAlreadyExists() =>

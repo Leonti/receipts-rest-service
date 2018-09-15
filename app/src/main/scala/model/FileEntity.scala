@@ -1,7 +1,7 @@
 package model
 
 import io.circe.{Decoder, Encoder, HCursor, Json}
-import model.FileMetadata.FileMetadataBSONReader.FileMetadataBSONWriter
+import model.FileMetaData.FileMetadataBSONReader.FileMetadataBSONWriter
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
@@ -9,31 +9,29 @@ case class FileEntity(
     id: String,
     parentId: Option[String],
     ext: String,
-    md5: Option[String],
-    metaData: FileMetadata,
-    timestamp: Long = System.currentTimeMillis
+    metaData: FileMetaData,
+    timestamp: Long
 )
 
 case class StoredFile(
     userId: String,
     id: String,
-    md5: String,
-    size: Long
+    md5: String
 ) extends WithId
 
-sealed trait FileMetadata {
+sealed trait FileMetaData {
   def fileType: String
   def length: Long
 }
 
-case class ImageMetadata(fileType: String = "IMAGE", length: Long, width: Int, height: Int) extends FileMetadata
-case class GenericMetadata(fileType: String = "UNKNOWN", length: Long)                      extends FileMetadata
+case class ImageMetaData(fileType: String = "IMAGE", length: Long, width: Int, height: Int) extends FileMetaData
+case class GenericMetaData(fileType: String = "UNKNOWN", length: Long)                      extends FileMetaData
 
-object FileMetadata {
+object FileMetaData {
 
-  implicit val encodeMetadata: Encoder[FileMetadata] = new Encoder[FileMetadata] {
-    final def apply(a: FileMetadata): Json = a match {
-      case imageMetadata: ImageMetadata =>
+  implicit val encodeMetadata: Encoder[FileMetaData] = new Encoder[FileMetaData] {
+    final def apply(a: FileMetaData): Json = a match {
+      case imageMetadata: ImageMetaData =>
         Json.obj(
           ("fileType", Json.fromString(imageMetadata.fileType)),
           ("length", Json.fromLong(imageMetadata.length)),
@@ -48,8 +46,8 @@ object FileMetadata {
     }
   }
 
-  implicit val decodeMetadata: Decoder[FileMetadata] = new Decoder[FileMetadata] {
-    final def apply(c: HCursor): Decoder.Result[FileMetadata] =
+  implicit val decodeMetadata: Decoder[FileMetaData] = new Decoder[FileMetaData] {
+    final def apply(c: HCursor): Decoder.Result[FileMetaData] =
       c.downField("fileType")
         .as[String]
         .flatMap({
@@ -59,38 +57,37 @@ object FileMetadata {
               width  <- c.downField("width").as[Int]
               height <- c.downField("height").as[Int]
             } yield
-              ImageMetadata(
+              ImageMetaData(
                 length = length,
                 width = width,
                 height = height
               )
           case fileType =>
-            c.downField("length")
-              .as[Long]
-              .map(
-                length =>
-                  GenericMetadata(
-                    fileType = fileType,
-                    length = length
-                ))
+            for {
+              length <- c.downField("length").as[Long]
+            } yield
+              GenericMetaData(
+                fileType = fileType,
+                length = length
+              )
         })
   }
 
-  implicit object FileMetadataBSONReader extends BSONDocumentReader[FileMetadata] {
+  implicit object FileMetadataBSONReader extends BSONDocumentReader[FileMetaData] {
 
-    def read(doc: BSONDocument): FileMetadata =
+    def read(doc: BSONDocument): FileMetaData =
       Serialization.deserialize(
         doc, {
 
           doc.getAs[String]("fileType").get match {
             case "IMAGE" =>
-              ImageMetadata(
+              ImageMetaData(
                 length = doc.getAs[Long]("length").get,
                 width = doc.getAs[Int]("width").get,
                 height = doc.getAs[Int]("height").get
               )
             case _ =>
-              GenericMetadata(
+              GenericMetaData(
                 fileType = doc.getAs[String]("fileType").get,
                 length = doc.getAs[Long]("length").get
               )
@@ -98,12 +95,12 @@ object FileMetadata {
         }
       )
 
-    implicit object FileMetadataBSONWriter extends BSONDocumentWriter[FileMetadata] {
+    implicit object FileMetadataBSONWriter extends BSONDocumentWriter[FileMetaData] {
 
-      def write(fileMetadata: FileMetadata): BSONDocument = {
+      def write(fileMetadata: FileMetaData): BSONDocument = {
 
         fileMetadata match {
-          case imageMetadata: ImageMetadata =>
+          case imageMetadata: ImageMetaData =>
             BSONDocument(
               "fileType" -> imageMetadata.fileType,
               "length"   -> imageMetadata.length,
@@ -135,8 +132,7 @@ object FileEntity {
           id = doc.getAs[String]("_id").get,
           parentId = doc.getAs[String]("parentId"),
           ext = doc.getAs[String]("ext").get,
-          md5 = doc.getAs[String]("md5"),
-          metaData = doc.getAs[FileMetadata]("metaData").get,
+          metaData = doc.getAs[FileMetaData]("metaData").get,
           timestamp = doc.getAs[Long]("timestamp").get
         )
       )
@@ -149,7 +145,6 @@ object FileEntity {
         "_id"       -> fileEntity.id,
         "parentId"  -> fileEntity.parentId,
         "ext"       -> fileEntity.ext,
-        "md5"       -> fileEntity.md5,
         "metaData"  -> FileMetadataBSONWriter.write(fileEntity.metaData),
         "timestamp" -> fileEntity.timestamp
       )
@@ -166,8 +161,7 @@ object StoredFile {
         StoredFile(
           id = doc.getAs[String]("_id").get,
           userId = doc.getAs[String]("userId").get,
-          md5 = doc.getAs[String]("md5").get,
-          size = doc.getAs[Long]("size").get,
+          md5 = doc.getAs[String]("md5").get
         )
       )
   }
@@ -178,8 +172,7 @@ object StoredFile {
       BSONDocument(
         "_id"    -> storedFile.id,
         "userId" -> storedFile.userId,
-        "md5"    -> storedFile.md5,
-        "size"   -> storedFile.size
+        "md5"    -> storedFile.md5
       )
     }
   }

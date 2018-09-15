@@ -5,12 +5,12 @@ import java.util.concurrent.Executors
 import cats.effect.IO
 import cats.syntax.all._
 import cats.instances.list._
-import processing.{FileProcessorTagless, OcrProcessorTagless}
+import processing.{FileProcessor, OcrProcessor}
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
-class QueueProcessor(queue: Queue, fileProcessor: FileProcessorTagless[IO], ocrProcessor: OcrProcessorTagless[IO]) {
+class QueueProcessor(queue: Queue, fileProcessor: FileProcessor[IO], ocrProcessor: OcrProcessor[IO]) {
 
   // FIXME - figure out how to pick up job in a single thread, but process in multiple
   private implicit val ec = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())

@@ -24,31 +24,45 @@ object TestInterpreters {
     override def tmpFile(): Id[File]             = file
   }
 
-  class FileInterpreterId(md5Response: Seq[StoredFile] = List()) extends FileAlg[Id] {
-    override def submitPendingFile(pendingFile: PendingFile): Id[PendingFile] = pendingFile
-    override def submitToFileQueue(userId: String,
-                                   receiptId: String,
-                                   file: File,
-                                   fileExt: String,
-                                   pendingFileId: String): Id[JobId] = ""
-    override def moveFile(src: File, dst: File): Id[Unit] = ()
-    override def saveFile(userId: String,
-                          file: File,
-                          ext: String): Id[Seq[FileEntity]] = List()
+  class RemoteInterpreterId extends RemoteFileAlg[Id] {
+    override def saveRemoteFile(file: File, fileId: RemoteFileId): Id[Unit]        = ()
+    override def fetchRemoteFileInputStream(fileId: RemoteFileId): Id[InputStream] = new ByteArrayInputStream("some text".getBytes)
+    override def deleteRemoteFile(fileId: RemoteFileId): Id[Unit]                                 = ()
+  }
+
+  class LocalFileId extends LocalFileAlg[Id] {
+    override def getFileMetaData(file: File): Id[FileMetaData] = GenericMetaData(length = 0)
+    override def getMd5(file: File): Id[String] = ""
+    override def moveFile(src: File, dst: File): Id[Unit]        = ()
+    override def bufToFile(src: Buf, dst: File): Id[Unit]                        = ()
+    override def streamToFile(source: InputStream, file: File): Id[File] = file
+    override def removeFile(file: File): Id[Unit]                                                      = ()
+  }
+
+  class FileStoreId(md5Response: Seq[StoredFile] = List()) extends FileStoreAlg[Id] {
     override def saveStoredFile(storedFile: StoredFile): Id[Unit] = ()
     override def findByMd5(userId: String,
                            md5: String): Id[Seq[StoredFile]] = md5Response
-    override def deleteStoredFile(storedFileId: String): Id[Unit] = ()
-    override def deleteFile(userId: String, fileId: String): Id[Unit] = ()
-    override def removeFile(file: File): Id[Unit]                         = ()
-    override def calculateMd5(file: File): Id[String] = ""
-    override def bufToFile(src: Buf, dst: File): Id[Unit] = ()
-    override def fetchFileInputStream(userId: String, fileId: String): Id[InputStream] = new ByteArrayInputStream("some text".getBytes)
-    override def streamToFile(source: InputStream, file: File): Id[File]           = file
+    override def deleteStoredFile(storedFileId: String): Id[Unit]               = ()
   }
 
-  class ReceiptInterpreterId(
-                                   receipts: Seq[ReceiptEntity] = List()) extends ReceiptAlg[Id] {
+  class PendingFileInterpreterId extends PendingFileAlg[Id] {
+    override def savePendingFile(pendingFile: PendingFile): Id[PendingFile]                   = pendingFile
+    override def findPendingFileForUserId(userId: String): Id[List[PendingFile]] = List()
+    override def deletePendingFileById(id: String): Id[Unit] = ()
+    override def deleteAllPendingFiles(): Id[Unit]                                                                      = ()
+  }
+
+  class QueueInterpreterId extends QueueAlg[Id] {
+    override def submitToFileQueue(userId: String,
+                                   receiptId: String,
+                                   remoteFileId: RemoteFileId,
+                                   fileExt: String,
+                                   pendingFileId: String): Id[JobId] = ""
+  }
+
+  class ReceiptStoreInterpreterId(
+                                   receipts: Seq[ReceiptEntity] = List()) extends ReceiptStoreAlg[Id] {
     override def getReceipt(userId: UserId,
                             id: String): Id[Option[ReceiptEntity]] = receipts.find(_.id == id)
     override def deleteReceipt(userId: UserId, id: String): Id[Unit] = ()

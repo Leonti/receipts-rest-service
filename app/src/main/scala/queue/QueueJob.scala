@@ -2,10 +2,10 @@ package queue
 
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
-import model.PendingFile.PendingFileId
 import queue.Models.JobId
 import io.circe.parser._
 import io.circe.syntax._
+import model.RemoteFileId
 
 trait QueueJob {
   def context: String
@@ -20,9 +20,9 @@ object ContextHolder {
 
 case class ReceiptFileJob(userId: String,
                           receiptId: String,
-                          filePath: String,
+                          remoteFileId: RemoteFileId,
                           fileExt: String,
-                          pendingFileId: PendingFileId,
+                          pendingFileId: String,
                           context: String = "RECEIPT_FILE")
     extends QueueJob
 
@@ -31,7 +31,7 @@ object ReceiptFileJob {
   implicit val receiptFileJobEncoder: Encoder[ReceiptFileJob] = deriveEncoder
 }
 
-case class OcrJob(userId: String, receiptId: String, fileId: String, pendingFileId: PendingFileId, context: String = "RECEIPT_OCR")
+case class OcrJob(userId: String, receiptId: String, fileId: String, pendingFileId: String, context: String = "RECEIPT_OCR")
     extends QueueJob
 
 object OcrJob {
@@ -53,7 +53,7 @@ object QueueJob {
   }
 
   def asString(queueJob: QueueJob): String = queueJob match {
-    case (receiptFileJob: ReceiptFileJob) => receiptFileJob.asJson.spaces2
-    case (ocrJob: OcrJob)                 => ocrJob.asJson.spaces2
+    case receiptFileJob: ReceiptFileJob => receiptFileJob.asJson.spaces2
+    case ocrJob: OcrJob                 => ocrJob.asJson.spaces2
   }
 }
