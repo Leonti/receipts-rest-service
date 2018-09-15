@@ -74,7 +74,7 @@ object ReceiptRestService extends App {
   val userInterpreter    = new UserInterpreter(userRepository, openIdService)
   val tokenInterpreter   = new TokenInterpreter[IO](sys.env("AUTH_TOKEN_SECRET").getBytes)
   val randomInterpreter  = new RandomInterpreterTagless()
-  val receiptInterpreter = new ReceiptInterpreterTagless(receiptRepository)
+  val receiptInterpreter = new ReceiptStoreMongo(receiptRepository)
   val ocrInterpreter =
     new OcrInterpreterTagless(httpClient,
                               ocrRepository,

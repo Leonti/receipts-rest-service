@@ -8,7 +8,7 @@ import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
 import scala.language.higherKinds
 
-trait ReceiptAlg[F[_]] {
+trait ReceiptStoreAlg[F[_]] {
   def getReceipt(userId: UserId, id: String): F[Option[ReceiptEntity]]
   def deleteReceipt(userId: UserId, id: String): F[Unit]
   def saveReceipt(userId: UserId, id: String, receipt: ReceiptEntity): F[ReceiptEntity]

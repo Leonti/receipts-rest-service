@@ -9,7 +9,7 @@ import cats.implicits._
 import scala.language.higherKinds
 
 class FileProcessor[F[_]: Monad](
-    receiptAlg: ReceiptAlg[F],
+    receiptAlg: ReceiptStoreAlg[F],
     localFileAlg: LocalFileAlg[F],
     remoteFileAlg: RemoteFileAlg[F],
     imageResizeAlg: ImageResizeAlg[F],
@@ -35,7 +35,7 @@ class FileProcessor[F[_]: Monad](
               receiptFileJob.receiptId,
               FileEntity(
                 id = resizedFileId,
-                parentId = None,
+                parentId = Some(receiptFileJob.remoteFileId.fileId),
                 ext = receiptFileJob.fileExt,
                 metaData = fileMetaData,
                 timestamp = timestamp

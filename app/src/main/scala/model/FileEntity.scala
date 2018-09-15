@@ -53,7 +53,6 @@ object FileMetaData {
         .flatMap({
           case "IMAGE" =>
             for {
-              md5    <- c.downField("md5").as[String]
               length <- c.downField("length").as[Long]
               width  <- c.downField("width").as[Int]
               height <- c.downField("height").as[Int]
@@ -65,7 +64,6 @@ object FileMetaData {
               )
           case fileType =>
             for {
-              md5    <- c.downField("md5").as[String]
               length <- c.downField("length").as[Long]
             } yield
               GenericMetaData(

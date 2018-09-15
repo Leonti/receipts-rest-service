@@ -1,11 +1,11 @@
 package interpreters
 
 import model.{FileEntity, ReceiptEntity, UserId}
-import algebras.ReceiptAlg
+import algebras.ReceiptStoreAlg
 import cats.effect.IO
 import repository.ReceiptRepository
 
-class ReceiptInterpreterTagless(receiptRepository: ReceiptRepository) extends ReceiptAlg[IO] {
+class ReceiptStoreMongo(receiptRepository: ReceiptRepository) extends ReceiptStoreAlg[IO] {
   override def getReceipt(userId: UserId, id: String): IO[Option[ReceiptEntity]] = IO.fromFuture(IO(receiptRepository.findById(id)))
   override def deleteReceipt(userId: UserId, id: String): IO[Unit]               = IO.fromFuture(IO(receiptRepository.deleteById(id)))
   override def saveReceipt(userId: UserId, id: String, receipt: ReceiptEntity): IO[ReceiptEntity] =

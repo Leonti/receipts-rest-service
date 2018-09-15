@@ -54,11 +54,11 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
   }
 
   def createReceipt(formBody: org.http4s.multipart.Multipart[IO], accessToken: String): IO[ReceiptEntity] = createReceiptEither(formBody, accessToken).flatMap({
-    case Left(statusCode) => IO.raiseError(new Exception(s"Creating receipt failed, response code: $statusCode"))
+    case Left(error) => IO.raiseError(new Exception(s"Creating receipt failed, response code: $error"))
     case Right(receipt) => IO.pure(receipt)
   })
 
-  def createReceiptEither(formBody: org.http4s.multipart.Multipart[IO], accessToken: String): IO[Either[Int, ReceiptEntity]] = {
+  def createReceiptEither(formBody: org.http4s.multipart.Multipart[IO], accessToken: String): IO[Either[String, ReceiptEntity]] = {
     import org.http4s.circe.CirceEntityCodec._
 
     val headers: Headers = formBody.headers.put(org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken)))
@@ -68,8 +68,8 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
         formBody
       ).map(_.replaceAllHeaders(headers))
     )({
-      case Status.Successful(r) => r.attemptAs[ReceiptEntity].leftMap(_ => r.status.code).value
-      case r => IO.pure(Left(r.status.code))
+      case Status.Successful(r) => r.attemptAs[ReceiptEntity].leftMap(decodeFailure => s"Failed to decode $decodeFailure, status code: ${r.status.code}").value
+      case r => IO.pure(Left(s"Failed to create, status code ${r.status.code}"))
     })
   }
 

@@ -4,16 +4,20 @@ import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import cats.effect.IO
-import org.http4s.client.blaze.Http1Client
-
+import org.http4s.client.blaze.{BlazeClientConfig, Http1Client}
 import org.scalatest.time.{Millis, Seconds, Span}
+import scala.concurrent.duration._
 
 class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
 
   implicit val defaultPatience: PatienceConfig =
     PatienceConfig(timeout = Span(120, Seconds), interval = Span(1000, Millis))
 
-  private val httpClient = Http1Client[IO]().unsafeRunSync()
+  private val httpClient = Http1Client[IO](
+    BlazeClientConfig.defaultConfig.copy(
+      responseHeaderTimeout = 60.seconds,
+      requestTimeout = 60.second
+    )).unsafeRunSync
   val userTestUtils = new UserTestUtils(httpClient)
   val receiptTestUtils = new ReceiptTestUtils(httpClient)
 
@@ -58,7 +62,7 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
     } yield secondReceipt
 
     whenReady(rejectedReceiptAction.unsafeToFuture()) { errorResponse =>
-      errorResponse shouldBe Left(400)
+      errorResponse shouldBe Left("Failed to create, status code 400")
     }
   }
 

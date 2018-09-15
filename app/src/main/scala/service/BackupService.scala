@@ -4,7 +4,7 @@ import java.io._
 import java.nio.charset.StandardCharsets
 import java.util.zip.{ZipEntry, ZipOutputStream}
 
-import algebras.{ReceiptAlg, RemoteFileAlg}
+import algebras.{ReceiptStoreAlg, RemoteFileAlg}
 import cats.Monad
 import cats.effect.IO
 import model.{FileEntity, ReceiptEntity, RemoteFileId, UserId}
@@ -18,7 +18,7 @@ import scala.concurrent.ExecutionContext.Implicits.global // FIXME
 
 case class ReceiptsBackupIO(runSource: IO[Unit], source: InputStream, filename: String)
 
-class BackupService[F[_]: Monad](receiptAlg: ReceiptAlg[F], remoteFileAlg: RemoteFileAlg[F]) {
+class BackupService[F[_]: Monad](receiptAlg: ReceiptStoreAlg[F], remoteFileAlg: RemoteFileAlg[F]) {
 
   case class FileToZip(path: String, source: InputStream)
 

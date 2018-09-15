@@ -61,8 +61,8 @@ object TestInterpreters {
                                    pendingFileId: String): Id[JobId] = ""
   }
 
-  class ReceiptInterpreterId(
-                                   receipts: Seq[ReceiptEntity] = List()) extends ReceiptAlg[Id] {
+  class ReceiptStoreInterpreterId(
+                                   receipts: Seq[ReceiptEntity] = List()) extends ReceiptStoreAlg[Id] {
     override def getReceipt(userId: UserId,
                             id: String): Id[Option[ReceiptEntity]] = receipts.find(_.id == id)
     override def deleteReceipt(userId: UserId, id: String): Id[Unit] = ()

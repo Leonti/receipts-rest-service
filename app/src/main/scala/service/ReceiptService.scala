@@ -26,7 +26,7 @@ object Patch {
   }
 }
 
-class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptAlg[F],
+class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptStoreAlg[F],
                                    localFileAlg: LocalFileAlg[F],
                                    remoteFileAlg: RemoteFileAlg[F],
                                    fileStoreAlg: FileStoreAlg[F],
