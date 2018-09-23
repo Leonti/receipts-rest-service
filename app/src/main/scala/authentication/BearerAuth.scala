@@ -19,8 +19,11 @@ class BearerAuth[F[_]: Monad, U](verificationAlg: JwtVerificationAlg[Id], fromBe
 
   val auth: Endpoint[U] = (input: Input) => {
 
+    val tokenFromHeader = input.request.authorization.flatMap(header => REGEXP_AUTHORIZATION.findFirstMatchIn(header).map(_.group(2)))
+    val tokenFormCookie = input.request.cookies.getValue("access_token")
+    
     val result: F[Output[U]] =
-      input.request.authorization.flatMap(header => REGEXP_AUTHORIZATION.findFirstMatchIn(header).map(_.group(2))) match {
+      tokenFromHeader.orElse(tokenFormCookie) match {
         case Some(token) =>
           verify(token) match {
             case Right(subClaim) =>
