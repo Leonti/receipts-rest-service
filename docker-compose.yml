@@ -29,7 +29,7 @@ services:
       - OCR_SEARCH_API_KEY
 
   assembly:
-    image: leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
+    image: leonti/sbt_1.2.1_openjdk8-alpine3.7:1.0
     working_dir: /app
     volumes:
       - ./app/src:/app/src
@@ -42,7 +42,7 @@ services:
     command: bash -c "sbt assembly && cp Dockerfile /app/target && cp /app/target/scala-2.12/receipts-rest-service-assembly-1.0.jar /app/target/receipts.jar"
 
   test:
-    image: leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
+    image: leonti/sbt_1.2.1_openjdk8-alpine3.7:1.0
     working_dir: /app
     volumes:
       - ./app/src:/app/src
@@ -54,7 +54,7 @@ services:
     command: sbt test
 
   integration-tests:
-    image: leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
+    image: leonti/sbt_1.2.1_openjdk8-alpine3.7:1.0
     working_dir: /app
     volumes:
       - ./app/src:/app/src
@@ -66,7 +66,7 @@ services:
     command: bash -c "rm -rf /app/target/* && sbt clean && sbt it:test"
 
   e2e-tests:
-    image: leonti/sbt_1.2.0_openjdk8-alpine3.7:1.0
+    image: leonti/sbt_1.2.1_openjdk8-alpine3.7:1.0
     environment:
       - APP_HOST_PORT=http://app:9000
       - AUTH0_API_CLIENT_ID
