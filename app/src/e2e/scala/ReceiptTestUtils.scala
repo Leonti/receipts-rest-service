@@ -1,6 +1,7 @@
+import ReceiptRestService.executor
 import model.{PendingFile, ReceiptEntity}
 import TestConfig._
-import cats.effect.IO
+import cats.effect.{ContextShift, IO, Timer}
 import cats.syntax.all._
 import org.http4s._
 import org.http4s.client.Client
@@ -10,7 +11,6 @@ import org.http4s.headers._
 import org.http4s.multipart.Part
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 object ReceiptTestUtils {
   val total           = Some(BigDecimal(12.38))
@@ -38,6 +38,8 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
   }
 
   private def pendingFilesToReceipt(receiptId: String, pendingFilesIO: IO[List[PendingFile]], accessToken: String, retry: Int): IO[ReceiptEntity] = {
+    implicit val timer: Timer[IO] = IO.timer(executor)
+
     val checkInterval = 1.second
 
     if (retry > 60) {
@@ -64,9 +66,9 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
     val headers: Headers = formBody.headers.put(org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken)))
     httpClient.fetch(
       POST(
-        org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt"),
-        formBody
-      ).map(_.replaceAllHeaders(headers))
+        formBody,
+        org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt")
+      ).map(_.withHeaders(headers))
     )({
       case Status.Successful(r) => r.attemptAs[ReceiptEntity].leftMap(decodeFailure => s"Failed to decode $decodeFailure, status code: ${r.status.code}").value
       case r => IO.pure(Left(s"Failed to create, status code ${r.status.code}"))
@@ -96,8 +98,8 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
 
     httpClient.expect[ReceiptEntity](
       PATCH(
-        org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt/$receiptId"),
         patch,
+        org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt/$receiptId"),
         org.http4s.headers.Authorization(Credentials.Token(AuthScheme.Bearer, accessToken)),
         Accept(org.http4s.MediaType.application.json)
       )
@@ -140,10 +142,12 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
   }
 
   def createImageFileContent: org.http4s.multipart.Multipart[IO] = {
+    implicit val cs: ContextShift[IO] = IO.contextShift(executor)
     val receipt = getClass.getResource("/receipt.png")
+
     org.http4s.multipart.Multipart[IO](
       Vector(
-        Part.fileData("receipt", receipt, `Content-Type`(org.http4s.MediaType.image.png)),
+        Part.fileData("receipt", receipt, executor, `Content-Type`(org.http4s.MediaType.image.png)),
         Part.formData("total", s"${ReceiptTestUtils.total.get}"),
         Part.formData("description", ReceiptTestUtils.description),
         Part.formData("transactionTime", s"${ReceiptTestUtils.transactionTime}"),

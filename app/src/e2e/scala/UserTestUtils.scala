@@ -9,16 +9,14 @@ import org.http4s.circe.CirceEntityCodec._
 
 import routing.OpenIdToken
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 class UserTestUtils(httpClient: Client[IO]) {
 
   def createUser: IO[(UserInfo, AccessToken)] = for {
     accessToken  <- new Auth0Api(httpClient).createUserAndGetAccessToken()
     userInfo <- httpClient.expect[UserInfo](
       POST(
-        Uri.unsafeFromString(s"$appHostPort/oauth/openid"),
-        OpenIdToken(accessToken)
+        OpenIdToken(accessToken),
+        Uri.unsafeFromString(s"$appHostPort/oauth/openid")
       )
     )
   } yield (userInfo, AccessToken(accessToken))

@@ -24,7 +24,7 @@ import instances.catsio._
 import io.finch.Endpoint
 import org.http4s.client.blaze.BlazeClientBuilder
 
-//import scala.concurrent.duration._
+import scala.concurrent.duration._
 
 // TODO switch to IOApp
 object ReceiptRestService extends App {
@@ -51,17 +51,12 @@ object ReceiptRestService extends App {
   implicit val timer: Timer[IO] = IO.timer(executor)
 
   val userRepository = new UserRepository()
-  /*
-  val httpClient: Client[IO] = Http1Client[IO](
-    BlazeClientConfig.defaultConfig.copy(
-      responseHeaderTimeout = 60.seconds,
-      requestTimeout = 60.second
-    )).unsafeRunSync
-  */
 
-  // TODO - adjust timeouts
-  // Properly use resource
-  val (httpClient, _) = BlazeClientBuilder[IO](executor).resource.allocated.unsafeRunSync()
+  // TODO: Properly use resource
+  val (httpClient, _) = BlazeClientBuilder[IO](executor)
+    .withResponseHeaderTimeout(60.seconds)
+    .withRequestTimeout(60.seconds)
+    .resource.allocated.unsafeRunSync()
 
   val openIdService = new OpenIdService(httpClient)
 

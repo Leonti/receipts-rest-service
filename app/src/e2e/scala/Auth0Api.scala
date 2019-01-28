@@ -8,8 +8,6 @@ import org.http4s.client.dsl.io._
 import org.http4s.headers._
 import org.http4s.circe.CirceEntityCodec._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 case class Auth0TokenRequest(
     client_id: String,
     client_secret: String,
@@ -43,31 +41,31 @@ class Auth0Api(httpClient: Client[IO]) {
 
   private def requestAuth0AccessToken(): IO[Auth0TokenResponse] = httpClient.expect[Auth0TokenResponse](
     POST(
-     Uri.uri("https://leonti.au.auth0.com/oauth/token"),
       Auth0TokenRequest(
         client_id = auth0ApiClientId,
         client_secret = auth0ApiClientSecret,
         audience = auth0ApiAudience
-      )
+      ),
+      Uri.uri("https://leonti.au.auth0.com/oauth/token")
     )
   )
 
   private def requestUserToken(email: String, password: String): IO[Auth0TokenResponse] = httpClient.expect[Auth0TokenResponse](
     POST(
-      Uri.uri("https://leonti.au.auth0.com/oauth/token"),
       PasswordGrantRequest(
         username = email,
         password = password,
         client_id = auth0ApiClientId,
         client_secret = auth0ApiClientSecret
-      )
+      ),
+      Uri.uri("https://leonti.au.auth0.com/oauth/token")
     )
   )
 
   private def createAuth0User(auth0CreateUserRequest: Auth0CreateUserRequest, accessToken: String): IO[Unit] = httpClient.fetch(
     POST(
-      Uri.unsafeFromString(s"${auth0BaseUrl}users"),
       auth0CreateUserRequest,
+      Uri.unsafeFromString(s"${auth0BaseUrl}users"),
       Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
     )
   ) {
