@@ -1,6 +1,5 @@
 package service
 
-import scala.concurrent.ExecutionContextExecutor
 import cats.effect.IO
 import model.{AccessToken, ExternalUserInfo}
 import io.circe.{Decoder, Encoder}
@@ -23,7 +22,7 @@ object OpenIdUserInfo {
   implicit val openIdUserInfoEncoder: Encoder[OpenIdUserInfo] = deriveEncoder
 }
 
-class OpenIdService(httpClient: Client[IO])(implicit ec: ExecutionContextExecutor) {
+class OpenIdService(httpClient: Client[IO]) {
 
   def fetchAndValidateTokenInfo(accessToken: AccessToken): IO[ExternalUserInfo] =
     httpClient

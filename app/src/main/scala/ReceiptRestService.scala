@@ -2,7 +2,7 @@ import java.io.File
 import java.util.concurrent.Executors
 
 import authentication.BearerAuth
-import cats.effect.IO
+import cats.effect.{ContextShift, IO, Timer}
 import io.finch.circe._
 import com.twitter.finagle.Http
 import com.twitter.finagle.Service
@@ -22,11 +22,11 @@ import processing.{FileProcessor, OcrProcessor}
 import queue.{Queue, QueueProcessor}
 import instances.catsio._
 import io.finch.Endpoint
-import org.http4s.client.Client
-import org.http4s.client.blaze.{BlazeClientConfig, Http1Client}
+import org.http4s.client.blaze.BlazeClientBuilder
 
-import scala.concurrent.duration._
+//import scala.concurrent.duration._
 
+// TODO switch to IOApp
 object ReceiptRestService extends App {
   val policy: Cors.Policy = Cors.Policy(
     allowsOrigin = _ => Some("*"),
@@ -47,12 +47,22 @@ object ReceiptRestService extends App {
 
   implicit val executor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
+  implicit val cs: ContextShift[IO] = IO.contextShift(executor)
+  implicit val timer: Timer[IO] = IO.timer(executor)
+
   val userRepository = new UserRepository()
+  /*
   val httpClient: Client[IO] = Http1Client[IO](
     BlazeClientConfig.defaultConfig.copy(
       responseHeaderTimeout = 60.seconds,
       requestTimeout = 60.second
     )).unsafeRunSync
+  */
+
+  // TODO - adjust timeouts
+  // Properly use resource
+  val (httpClient, _) = BlazeClientBuilder[IO](executor).resource.allocated.unsafeRunSync()
+
   val openIdService = new OpenIdService(httpClient)
 
   val pendingFileRepository = new PendingFileRepository()
@@ -74,7 +84,7 @@ object ReceiptRestService extends App {
   val userInterpreter    = new UserInterpreter(userRepository, openIdService)
   val tokenInterpreter   = new TokenInterpreter[IO](sys.env("AUTH_TOKEN_SECRET").getBytes)
   val randomInterpreter  = new RandomInterpreterTagless()
-  val receiptInterpreter = new ReceiptStoreMongo(receiptRepository)
+  val receiptInterpreter = new ReceiptsStoreDynamo()
   val ocrInterpreter =
     new OcrInterpreterTagless(httpClient,
                               ocrRepository,
@@ -125,7 +135,7 @@ object ReceiptRestService extends App {
   val appConfigEndpoints = new AppConfigEndpoints(sys.env("GOOGLE_CLIENT_ID"))
   val oauthEndpoints     = new OauthEndpoints[IO](userPrograms)
   val backupEndpoints    = new BackupEndpoints[IO](auth, new BackupService[IO](receiptInterpreter, remoteFile), tokenInterpreter)
-
+  
   val fileProcessor = new FileProcessor(
     receiptInterpreter,
     localFile,

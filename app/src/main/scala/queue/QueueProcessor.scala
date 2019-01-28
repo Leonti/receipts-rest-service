@@ -2,7 +2,8 @@ package queue
 
 import java.io.{PrintWriter, StringWriter}
 import java.util.concurrent.Executors
-import cats.effect.IO
+
+import cats.effect.{IO, Timer}
 import cats.syntax.all._
 import cats.instances.list._
 import processing.{FileProcessor, OcrProcessor}
@@ -14,6 +15,7 @@ class QueueProcessor(queue: Queue, fileProcessor: FileProcessor[IO], ocrProcesso
 
   // FIXME - figure out how to pick up job in a single thread, but process in multiple
   private implicit val ec = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+  private implicit val timer: Timer[IO] = IO.timer(ec)
 
   def reserveNextJob(): IO[Unit] = {
     println("Checking for new jobs")
@@ -47,7 +49,7 @@ class QueueProcessor(queue: Queue, fileProcessor: FileProcessor[IO], ocrProcesso
           // FXIME log error
           println(s"Job failed to complete $job ${sw.toString}")
           queue.bury(job.id)
-      }
+      }.toIO
   }
 
   private def process(job: ReservedJob): IO[Unit] = {

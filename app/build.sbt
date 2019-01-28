@@ -32,11 +32,12 @@ val googleApiClient = "1.22.0"
 val scalaLoggingV   = "3.5.0"
 val logbackV        = "1.1.7"
 val diffsonV        = "3.0.0"
-val catsV           = "1.2.0"
-val circeVersion = "0.9.3"
+val catsV           = "1.5.0"
+val circeVersion = "0.11.1"
 val finchV = "0.23.0"
-val fs2V = "1.0.0-M1"
-val http4sVersion = "1.0.0-SNAPSHOT"
+val fs2V = "1.0.2"
+val http4sVersion = "0.20.0-M5"
+val scanamoV = "1.0.0-M9"
 
 val logging = Seq(
   "ch.qos.logback"             % "logback-classic"          % logbackV,
@@ -72,6 +73,10 @@ libraryDependencies ++= {
       ExclusionRule(organization = "com.fasterxml.jackson.core")
       ),
     "com.auth0" % "jwks-rsa" % "0.6.0",
+    "org.scanamo" %% "scanamo" % scanamoV,
+    "org.scanamo" %% "scanamo-cats-effect" % scanamoV,
+    "org.scanamo" %% "scanamo-testkit" % scanamoV,
+    //"io.github.howardjohn" %% "scanamo-circe" % "0.2.1",
     "co.fs2" %% "fs2-core" % fs2V,
     "co.fs2" %% "fs2-io" % fs2V,
     "org.scalatest" %% "scalatest"          % scalaTestV % "e2e,it,test"

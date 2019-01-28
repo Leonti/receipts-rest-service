@@ -17,8 +17,6 @@ import org.http4s.circe._
 import io.circe.syntax._
 import org.http4s.util.CaseInsensitiveString
 
-import scala.concurrent.ExecutionContextExecutor
-
 object OcrIntepreter {
   case class OcrConfig(ocrHost: String, apiKey: String)
 }
@@ -26,8 +24,7 @@ object OcrIntepreter {
 class OcrInterpreterTagless(httpClient: Client[IO],
                             ocrRepository: OcrRepository,
                             ocrService: OcrService,
-                            ocrConfig: OcrIntepreter.OcrConfig)(implicit executor: ExecutionContextExecutor)
-    extends OcrAlg[IO] {
+                            ocrConfig: OcrIntepreter.OcrConfig) extends OcrAlg[IO] {
 
   private implicit val ocrSearchResultDecoder: EntityDecoder[IO, OcrSearchResult] = jsonOf[IO, OcrSearchResult]
 
@@ -38,8 +35,8 @@ class OcrInterpreterTagless(httpClient: Client[IO],
     httpClient
       .expect[String](
         POST(
-          Uri.unsafeFromString(s"${ocrConfig.ocrHost}/api/search/$userId/$receiptId"),
           OcrContent(ocrText.text).asJson,
+          Uri.unsafeFromString(s"${ocrConfig.ocrHost}/api/search/$userId/$receiptId"),
           Authorization(Credentials.Token(CaseInsensitiveString("ApiKey"), ocrConfig.apiKey))
         ))
       .map(_ => ())
