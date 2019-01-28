@@ -1,7 +1,6 @@
 import java.io.ByteArrayInputStream
 import java.util.zip.{ZipEntry, ZipInputStream}
 
-import ReceiptRestService.executor
 import TestConfig._
 import authentication.OAuth2AccessTokenResponse
 import org.scalatest.concurrent.ScalaFutures
@@ -13,14 +12,15 @@ import org.http4s._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
   implicit val defaultPatience: PatienceConfig =
     PatienceConfig(timeout = Span(120, Seconds), interval = Span(1000, Millis))
 
-  implicit val cs: ContextShift[IO] = IO.contextShift(executor)
+  implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
-  val (httpClient, _) = BlazeClientBuilder[IO](executor)
+  val (httpClient, _) = BlazeClientBuilder[IO](global)
     .withResponseHeaderTimeout(60.seconds)
     .withRequestTimeout(60.seconds)
     .resource.allocated.unsafeRunSync()

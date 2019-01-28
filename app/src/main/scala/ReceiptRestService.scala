@@ -2,7 +2,7 @@ import java.io.File
 import java.util.concurrent.Executors
 
 import authentication.BearerAuth
-import cats.effect.{ContextShift, IO, Timer}
+import cats.effect.{ContextShift, IO}
 import io.finch.circe._
 import com.twitter.finagle.Http
 import com.twitter.finagle.Service
@@ -45,10 +45,9 @@ object ReceiptRestService extends App {
             "Authorization"))
   )
 
-  implicit val executor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+  private implicit val executor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
-  implicit val cs: ContextShift[IO] = IO.contextShift(executor)
-  implicit val timer: Timer[IO] = IO.timer(executor)
+  private implicit val cs: ContextShift[IO] = IO.contextShift(executor)
 
   val userRepository = new UserRepository()
 

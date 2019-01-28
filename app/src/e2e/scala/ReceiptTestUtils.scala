@@ -1,4 +1,3 @@
-import ReceiptRestService.executor
 import model.{PendingFile, ReceiptEntity}
 import TestConfig._
 import cats.effect.{ContextShift, IO, Timer}
@@ -11,6 +10,7 @@ import org.http4s.headers._
 import org.http4s.multipart.Part
 
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object ReceiptTestUtils {
   val total           = Some(BigDecimal(12.38))
@@ -38,7 +38,7 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
   }
 
   private def pendingFilesToReceipt(receiptId: String, pendingFilesIO: IO[List[PendingFile]], accessToken: String, retry: Int): IO[ReceiptEntity] = {
-    implicit val timer: Timer[IO] = IO.timer(executor)
+    implicit val timer: Timer[IO] = IO.timer(global)
 
     val checkInterval = 1.second
 
@@ -142,12 +142,12 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
   }
 
   def createImageFileContent: org.http4s.multipart.Multipart[IO] = {
-    implicit val cs: ContextShift[IO] = IO.contextShift(executor)
+    implicit val cs: ContextShift[IO] = IO.contextShift(global)
     val receipt = getClass.getResource("/receipt.png")
 
     org.http4s.multipart.Multipart[IO](
       Vector(
-        Part.fileData("receipt", receipt, executor, `Content-Type`(org.http4s.MediaType.image.png)),
+        Part.fileData("receipt", receipt, global, `Content-Type`(org.http4s.MediaType.image.png)),
         Part.formData("total", s"${ReceiptTestUtils.total.get}"),
         Part.formData("description", ReceiptTestUtils.description),
         Part.formData("transactionTime", s"${ReceiptTestUtils.transactionTime}"),

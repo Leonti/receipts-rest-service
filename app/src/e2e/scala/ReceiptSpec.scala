@@ -1,4 +1,3 @@
-import ReceiptRestService.executor
 import model._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FlatSpec, Matchers}
@@ -7,15 +6,16 @@ import cats.effect.{ContextShift, IO}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.scalatest.time.{Millis, Seconds, Span}
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
 
   implicit val defaultPatience: PatienceConfig =
     PatienceConfig(timeout = Span(120, Seconds), interval = Span(1000, Millis))
 
-  implicit val cs: ContextShift[IO] = IO.contextShift(executor)
+  implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
-  val (httpClient, _) = BlazeClientBuilder[IO](executor)
+  val (httpClient, _) = BlazeClientBuilder[IO](global)
     .withResponseHeaderTimeout(60.seconds)
     .withRequestTimeout(60.seconds)
     .resource.allocated.unsafeRunSync()
