@@ -155,14 +155,14 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptStoreAlg[F],
       }
     } yield fileDeletionResult
 
-  def receiptFileWithExtension(userId: UserId, receiptId: String, fileId: String): F[Option[FileToServe]] =
+  def receiptFileWithExtension(userId: UserId, receiptId: String, fileId: String): F[Option[FileToServe[F]]] =
     for {
       receiptOption <- getReceipt(userId, receiptId)
       fileToServeOption <- if (receiptOption.isDefined) {
         val extOption = receiptOption.get.files.find(_.id == fileId).map(_.ext)
         remoteFileAlg
-          .fetchRemoteFileInputStream(RemoteFileId(UserId(receiptOption.get.userId), fileId))
-          .map(stream => extOption.map(ext => FileToServe(stream, ext)))
+          .remoteFileStream(RemoteFileId(UserId(receiptOption.get.userId), fileId))
+          .map(stream => extOption.map(ext => FileToServe[F](stream, ext)))
       } else {
         Monad[F].pure(None)
       }

@@ -4,7 +4,6 @@ import cats.Id
 import io.finch.{Endpoint, Input}
 import model.{SubClaim, User}
 import org.scalatest.{FlatSpec, Matchers}
-import instances.identity._
 import routing.UserEndpoints
 
 class UserEndpointsSpec extends FlatSpec with Matchers {

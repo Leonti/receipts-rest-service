@@ -1,10 +1,11 @@
 package routing
 
+import cats.Monad
+import cats.effect.Effect
 import io.finch._
-import io.finch.syntax._
 
-class VersionEndpoint(v: String) {
+class VersionEndpoint[F[_]: Monad](v: String)(implicit F: Effect[F]) extends Endpoint.Module[F] {
 
-  val version: Endpoint[String] = get("version") { Ok(v) }
+  val version: Endpoint[F, String] = get("version") { Ok(v) }
 
 }

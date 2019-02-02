@@ -2,16 +2,15 @@ import java.nio.charset.Charset
 
 import TestInterpreters._
 import authentication.{BearerAuth, OAuth2AccessTokenResponse}
+import backup.BackupEndpoints
 import cats.Id
 import com.twitter.concurrent.AsyncStream
 import com.twitter.io.Buf
 import com.twitter.util.Await
-import instances.identity._
 import interpreters.TokenInterpreter
 import io.finch.{Endpoint, Input}
 import model._
 import org.scalatest.{FlatSpec, Matchers}
-import routing.BackupEndpoints
 import service.BackupService
 
 class BackupEndpointsSpec extends FlatSpec with Matchers {

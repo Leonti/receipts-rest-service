@@ -2,8 +2,10 @@ import java.io.File
 import java.util.concurrent.Executors
 
 import authentication.BearerAuth
+import backup.{BackupEndpoints}
 import cats.effect.{ContextShift, IO}
 import io.finch.circe._
+import io.finch.fs2._
 import com.twitter.finagle.Http
 import com.twitter.finagle.Service
 import com.twitter.finagle.http.{Request, Response}
@@ -20,7 +22,6 @@ import interpreters.{ReceiptFileQueue, _}
 import ocr.service.{GoogleOcrService, OcrServiceStub}
 import processing.{FileProcessor, OcrProcessor}
 import queue.{Queue, QueueProcessor}
-import instances.catsio._
 import io.finch.Endpoint
 import org.http4s.client.blaze.BlazeClientBuilder
 
@@ -87,14 +88,14 @@ object ReceiptRestService extends App {
 
   val userPrograms = new UserPrograms(userInterpreter, randomInterpreter)
 
-  val localFile = new LocalFileInterpreter()
+  val localFile = new LocalFileInterpreter(executor)
   val remoteFile = new RemoteFileS3(
     S3Config(
       region = sys.env("S3_REGION"),
       bucket = sys.env("S3_BUCKET"),
       accessKey = sys.env("S3_ACCESS_KEY"),
       secretKey = sys.env("S3_SECRET_ACCESS_KEY")
-    ))
+    ), executor)
   val fileStore    = new FileStoreMongo(new StoredFileRepository())
   val pendingFile  = new PendingFileMongo(new PendingFileRepository())
   val receiptQueue = new ReceiptFileQueue(queue)
@@ -115,7 +116,7 @@ object ReceiptRestService extends App {
     randomInterpreter
   )
 
-  val auth: Endpoint[User] = new BearerAuth[IO, User](
+  val auth: Endpoint[IO, User] = new BearerAuth[IO, User](
     new JwtVerificationInterpreter(),
     subClaim => userPrograms.findUserByExternalId(subClaim.value)
   ).auth
@@ -126,9 +127,9 @@ object ReceiptRestService extends App {
   val pendingFileEndpoints = new PendingFileEndpoints[IO](auth, pendingFile)
 
   val userEndpoints      = new UserEndpoints(auth)
-  val appConfigEndpoints = new AppConfigEndpoints(sys.env("GOOGLE_CLIENT_ID"))
+  val appConfigEndpoints = new AppConfigEndpoints[IO](sys.env("GOOGLE_CLIENT_ID"))
   val oauthEndpoints     = new OauthEndpoints[IO](userPrograms)
-  val backupEndpoints    = new BackupEndpoints[IO](auth, new BackupService[IO](receiptInterpreter, remoteFile), tokenInterpreter)
+  val backupEndpoints    = new BackupEndpoints[IO](auth, /*new BackupService[IO](receiptInterpreter, remoteFile),*/ tokenInterpreter)
   
   val fileProcessor = new FileProcessor(
     receiptInterpreter,
@@ -152,7 +153,7 @@ object ReceiptRestService extends App {
       appConfigEndpoints.getAppConfig :+:
       oauthEndpoints.validateWithUserCreation :+:
       backupEndpoints.all :+:
-      new VersionEndpoint(System.getenv("VERSION")).version).toService)
+      new VersionEndpoint[IO](System.getenv("VERSION")).version).toService)
 
   Await.ready(Http.server.serve(s"0.0.0.0:9000", service))
 }

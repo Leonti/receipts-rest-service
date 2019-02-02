@@ -1,23 +1,21 @@
 package authentication
 import algebras.JwtVerificationAlg
-import io.catbird.util.Rerunnable
+import cats.effect.Effect
 import io.finch.{Endpoint, EndpointResult, Input, Output, Trace}
 import model.SubClaim
 import cats.{Id, Monad}
 import com.twitter.finagle.http.Status
-import io.finch.syntax.ToTwitterFuture
-
 import cats.implicits._
 
 import scala.language.higherKinds
 
-class BearerAuth[F[_]: Monad, U](verificationAlg: JwtVerificationAlg[Id], fromBearerTokenClaim: SubClaim => F[Option[U]])(
-    implicit ttf: ToTwitterFuture[F]) {
+class BearerAuth[F[_]: Monad, U](verificationAlg: JwtVerificationAlg[Id], fromBearerTokenClaim: SubClaim => F[Option[U]])
+                                (implicit F: Effect[F]) extends Endpoint.Module[F]{
   import verificationAlg._
 
   private val REGEXP_AUTHORIZATION = """^\s*(OAuth|Bearer)\s+([^\s\,]*)""".r
 
-  val auth: Endpoint[U] = (input: Input) => {
+  val auth: Endpoint[F, U] = (input: Input) => {
 
     val tokenFromHeader = input.request.authorization.flatMap(header => REGEXP_AUTHORIZATION.findFirstMatchIn(header).map(_.group(2)))
     val tokenFormCookie = input.request.cookies.getValue("access_token")
@@ -36,7 +34,7 @@ class BearerAuth[F[_]: Monad, U](verificationAlg: JwtVerificationAlg[Id], fromBe
         case None => Monad[F].pure(Output.failure(new Exception("Invalid bearer token"), Status.Unauthorized))
       }
 
-    EndpointResult.Matched(input, Trace.empty, Rerunnable.fromFuture(ttf(result)))
+    EndpointResult.Matched(input, Trace.empty, result)
   }
 
 }

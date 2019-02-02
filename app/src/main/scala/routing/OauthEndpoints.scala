@@ -1,9 +1,9 @@
 package routing
 import cats.Monad
+import cats.effect.Effect
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.finch._
-import io.finch.syntax._
 import io.finch.circe._
 import cats.implicits._
 import model.{AccessToken, UserInfo}
@@ -16,9 +16,9 @@ object OpenIdToken {
   implicit val openIdTokenEncoder: Encoder[OpenIdToken] = deriveEncoder
 }
 
-class OauthEndpoints[F[_]: ToTwitterFuture: Monad](userPrograms: UserPrograms[F]) {
+class OauthEndpoints[F[_]: Monad](userPrograms: UserPrograms[F])(implicit F: Effect[F]) extends Endpoint.Module[F] {
 
-  val validateWithUserCreation: Endpoint[UserInfo] = post("oauth" :: "openid" :: jsonBody[OpenIdToken]) { openIdToken: OpenIdToken =>
+  val validateWithUserCreation: Endpoint[F, UserInfo] = post("oauth" :: "openid" :: jsonBody[OpenIdToken]) { openIdToken: OpenIdToken =>
     userPrograms
       .validateOpenIdUser(AccessToken(openIdToken.token))
       .map(user => UserInfo(id = user.id, userName = user.userName))

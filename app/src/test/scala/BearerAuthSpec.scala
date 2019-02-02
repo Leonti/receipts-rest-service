@@ -6,7 +6,6 @@ import io.finch._
 import model.{SubClaim, User}
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.concurrent.ScalaFutures
-import instances.identity._
 
 class BearerAuthSpec extends FlatSpec with Matchers with ScalaFutures {
 

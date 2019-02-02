@@ -1,4 +1,4 @@
 package model
-import java.io.InputStream
+import fs2.Stream
 
-case class FileToServe(source: InputStream, ext: String)
+case class FileToServe[F[_]](source: Stream[F, Byte], ext: String)

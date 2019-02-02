@@ -1,24 +1,20 @@
-package routing
+package backup
 
 import algebras.TokenAlg
 import authentication.OAuth2AccessTokenResponse
 import cats.Monad
+import cats.effect.Effect
 import cats.implicits._
-import com.twitter.concurrent.AsyncStream
-import com.twitter.finagle.http.Status
-import com.twitter.io.{Buf, Reader}
 import io.finch._
-import io.finch.syntax._
-import model.{SubClaim, User, UserId}
-import service.BackupService
-import com.twitter.conversions.storage._
+import model.User
 
-class BackupEndpoints[F[_]: ToTwitterFuture: Monad](auth: Endpoint[User], backupService: BackupService[F], tokenAlg: TokenAlg[F]) {
+class BackupEndpoints[F[_]: Monad](auth: Endpoint[F, User], /*backupService: BackupService[F],*/ tokenAlg: TokenAlg[F])
+                                  (implicit F: Effect[F]) extends Endpoint.Module[F]{
 
-  val getBackupToken: Endpoint[OAuth2AccessTokenResponse] = get(auth :: "backup" :: "token") { user: User =>
+  val getBackupToken: Endpoint[F, OAuth2AccessTokenResponse] = get(auth :: "backup" :: "token") { user: User =>
     tokenAlg.generatePathToken(s"/user/${user.id}/backup/download").map(Created)
   }
-
+/*
   val downloadBackup: Endpoint[AsyncStream[Buf]] = get("user" :: path[String] :: "backup" :: "download" :: param[String]("access_token")) {
     (userId: String, accessToken: String) =>
       val out: F[Output[AsyncStream[Buf]]] = for {
@@ -41,7 +37,8 @@ class BackupEndpoints[F[_]: ToTwitterFuture: Monad](auth: Endpoint[User], backup
 
       out
   }
+*/
 
-  val all = getBackupToken :+: downloadBackup
+  val all = getBackupToken //:+: downloadBackup
 
 }

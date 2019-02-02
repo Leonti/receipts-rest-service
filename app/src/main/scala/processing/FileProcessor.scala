@@ -18,7 +18,7 @@ class FileProcessor[F[_]: Monad](
 
   def processJob(receiptFileJob: ReceiptFileJob): F[List[QueueJob]] =
     for {
-      fileStream   <- remoteFileAlg.fetchRemoteFileInputStream(receiptFileJob.remoteFileId)
+      fileStream   <- remoteFileAlg.remoteFileStream(receiptFileJob.remoteFileId)
       tmpFile      <- randomAlg.tmpFile()
       _            <- localFileAlg.streamToFile(fileStream, tmpFile)
       fileMetaData <- localFileAlg.getFileMetaData(tmpFile)

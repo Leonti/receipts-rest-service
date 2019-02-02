@@ -1,12 +1,13 @@
 package routing
 
+import cats.Monad
+import cats.effect.Effect
 import io.finch._
-import io.finch.syntax._
 import model.AppConfig
 
-class AppConfigEndpoints(googleClientId: String) {
+class AppConfigEndpoints[F[_]: Monad](googleClientId: String)(implicit F: Effect[F]) extends Endpoint.Module[F] {
 
-  val getAppConfig: Endpoint[AppConfig] = get("config") {
+  val getAppConfig: Endpoint[F, AppConfig] = get("config") {
     Ok(AppConfig(googleClientId))
   }
 

@@ -2,7 +2,6 @@ import TestInterpreters._
 import cats.Id
 import com.twitter.io.Buf
 import io.finch.circe._
-import instances.identity._
 import io.finch.{Application, Input}
 import model.User
 import org.scalatest.{FlatSpec, Matchers}

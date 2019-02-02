@@ -1,11 +1,12 @@
 package algebras
 
-import java.io.{File, InputStream}
+import java.io.File
 import authentication.OAuth2AccessTokenResponse
 import com.twitter.io.Buf
 import model._
 import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
+import fs2.Stream
 import scala.language.higherKinds
 
 trait ReceiptStoreAlg[F[_]] {
@@ -26,7 +27,7 @@ trait OcrAlg[F[_]] {
 
 trait RemoteFileAlg[F[_]] {
   def saveRemoteFile(file: File, fileId: RemoteFileId): F[Unit]
-  def fetchRemoteFileInputStream(fileId: RemoteFileId): F[InputStream]
+  def remoteFileStream(fileId: RemoteFileId): F[Stream[F, Byte]]
   def deleteRemoteFile(fileId: RemoteFileId): F[Unit]
 }
 
@@ -35,7 +36,7 @@ trait LocalFileAlg[F[_]] {
   def getMd5(file: File): F[String]
   def moveFile(src: File, dst: File): F[Unit]
   def bufToFile(src: Buf, dst: File): F[Unit]
-  def streamToFile(source: InputStream, file: File): F[File]
+  def streamToFile(source: Stream[F, Byte], file: File): F[File]
   def removeFile(file: File): F[Unit]
 }
 

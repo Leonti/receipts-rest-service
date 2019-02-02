@@ -12,7 +12,6 @@ import io.finch.{Application, Endpoint, Input}
 import io.finch.circe._
 import model._
 import org.scalatest.{FlatSpec, Matchers}
-import instances.identity._
 import routing.ReceiptEndpoints
 import service.{FileUploadPrograms, ReceiptPrograms}
 
