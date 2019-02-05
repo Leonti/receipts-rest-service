@@ -9,8 +9,9 @@ import cats.implicits._
 
 import scala.language.higherKinds
 
-class BearerAuth[F[_]: Monad, U](verificationAlg: JwtVerificationAlg[Id], fromBearerTokenClaim: SubClaim => F[Option[U]])
-                                (implicit F: Effect[F]) extends Endpoint.Module[F]{
+class BearerAuth[F[_]: Monad, U](verificationAlg: JwtVerificationAlg[Id], fromBearerTokenClaim: SubClaim => F[Option[U]])(
+    implicit F: Effect[F])
+    extends Endpoint.Module[F] {
   import verificationAlg._
 
   private val REGEXP_AUTHORIZATION = """^\s*(OAuth|Bearer)\s+([^\s\,]*)""".r
@@ -19,7 +20,7 @@ class BearerAuth[F[_]: Monad, U](verificationAlg: JwtVerificationAlg[Id], fromBe
 
     val tokenFromHeader = input.request.authorization.flatMap(header => REGEXP_AUTHORIZATION.findFirstMatchIn(header).map(_.group(2)))
     val tokenFormCookie = input.request.cookies.getValue("access_token")
-    
+
     val result: F[Output[U]] =
       tokenFromHeader.orElse(tokenFormCookie) match {
         case Some(token) =>

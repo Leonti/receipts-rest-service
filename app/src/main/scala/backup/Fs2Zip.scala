@@ -17,28 +17,24 @@ import scala.concurrent.{ExecutionContext, SyncVar}
 
 object Fs2Zip {
 
-  def writeEntry[F[_]](zos: ZipOutputStream)
-                      (implicit F: Concurrent[F], blockingEc: ExecutionContext, contextShift: ContextShift[F]):
-  Pipe[F, (String, Stream[F, Byte]), Unit] =
+  private def writeEntry[F[_]](zos: ZipOutputStream)(implicit F: Concurrent[F],
+                                                     blockingEc: ExecutionContext,
+                                                     contextShift: ContextShift[F]): Pipe[F, (String, Stream[F, Byte]), Unit] =
     _.flatMap {
       case (name, data) =>
         val createEntry = Stream.eval(F.delay {
           zos.putNextEntry(new ZipEntry(name))
         })
-        val writeEntry = data.through(
-          io.writeOutputStream(
-            F.delay(zos.asInstanceOf[OutputStream]),
-            blockingEc,
-            closeAfterUse = false))
+        val writeEntry = data.through(io.writeOutputStream(F.delay(zos.asInstanceOf[OutputStream]), blockingEc, closeAfterUse = false))
         val closeEntry = Stream.eval(F.delay(zos.closeEntry()))
         createEntry ++ writeEntry ++ closeEntry
     }
 
-  def zipP1[F[_]](implicit F: ConcurrentEffect[F], blockingEc: ExecutionContext, contextShift: ContextShift[F]):
-  Pipe[F, (String, Stream[F, Byte]), Byte] = entries => {
+  private def zipP1[F[_]](implicit F: ConcurrentEffect[F],
+                          blockingEc: ExecutionContext,
+                          contextShift: ContextShift[F]): Pipe[F, (String, Stream[F, Byte]), Byte] = entries => {
 
     Stream.eval(Queue.unbounded[F, Option[Vector[Byte]]]).flatMap { q =>
-
       Stream.suspend {
         val os = new java.io.OutputStream {
 
@@ -49,8 +45,8 @@ object Fs2Zip {
           }
           @scala.annotation.tailrec
           private def addChunk(newChunk: Vector[Byte]): Unit = {
-            val newChunkSize = newChunk.size
-            val bufferedChunkSize = bufferedChunk.size
+            val newChunkSize         = newChunk.size
+            val bufferedChunkSize    = bufferedChunk.size
             val spaceLeftInTheBuffer = newChunkSize - bufferedChunkSize
             if (newChunkSize > spaceLeftInTheBuffer) {
               // Not enough space in the buffer to contain whole new chunk.
@@ -80,11 +76,10 @@ object Fs2Zip {
           override def write(b: Int): Unit =
             addChunk(Vector(b.toByte))
         }
-        val write: Stream[F, Unit] = Stream.bracket(F.delay(new ZipOutputStream(os)))((zos: ZipOutputStream) => F.delay(zos.close()))
+        val write: Stream[F, Unit] = Stream
+          .bracket(F.delay(new ZipOutputStream(os)))((zos: ZipOutputStream) => F.delay(zos.close()))
           .flatMap((zos: ZipOutputStream) => entries.through(writeEntry(zos)))
-        val read: Stream[F, Byte] = q
-          .dequeue
-          .unNoneTerminate // `None` in the stream terminates it
+        val read: Stream[F, Byte] = q.dequeue.unNoneTerminate // `None` in the stream terminates it
           .flatMap(Stream.emits(_))
 
         read.concurrently(write)
@@ -92,7 +87,7 @@ object Fs2Zip {
     }
   }
 
-  def zip[F[_]](entries: Stream[F, (String, Stream[F, Byte])])
-               (implicit F: ConcurrentEffect[F], ec: ExecutionContext, contextShift: ContextShift[F]): Stream[F, Byte] =
+  def zip[F[_]: ConcurrentEffect: ContextShift](entries: Stream[F, (String, Stream[F, Byte])])(
+      implicit ec: ExecutionContext): Stream[F, Byte] =
     entries.through(zipP1)
 }

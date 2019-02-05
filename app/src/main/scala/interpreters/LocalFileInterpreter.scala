@@ -45,9 +45,12 @@ class LocalFileInterpreter(bec: ExecutionContext) extends LocalFileAlg[IO] {
     case _                                => IO.raiseError(new Exception("Buffer type is not supported"))
   }
 
-  override def streamToFile(source: Stream[IO, Byte], file: File): IO[File] = source
-    .through(io.file.writeAll[IO](file.toPath, bec))
-    .compile.drain.map(_ => file)
+  override def streamToFile(source: Stream[IO, Byte], file: File): IO[File] =
+    source
+      .through(io.file.writeAll[IO](file.toPath, bec))
+      .compile
+      .drain
+      .map(_ => file)
 
   override def removeFile(file: File): IO[Unit] = IO { file.delete }.map(_ => ())
 }

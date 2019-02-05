@@ -1,5 +1,7 @@
 package routing
 
+import java.net.URLConnection
+
 import cats.effect.Effect
 import cats.Monad
 import fs2.Stream
@@ -21,7 +23,8 @@ class ReceiptEndpoints[F[_]: Monad](
     auth: Endpoint[F, User],
     receiptPrograms: ReceiptPrograms[F],
     fileUploadPrograms: FileUploadPrograms[F]
-)(implicit F: Effect[F]) extends Endpoint.Module[F] {
+)(implicit F: Effect[F])
+    extends Endpoint.Module[F] {
 
   private def optionResult[A](o: Option[A]): Output[A] =
     o.fold[Output[A]](Output.failure(new Exception("Entity not found"), Status.NotFound))(v => Ok(v))
@@ -70,26 +73,17 @@ class ReceiptEndpoints[F[_]: Monad](
 
   val getReceiptFile: Endpoint[F, Stream[F, Byte]] =
     get(auth :: "receipt" :: path[String] :: "file" :: path[String]) { (user: User, receiptId: String, fileIdWithExt: String) =>
-
-      val stream: Stream[F, Byte] = Stream.eval(Monad[F].pure { "hello".getBytes.head })
-
-      Ok(stream)
-    }
-/*
-  val getReceiptFile: Endpoint[F, AsyncStream[Buf]] =
-    get(auth :: "receipt" :: path[String] :: "file" :: path[String]) { (user: User, receiptId: String, fileIdWithExt: String) =>
       val fileId = fileIdWithExt.split('.')(0)
 
       receiptPrograms
         .receiptFileWithExtension(UserId(user.id), receiptId, fileId)
-        .map(_.fold[Output[AsyncStream[Buf]]](Output.failure(new Exception("Receipt not found")))(fileToServe => {
+        .map(_.fold[Output[Stream[F, Byte]]](Output.failure(new Exception("Receipt not found")))(fileToServe => {
           val mimeType = Option(URLConnection.guessContentTypeFromName("file." + fileToServe.ext)).getOrElse("application/octet-stream")
 
-          Ok(AsyncStream.fromReader(Reader.fromStream(fileToServe.source), chunkSize = 128.kilobytes.inBytes.toInt))
+          Ok(fileToServe.source)
             .withHeader("Content-Type", mimeType)
         }))
     }
-*/
 
   val deleteReceipt: Endpoint[F, Unit] = delete(auth :: "receipt" :: path[String]) { (user: User, receiptId: String) =>
     receiptPrograms

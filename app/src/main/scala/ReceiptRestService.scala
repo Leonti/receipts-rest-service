@@ -2,7 +2,7 @@ import java.io.File
 import java.util.concurrent.Executors
 
 import authentication.BearerAuth
-import backup.{BackupEndpoints}
+import backup.{BackupEndpoints, BackupService}
 import cats.effect.{ContextShift, IO}
 import io.finch.circe._
 import io.finch.fs2._
@@ -56,7 +56,9 @@ object ReceiptRestService extends App {
   val (httpClient, _) = BlazeClientBuilder[IO](executor)
     .withResponseHeaderTimeout(60.seconds)
     .withRequestTimeout(60.seconds)
-    .resource.allocated.unsafeRunSync()
+    .resource
+    .allocated
+    .unsafeRunSync()
 
   val openIdService = new OpenIdService(httpClient)
 
@@ -95,7 +97,9 @@ object ReceiptRestService extends App {
       bucket = sys.env("S3_BUCKET"),
       accessKey = sys.env("S3_ACCESS_KEY"),
       secretKey = sys.env("S3_SECRET_ACCESS_KEY")
-    ), executor)
+    ),
+    executor
+  )
   val fileStore    = new FileStoreMongo(new StoredFileRepository())
   val pendingFile  = new PendingFileMongo(new PendingFileRepository())
   val receiptQueue = new ReceiptFileQueue(queue)
@@ -129,8 +133,8 @@ object ReceiptRestService extends App {
   val userEndpoints      = new UserEndpoints(auth)
   val appConfigEndpoints = new AppConfigEndpoints[IO](sys.env("GOOGLE_CLIENT_ID"))
   val oauthEndpoints     = new OauthEndpoints[IO](userPrograms)
-  val backupEndpoints    = new BackupEndpoints[IO](auth, /*new BackupService[IO](receiptInterpreter, remoteFile),*/ tokenInterpreter)
-  
+  val backupEndpoints    = new BackupEndpoints[IO](auth, new BackupService[IO](receiptInterpreter, remoteFile), tokenInterpreter)
+
   val fileProcessor = new FileProcessor(
     receiptInterpreter,
     localFile,

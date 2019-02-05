@@ -31,9 +31,11 @@ class RemoteFileS3(config: S3Config, bec: ExecutionContext) extends RemoteFileAl
     }.map(_ => ())
 
   override def remoteFileStream(fileId: RemoteFileId): IO[Stream[IO, Byte]] =
-    IO(fs2.io.readInputStream(
-      IO(amazonS3Client.getObject(config.bucket, s"user/${fileId.userId}/${fileId.fileId}").getObjectContent.asInstanceOf[InputStream]),
-      1024, bec))
+    IO(
+      fs2.io.readInputStream(
+        IO(amazonS3Client.getObject(config.bucket, s"user/${fileId.userId}/${fileId.fileId}").getObjectContent.asInstanceOf[InputStream]),
+        1024,
+        bec))
 
   override def deleteRemoteFile(fileId: RemoteFileId): IO[Unit] = IO {
     amazonS3Client.deleteObject(config.bucket, s"user/${fileId.userId}/${fileId.fileId}")

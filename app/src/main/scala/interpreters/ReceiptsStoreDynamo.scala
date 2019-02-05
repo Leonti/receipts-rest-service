@@ -15,8 +15,7 @@ import model.{FileEntity, ReceiptEntity, UserId}
 //import io.github.howardjohn.scanamo.CirceDynamoFormat._
 
 class ReceiptsStoreDynamo extends ReceiptStoreAlg[IO] {
-  override def getReceipt(userId: UserId,
-                          id: String): IO[Option[ReceiptEntity]] = ???
+  override def getReceipt(userId: UserId, id: String): IO[Option[ReceiptEntity]] = ???
   /*
     IO {
 
@@ -38,14 +37,11 @@ class ReceiptsStoreDynamo extends ReceiptStoreAlg[IO] {
     println(result)
     None
   }
-  */
-  override def deleteReceipt(userId: UserId, id: String): IO[Unit]            = ???
-  override def saveReceipt(userId: UserId,
-                             id: String,
-                             receipt: ReceiptEntity): IO[ReceiptEntity] = ???
-  override def getReceipts(userId: UserId,
-                             ids: Seq[String]): IO[Seq[ReceiptEntity]] = ???
-    /*
+   */
+  override def deleteReceipt(userId: UserId, id: String): IO[Unit]                                = ???
+  override def saveReceipt(userId: UserId, id: String, receipt: ReceiptEntity): IO[ReceiptEntity] = ???
+  override def getReceipts(userId: UserId, ids: Seq[String]): IO[Seq[ReceiptEntity]]              = ???
+  /*
     IO {
 
     case class Farmer(name: String, age: Long)
@@ -57,9 +53,7 @@ class ReceiptsStoreDynamo extends ReceiptStoreAlg[IO] {
     Seq()
     // table.get('name -> "McDonald")
   }
-  */
-  override def userReceipts(userId: UserId): IO[Seq[ReceiptEntity]] = ???
-  override def addFileToReceipt(userId: UserId,
-                                  receiptId: String,
-                                  file: FileEntity): IO[Unit] = ???
+   */
+  override def userReceipts(userId: UserId): IO[Seq[ReceiptEntity]]                            = ???
+  override def addFileToReceipt(userId: UserId, receiptId: String, file: FileEntity): IO[Unit] = ???
 }

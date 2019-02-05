@@ -1,34 +1,31 @@
 package backup
 
-import java.io._
-//import java.nio.charset.StandardCharsets
-import java.util.zip.{ZipEntry, ZipOutputStream}
+import algebras.{ReceiptStoreAlg, RemoteFileAlg}
+import model.{FileEntity, ReceiptEntity, RemoteFileId}
+import java.nio.charset.StandardCharsets
 
-//import algebras.{ReceiptStoreAlg, RemoteFileAlg}
 import cats.Monad
-import cats.effect.IO
+import cats.effect.{ConcurrentEffect, ContextShift}
 import model.UserId
-//import io.circe.syntax._
+import io.circe.syntax._
 import cats.implicits._
 import fs2.Stream
 
-import scala.concurrent.Future
-import scala.language.postfixOps
-import scala.concurrent.ExecutionContext.Implicits.global // FIXME
+import scala.concurrent.ExecutionContext
 
-case class ReceiptsBackupIO(runSource: IO[Unit], source: InputStream, filename: String)
+case class ReceiptsBackup[F[_]](source: Stream[F, Byte], filename: String)
 
-class BackupService[F[_]: Monad](/*receiptAlg: ReceiptStoreAlg[F], remoteFileAlg: RemoteFileAlg[F]*/) {
+class BackupService[F[_]: Monad](receiptAlg: ReceiptStoreAlg[F], remoteFileAlg: RemoteFileAlg[F]) {
 
-  case class FileToZip(path: String, source: InputStream)
+  case class FileToZip(path: String, source: Stream[F, Byte])
 
-  private def fetchFilesToZip( /*userId: UserId*/ ): F[List[FileToZip]] = ??? /*{
+  private def fetchFilesToZip(userId: UserId): F[List[FileToZip]] = {
     val receiptWithMainFiles: ReceiptEntity => ReceiptEntity =
       receipt => receipt.copy(files = receipt.files.filter(_.parentId.isEmpty))
 
     def fileToZip(fileEntity: FileEntity): F[FileToZip] =
       for {
-        source <- remoteFileAlg.fetchRemoteFileInputStream(RemoteFileId(userId, fileEntity.id))
+        source <- remoteFileAlg.remoteFileStream(RemoteFileId(userId, fileEntity.id))
       } yield
         FileToZip(
           path = fileEntity.id + "." + fileEntity.ext,
@@ -39,7 +36,7 @@ class BackupService[F[_]: Monad](/*receiptAlg: ReceiptStoreAlg[F], remoteFileAlg
       val receiptsAsJson = receipts.asJson.spaces2
       FileToZip(
         path = "receipts.json",
-        source = new ByteArrayInputStream(receiptsAsJson.getBytes(StandardCharsets.UTF_8))
+        source = Stream.emits(receiptsAsJson.getBytes(StandardCharsets.UTF_8))
       )
     }
 
@@ -48,37 +45,9 @@ class BackupService[F[_]: Monad](/*receiptAlg: ReceiptStoreAlg[F], remoteFileAlg
       files    <- receipts.flatMap(_.files).toList.traverse(fileToZip)
     } yield files.++(List(receiptJsonEntry(receipts)))
   }
-     */
 
-  private def filesToStream(filesToZip: List[FileToZip])(zipOutputStream: ZipOutputStream): Stream[IO, Unit] =
-      fs2.Stream
-        .emits(filesToZip)
-        .evalMap[IO, Unit](fileToZip =>
-          IO {
-            val zipEntry = new ZipEntry(fileToZip.path)
-            zipOutputStream.putNextEntry(zipEntry)
-
-            val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
-            Iterator
-              .continually(fileToZip.source.read(bytes))
-              .takeWhile(-1 !=)
-              .foreach(read => zipOutputStream.write(bytes, 0, read))
-
-            zipOutputStream.closeEntry()
-        })
-
-  def createUserBackup(userId: UserId): F[ReceiptsBackupIO] = {
-    println(userId)
-      fetchFilesToZip( /*userId*/ ).map(filesToZip => {
-        val inputStream  = new PipedInputStream()
-        val outputStream = IO.fromFuture(IO(Future { new PipedOutputStream(inputStream) }))
-        val runStream = Stream
-          .bracket(outputStream.map(os => new ZipOutputStream(os)))(zipOutputStream => IO { zipOutputStream.close() })
-          .flatMap(filesToStream(filesToZip))
-          .compile
-          .drain
-
-        ReceiptsBackupIO(runSource = runStream, source = inputStream, filename = "backup.zip")
-      })
-  }
+  def createUserBackup(userId: UserId)(implicit ce: ConcurrentEffect[F], cs: ContextShift[F], ec: ExecutionContext): F[ReceiptsBackup[F]] =
+    for {
+      filesToZip <- fetchFilesToZip(userId)
+    } yield ReceiptsBackup[F](source = Fs2Zip.zip(Stream.emits(filesToZip.map(f => (f.path, f.source)))), filename = "backup.zip")
 }

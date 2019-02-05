@@ -24,7 +24,8 @@ object OcrIntepreter {
 class OcrInterpreterTagless(httpClient: Client[IO],
                             ocrRepository: OcrRepository,
                             ocrService: OcrService,
-                            ocrConfig: OcrIntepreter.OcrConfig) extends OcrAlg[IO] {
+                            ocrConfig: OcrIntepreter.OcrConfig)
+    extends OcrAlg[IO] {
 
   private implicit val ocrSearchResultDecoder: EntityDecoder[IO, OcrSearchResult] = jsonOf[IO, OcrSearchResult]
 
