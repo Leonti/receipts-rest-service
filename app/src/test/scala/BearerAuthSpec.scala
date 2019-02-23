@@ -1,6 +1,6 @@
 import TestInterpreters.TestVerificationAlg
 import authentication.BearerAuth
-import cats.Id
+import cats.effect.IO
 import com.twitter.finagle.http.Status
 import io.finch._
 import model.{SubClaim, User}
@@ -9,9 +9,9 @@ import org.scalatest.concurrent.ScalaFutures
 
 class BearerAuthSpec extends FlatSpec with Matchers with ScalaFutures {
 
-  val successfulAuth: Endpoint[User] = new BearerAuth[Id, User](
+  val successfulAuth = new BearerAuth[IO, User](
     new TestVerificationAlg(Right(SubClaim(""))),
-    _ => Some(User("id", "email", List()))
+    _ => IO.pure(Some(User("id", "email", List())))
   ).auth
 
   it should "extract and validate token successfully" in {
@@ -33,9 +33,9 @@ class BearerAuthSpec extends FlatSpec with Matchers with ScalaFutures {
   }
 
   it should "when verification fails" in {
-    val failedVerification: Endpoint[User] = new BearerAuth[Id, User](
+    val failedVerification = new BearerAuth[IO, User](
       new TestVerificationAlg(Left("Failed to verify token")),
-      _ => Some(User("id", "email", List()))
+      _ => IO.pure(Some(User("id", "email", List())))
     ).auth
 
     val input = Input.get("").withHeaders("Authorization" -> "Bearer token")
@@ -44,9 +44,9 @@ class BearerAuthSpec extends FlatSpec with Matchers with ScalaFutures {
   }
 
   it should "when user is not found" in {
-    val userNotFoundAuth: Endpoint[User] = new BearerAuth[Id, User](
+    val userNotFoundAuth = new BearerAuth[IO, User](
       new TestVerificationAlg(Right(SubClaim(""))),
-      _ => None
+      _ => IO.pure(None)
     ).auth
 
     val input = Input.get("").withHeaders("Authorization" -> "Bearer token")

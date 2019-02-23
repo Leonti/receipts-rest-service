@@ -1,7 +1,9 @@
-import java.io.{ByteArrayInputStream, File, InputStream}
+import java.io.File
 
 import algebras._
 import cats.Id
+import cats.effect.IO
+import fs2.Stream
 import com.twitter.io.Buf
 import model._
 import ocr.model.OcrTextAnnotation
@@ -9,85 +11,86 @@ import queue.Models.JobId
 
 object TestInterpreters {
 
-  class UserInterpreterId(users: Seq[User], email: String) extends UserAlg[Id] {
-    override def findUserByExternalId(id: String): Option[User] = users.find(_.externalIds.contains(id))
+  class UserInterpreterId(users: Seq[User], email: String) extends UserAlg[IO] {
+    override def findUserByExternalId(id: String): IO[Option[User]] = IO.pure(users.find(_.externalIds.contains(id)))
     override def findUserByUsername(
-                                     username: String): Option[User] = users.find(_.userName == username)
-    override def saveUser(user: User): User = user
+                                     username: String): IO[Option[User]] = IO.pure(users.find(_.userName == username))
+    override def saveUser(user: User): IO[User] = IO.pure(user)
     override def getExternalUserInfoFromAccessToken(
-                                                     accessToken: AccessToken): ExternalUserInfo = ExternalUserInfo(sub = "", email = email)
+                                                     accessToken: AccessToken): IO[ExternalUserInfo] = IO.pure(ExternalUserInfo(sub = "", email = email))
   }
 
-  class RandomInterpreterId(id: String, time: Long = 0, file: File = new File("")) extends RandomAlg[Id] {
-    override def generateGuid(): Id[String] = id
-    override def getTime(): Id[Long]                = time
-    override def tmpFile(): Id[File]             = file
+  class RandomInterpreterId(id: String, time: Long = 0, file: File = new File("")) extends RandomAlg[IO] {
+    override def generateGuid(): IO[String] = IO.pure(id)
+    override def getTime(): IO[Long]                = IO.pure(time)
+    override def tmpFile(): IO[File]             = IO.pure(file)
   }
 
-  class RemoteInterpreterId extends RemoteFileAlg[Id] {
-    override def saveRemoteFile(file: File, fileId: RemoteFileId): Id[Unit]        = ()
-    override def fetchRemoteFileInputStream(fileId: RemoteFileId): Id[InputStream] = new ByteArrayInputStream("some text".getBytes)
-    override def deleteRemoteFile(fileId: RemoteFileId): Id[Unit]                                 = ()
+  class RemoteInterpreterId extends RemoteFileAlg[IO] {
+    override def saveRemoteFile(file: File, fileId: RemoteFileId): IO[Unit]        = IO.pure(())
+    override def deleteRemoteFile(fileId: RemoteFileId): IO[Unit]                                 = IO.pure(())
+    override def remoteFileStream(fileId: RemoteFileId): IO[Stream[IO, Byte]] =
+      IO.pure(Stream.fromIterator[IO, Byte]("some text".getBytes.toIterator))
   }
 
-  class LocalFileId extends LocalFileAlg[Id] {
-    override def getFileMetaData(file: File): Id[FileMetaData] = GenericMetaData(length = 0)
-    override def getMd5(file: File): Id[String] = ""
-    override def moveFile(src: File, dst: File): Id[Unit]        = ()
-    override def bufToFile(src: Buf, dst: File): Id[Unit]                        = ()
-    override def streamToFile(source: InputStream, file: File): Id[File] = file
-    override def removeFile(file: File): Id[Unit]                                                      = ()
+  class LocalFileId extends LocalFileAlg[IO] {
+    override def getFileMetaData(file: File): IO[FileMetaData] = IO.pure(GenericMetaData(length = 0))
+    override def getMd5(file: File): IO[String] = IO.pure("")
+    override def moveFile(src: File, dst: File): IO[Unit]        = IO.pure(())
+    override def bufToFile(src: Buf, dst: File): IO[Unit]                        = IO.pure(())
+    override def removeFile(file: File): IO[Unit]                                                      = IO.pure(())
+    override def streamToFile(source: Stream[IO, Byte], file: File): IO[File] = IO.pure(file)
   }
 
-  class FileStoreId(md5Response: Seq[StoredFile] = List()) extends FileStoreAlg[Id] {
-    override def saveStoredFile(storedFile: StoredFile): Id[Unit] = ()
+  class FileStoreId(md5Response: Seq[StoredFile] = List()) extends FileStoreAlg[IO] {
+    override def saveStoredFile(storedFile: StoredFile): IO[Unit] = IO.pure(())
     override def findByMd5(userId: String,
-                           md5: String): Id[Seq[StoredFile]] = md5Response
-    override def deleteStoredFile(storedFileId: String): Id[Unit]               = ()
+                           md5: String): IO[Seq[StoredFile]] = IO.pure(md5Response)
+    override def deleteStoredFile(storedFileId: String): IO[Unit]               = IO.pure(())
   }
 
-  class PendingFileInterpreterId extends PendingFileAlg[Id] {
-    override def savePendingFile(pendingFile: PendingFile): Id[PendingFile]                   = pendingFile
-    override def findPendingFileForUserId(userId: String): Id[List[PendingFile]] = List()
-    override def deletePendingFileById(id: String): Id[Unit] = ()
-    override def deleteAllPendingFiles(): Id[Unit]                                                                      = ()
+  class PendingFileInterpreterId extends PendingFileAlg[IO] {
+    override def savePendingFile(pendingFile: PendingFile): IO[PendingFile]                   = IO.pure(pendingFile)
+    override def findPendingFileForUserId(userId: String): IO[List[PendingFile]] = IO.pure(List())
+    override def deletePendingFileById(id: String): IO[Unit] = IO.pure(())
+    override def deleteAllPendingFiles(): IO[Unit]                                                                      = IO.pure(())
   }
 
-  class QueueInterpreterId extends QueueAlg[Id] {
+  class QueueInterpreterId extends QueueAlg[IO] {
     override def submitToFileQueue(userId: String,
                                    receiptId: String,
                                    remoteFileId: RemoteFileId,
                                    fileExt: String,
-                                   pendingFileId: String): Id[JobId] = ""
+                                   pendingFileId: String): IO[JobId] = IO.pure("")
   }
 
   class ReceiptStoreInterpreterId(
-                                   receipts: Seq[ReceiptEntity] = List()) extends ReceiptStoreAlg[Id] {
+                                   receipts: Seq[ReceiptEntity] = List()) extends ReceiptStoreAlg[IO] {
     override def getReceipt(userId: UserId,
-                            id: String): Id[Option[ReceiptEntity]] = receipts.find(_.id == id)
-    override def deleteReceipt(userId: UserId, id: String): Id[Unit] = ()
+                            id: String): IO[Option[ReceiptEntity]] = IO.pure(receipts.find(_.id == id))
+    override def deleteReceipt(userId: UserId, id: String): IO[Unit] = IO.pure(())
     override def saveReceipt(userId: UserId, id: String,
-                             receipt: ReceiptEntity): Id[ReceiptEntity] = receipt
+                             receipt: ReceiptEntity): IO[ReceiptEntity] = IO.pure(receipt)
     override def getReceipts(userId: UserId,
-                             ids: Seq[String]): Id[Seq[ReceiptEntity]] = receipts
-    override def userReceipts(userId: UserId): Id[Seq[ReceiptEntity]] = receipts
+                             ids: Seq[String]): IO[Seq[ReceiptEntity]] = IO.pure(receipts)
+    override def userReceipts(userId: UserId): IO[Seq[ReceiptEntity]] = IO.pure(receipts)
     override def addFileToReceipt(userId: UserId, receiptId: String,
-                                  file: FileEntity): Id[Unit] = ()
+                                  file: FileEntity): IO[Unit] = IO.pure(())
   }
 
-  class OcrInterpreterId() extends OcrAlg[Id] {
+  class OcrInterpreterId() extends OcrAlg[IO] {
     val testAnnotation = OcrTextAnnotation(text = "Parsed ocr text", pages = List())
 
-    override def ocrImage(file: File): Id[OcrTextAnnotation] = testAnnotation
+    override def ocrImage(file: File): IO[OcrTextAnnotation] = IO.pure(testAnnotation)
     override def saveOcrResult(userId: String,
                                receiptId: String,
-                               ocrResult: OcrTextAnnotation): Id[OcrEntity] = OcrEntity(userId = userId, id = receiptId, result = testAnnotation)
+                               ocrResult: OcrTextAnnotation): IO[OcrEntity] = IO.pure(OcrEntity(userId = userId, id = receiptId, result = testAnnotation))
     override def addOcrToIndex(userId: String,
                                receiptId: String,
-                               ocrText: OcrText): Id[Unit] = ()
+                               ocrText: OcrText): IO[Unit] = IO.pure(())
     override def findIdsByText(userId: String,
-                               query: String): Id[Seq[String]] =
-      Seq()
+                               query: String): IO[Seq[String]] =
+      IO.pure(Seq())
   }
 
   class TestVerificationAlg(result: Either[String, SubClaim]) extends JwtVerificationAlg[Id] {

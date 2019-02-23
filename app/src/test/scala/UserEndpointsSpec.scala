@@ -1,17 +1,16 @@
 import TestInterpreters._
 import authentication.BearerAuth
-import cats.Id
-import io.finch.{Endpoint, Input}
+import cats.effect.IO
+import io.finch.Input
 import model.{SubClaim, User}
 import org.scalatest.{FlatSpec, Matchers}
 import routing.UserEndpoints
-
 class UserEndpointsSpec extends FlatSpec with Matchers {
 
   private val USER_ID = "123-user"
-  val successfulAuth: Endpoint[User] = new BearerAuth[Id, User](
+  val successfulAuth = new BearerAuth[IO, User](
     new TestVerificationAlg(Right(SubClaim(""))),
-    _ => Some(User(USER_ID, "email", List()))
+    _ => IO.pure(Some(User(USER_ID, "email", List())))
   ).auth
 
 

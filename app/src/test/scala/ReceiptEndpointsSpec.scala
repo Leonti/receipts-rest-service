@@ -1,20 +1,15 @@
-import java.nio.charset.Charset
-
 import TestInterpreters._
 import authentication.BearerAuth
-import cats.Id
-import com.twitter.concurrent.AsyncStream
+import cats.effect.IO
 import com.twitter.finagle.http.{FileElement, RequestBuilder, Status}
 import com.twitter.io.Buf
 import com.twitter.io.Buf.ByteArray.Owned
-import com.twitter.util.Await
-import io.finch.{Application, Endpoint, Input}
+import io.finch.{Application, Input}
 import io.finch.circe._
 import model._
 import org.scalatest.{FlatSpec, Matchers}
 import routing.ReceiptEndpoints
 import service.{FileUploadPrograms, ReceiptPrograms}
-
 class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
   val receiptInt = new ReceiptStoreInterpreterId(List())
@@ -27,16 +22,13 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   val ocrInt = new OcrInterpreterId()
 
   private val USER_ID = "123-user"
-  val successfulAuth: Endpoint[User] = new BearerAuth[Id, User](
+  val successfulAuth = new BearerAuth[IO, User](
     new TestVerificationAlg(Right(SubClaim(""))),
-    _ => Some(User(USER_ID, "email", List()))
+    _ => IO.pure(Some(User(USER_ID, "email", List())))
   ).auth
 
-  val asyncStreamToString: AsyncStream[Buf] => String = as =>
-    Await.result(as.toSeq().map(_.fold(Buf.Empty)((acc, a) => acc.concat(a))).map(buf => Buf.decodeString(buf, Charset.forName("UTF-8"))))
-
   it should "create receipt from file upload" in {
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(receiptInt, localFile, remoteFile, fileStore, pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)
@@ -73,7 +65,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   }
 
   it should "reject receipt if file already exists" in {
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(receiptInt, localFile, remoteFile, new FileStoreId(md5Response = List(StoredFile("123-user", "fileId", "md5"))), pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)
@@ -102,7 +94,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   }
 
   it should "reject receipt from file upload if form field is not present" in {
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(receiptInt, localFile, remoteFile, fileStore, pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)
@@ -127,7 +119,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val fileEntity =
       FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0l)
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(new ReceiptStoreInterpreterId(List(receipt)), localFile, remoteFile, new FileStoreId(md5Response = List(StoredFile("123-user", "fileId", "md5"))), pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)
@@ -137,12 +129,12 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
     val output = receiptRouting.getReceiptFile(input).awaitOutputUnsafe()
     output.flatMap(_.headers.get("Content-Type")) shouldBe Some("text/plain")
-    output.map(o => asyncStreamToString(o.value)) shouldBe Some("some text")
+    output.map(o => StreamToString.streamToString(o.value)) shouldBe Some("some text")
   }
 
   it should "read receipt by id" in {
     val receipt = ReceiptEntity(id = "2", userId = USER_ID, files = List(), description = "some description")
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(new ReceiptStoreInterpreterId(List(receipt)), localFile, remoteFile, new FileStoreId(md5Response = List(StoredFile("123-user", "fileId", "md5"))), pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)
@@ -154,7 +146,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
   it should "patch a receipt" in {
     val receipt = ReceiptEntity(id = "1", userId = "123-user", files = List(), description = "some description")
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(new ReceiptStoreInterpreterId(List(receipt)), localFile, remoteFile, new FileStoreId(md5Response = List(StoredFile("123-user", "fileId", "md5"))), pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)
@@ -184,7 +176,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
   it should "unset total after patch with null" in {
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(new ReceiptStoreInterpreterId(List(receipt)), localFile, remoteFile, new FileStoreId(md5Response = List(StoredFile("123-user", "fileId", "md5"))), pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)
@@ -208,7 +200,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
   it should "unset total after patch with remove" in {
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(new ReceiptStoreInterpreterId(List(receipt)), localFile, remoteFile, new FileStoreId(md5Response = List(StoredFile("123-user", "fileId", "md5"))), pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)
@@ -231,7 +223,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
   it should "set tags with a patch" in {
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(new ReceiptStoreInterpreterId(List(receipt)), localFile, remoteFile, new FileStoreId(md5Response = List(StoredFile("123-user", "fileId", "md5"))), pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)
@@ -257,7 +249,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val fileEntity =
       FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0l)
     val receipt = ReceiptEntity(id = "2", userId = "123-user", files = List(fileEntity))
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(new ReceiptStoreInterpreterId(List(receipt)), localFile, remoteFile, new FileStoreId(md5Response = List(StoredFile("123-user", "fileId", "md5"))), pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)
@@ -273,7 +265,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
   it should "return list of receipts" in {
     val receipt = ReceiptEntity(userId = "123-user", files = List(), description = "some description", total = Some(BigDecimal("12.38")))
-    val receiptRouting = new ReceiptEndpoints[Id](
+    val receiptRouting = new ReceiptEndpoints[IO](
       successfulAuth,
       new ReceiptPrograms(new ReceiptStoreInterpreterId(List(receipt)), localFile, remoteFile, new FileStoreId(md5Response = List(StoredFile("123-user", "fileId", "md5"))), pendingFile, queueInt, randomInt, ocrInt),
       new FileUploadPrograms("", localFile, randomInt)

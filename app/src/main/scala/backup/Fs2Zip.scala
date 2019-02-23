@@ -32,55 +32,56 @@ object Fs2Zip {
 
   private def zipP1[F[_]](implicit F: ConcurrentEffect[F],
                           blockingEc: ExecutionContext,
-                          contextShift: ContextShift[F]): Pipe[F, (String, Stream[F, Byte]), Byte] = entries => {
+                          contextShift: ContextShift[F]
+                         ): Pipe[F, (String, Stream[F, Byte]), Byte] = entries => {
 
-    Stream.eval(Queue.unbounded[F, Option[Vector[Byte]]]).flatMap { q =>
+    Stream.eval(Queue.unbounded[F, Option[Chunk[Byte]]]).flatMap { q =>
+
       Stream.suspend {
         val os = new java.io.OutputStream {
 
-          private def enqueueChunkSync(a: Option[Vector[Byte]]) = {
+          private def enqueueChunkSync(a: Option[Chunk[Byte]]) = {
             val done = new SyncVar[Either[Throwable, Unit]]
-            q.enqueue1(a).start.flatMap(_.join).runAsync(e => IO(done.put(e))).unsafeRunSync
+            val enq = q.enqueue1(a).start.flatMap(_.join).runAsync(e => IO(done.put(e))).to[F]
+            (contextShift.shift *> enq).toIO.unsafeRunSync
             done.get.fold(throw _, identity)
           }
           @scala.annotation.tailrec
-          private def addChunk(newChunk: Vector[Byte]): Unit = {
-            val newChunkSize         = newChunk.size
-            val bufferedChunkSize    = bufferedChunk.size
-            val spaceLeftInTheBuffer = newChunkSize - bufferedChunkSize
-            if (newChunkSize > spaceLeftInTheBuffer) {
-              // Not enough space in the buffer to contain whole new chunk.
-              // Recursively slice and enqueue chunk
-              // in order to preserve chunk size.
-              val fullBuffer = bufferedChunk ++ newChunk.take(spaceLeftInTheBuffer)
-              enqueueChunkSync(Some(fullBuffer))
-              bufferedChunk = Vector.empty
-              addChunk(newChunk.drop(spaceLeftInTheBuffer))
+          private def addChunk(c: Chunk[Byte]): Unit = {
+            val free = 100 - bufferedChunk.size
+            if (c.size > free) {
+              enqueueChunkSync(Some(Chunk.vector(bufferedChunk.toVector ++ c.take(free).toVector)))
+              bufferedChunk = Chunk.empty
+              addChunk(c.drop(free))
             } else {
-              // There is enough space in the buffer for whole new chunk
-              bufferedChunk = bufferedChunk ++ newChunk
+              bufferedChunk = Chunk.vector(bufferedChunk.toVector ++ c.toVector)
             }
           }
-          private var bufferedChunk: Vector[Byte] = Vector.empty
+
+          private var bufferedChunk: Chunk[Byte] = Chunk.empty
+
           override def close(): Unit = {
             // flush remaining chunk
             enqueueChunkSync(Some(bufferedChunk))
-            bufferedChunk = Vector.empty
+            bufferedChunk = Chunk.empty
             // terminate the queue
             enqueueChunkSync(None)
           }
           override def write(bytes: Array[Byte]): Unit =
-            addChunk(Vector(bytes: _*))
+            addChunk(Chunk.bytes(bytes))
           override def write(bytes: Array[Byte], off: Int, len: Int): Unit =
-            addChunk(Chunk.bytes(bytes, off, len).toVector)
+            addChunk(Chunk.bytes(bytes, off, len))
           override def write(b: Int): Unit =
-            addChunk(Vector(b.toByte))
+            addChunk(Chunk.singleton(b.toByte))
         }
+
         val write: Stream[F, Unit] = Stream
           .bracket(F.delay(new ZipOutputStream(os)))((zos: ZipOutputStream) => F.delay(zos.close()))
           .flatMap((zos: ZipOutputStream) => entries.through(writeEntry(zos)))
-        val read: Stream[F, Byte] = q.dequeue.unNoneTerminate // `None` in the stream terminates it
-          .flatMap(Stream.emits(_))
+
+        val read = q.dequeue
+          .unNoneTerminate
+          .flatMap(Stream.chunk(_))
 
         read.concurrently(write)
       }
