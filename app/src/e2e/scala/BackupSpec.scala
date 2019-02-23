@@ -8,6 +8,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FlatSpec, Matchers}
 import cats.effect.{ContextShift, IO}
+import fs2.Chunk
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s._
 import org.http4s.dsl.io._
@@ -42,24 +43,17 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
   }
 
   private def getBackup(userId: String, backupToken: String): IO[Array[Byte]] = {
-    val req = GET(org.http4s.Uri.unsafeFromString(s"$appHostPort/user/$userId/backup/download?access_token=$backupToken"))
 
-    httpClient
-      .fetch(req) {
-        case Status.Successful(r) => {
-          val t  = System.currentTimeMillis
-          println("Retrieving stream")
-          val res = r.body.compile.toList.map(_.toArray).unsafeRunSync()
+    val binary: IO[Chunk[Byte]] = httpClient.expect[Chunk[Byte]](
+      GET(org.http4s.Uri.unsafeFromString(s"$appHostPort/user/$userId/backup/download?access_token=$backupToken"))
+    )
 
-          println(s"Stream retrieved ${System.currentTimeMillis - t}")
-          val asString = new String(res, StandardCharsets.UTF_8)
-          println(s"As string: '$asString'")
-          IO.pure(res)
-        }
-        case r =>
-          r.as[String]
-            .flatMap(b => IO.raiseError(new Exception(s"Request $req failed with status ${r.status.code} and body $b")))
-      }
+    val byteArray = binary.map(_.toArray)
+
+    val asString = new String(byteArray.unsafeRunSync(), StandardCharsets.UTF_8)
+    println(s"as string '${asString}'")
+
+    byteArray
   }
 
   it should "download a backup" in {
