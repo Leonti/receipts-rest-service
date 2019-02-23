@@ -17,6 +17,8 @@ import scala.concurrent.{ExecutionContext, SyncVar}
 
 object Fs2Zip {
 
+  private val CHUNK_SIZE = 8192
+
   private def writeEntry[F[_]](zos: ZipOutputStream)(implicit F: Concurrent[F],
                                                      blockingEc: ExecutionContext,
                                                      contextShift: ContextShift[F]): Pipe[F, (String, Stream[F, Byte]), Unit] =
@@ -48,7 +50,7 @@ object Fs2Zip {
           }
           @scala.annotation.tailrec
           private def addChunk(c: Chunk[Byte]): Unit = {
-            val free = 100 - bufferedChunk.size
+            val free = CHUNK_SIZE - bufferedChunk.size
             if (c.size > free) {
               enqueueChunkSync(Some(Chunk.vector(bufferedChunk.toVector ++ c.take(free).toVector)))
               bufferedChunk = Chunk.empty
