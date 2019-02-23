@@ -11,6 +11,7 @@ import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
+
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -39,9 +40,24 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
     )
   }
 
-  private def getBackup(userId: String, backupToken: String): IO[Array[Byte]] = httpClient.expect[Array[Byte]](
-    GET(org.http4s.Uri.unsafeFromString(s"$appHostPort/user/$userId/backup/download?access_token=$backupToken"))
-  )
+  private def getBackup(userId: String, backupToken: String): IO[Array[Byte]] = {
+    val req = GET(org.http4s.Uri.unsafeFromString(s"$appHostPort/user/$userId/backup/download?access_token=$backupToken"))
+
+    httpClient
+      .fetch(req) {
+        case Status.Successful(r) => {
+          val t  = System.currentTimeMillis
+          println("Retrieving stream")
+          val res = r.body.compile.toList.map(_.toArray)
+
+          println(s"Stream retrieved ${System.currentTimeMillis - t}")
+          res
+        }
+        case r =>
+          r.as[String]
+            .flatMap(b => IO.raiseError(new Exception(s"Request $req failed with status ${r.status.code} and body $b")))
+      }
+  }
 
   it should "download a backup" in {
 
