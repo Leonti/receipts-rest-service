@@ -52,7 +52,8 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
           val res = r.body.compile.toList.map(_.toArray).unsafeRunSync()
 
           println(s"Stream retrieved ${System.currentTimeMillis - t}")
-          println(new String(res, StandardCharsets.UTF_8))
+          val asString = new String(res, StandardCharsets.UTF_8)
+          println(s"As string: '$asString'")
           IO.pure(res)
         }
         case r =>
