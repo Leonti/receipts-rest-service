@@ -1,4 +1,5 @@
 import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.util.zip.{ZipEntry, ZipInputStream}
 
 import TestConfig._
@@ -48,10 +49,11 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
         case Status.Successful(r) => {
           val t  = System.currentTimeMillis
           println("Retrieving stream")
-          val res = r.body.compile.toList.map(_.toArray)
+          val res = r.body.compile.toList.map(_.toArray).unsafeRunSync()
 
           println(s"Stream retrieved ${System.currentTimeMillis - t}")
-          res
+          println(new String(res, StandardCharsets.UTF_8))
+          IO.pure(res)
         }
         case r =>
           r.as[String]
