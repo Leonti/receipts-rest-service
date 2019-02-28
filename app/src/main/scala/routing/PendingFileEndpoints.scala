@@ -1,16 +1,18 @@
 package routing
 
 import algebras.PendingFileAlg
-import cats.Monad
 import cats.effect.Effect
-import io.finch._
-import model.{PendingFile, User}
+import model.User
 import cats.implicits._
+import org.http4s._
+import org.http4s.dsl.io._
+import org.http4s.circe.CirceEntityEncoder._
 
-class PendingFileEndpoints[F[_]: Monad](auth: Endpoint[F, User], pendingFileAlg: PendingFileAlg[F])(implicit F: Effect[F])
-    extends Endpoint.Module[F] {
+class PendingFileEndpoints[F[_]: Effect](pendingFileAlg: PendingFileAlg[F]) {
 
-  val pendingFiles: Endpoint[F, List[PendingFile]] = get(auth :: "pending-file") { user: User =>
-    pendingFileAlg.findPendingFileForUserId(user.id).map(Ok)
+  val authedRoutes: AuthedService[User, F] = AuthedService {
+    case GET -> Root / "pending-file" as user =>
+      pendingFileAlg.findPendingFileForUserId(user.id).map(pf => Response(status = Status.Created).withEntity(pf))
   }
+
 }

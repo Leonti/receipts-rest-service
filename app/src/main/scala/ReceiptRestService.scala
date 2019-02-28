@@ -1,19 +1,9 @@
 import java.io.File
 import java.util.concurrent.Executors
 
-import authentication.BearerAuth
-import backup.{BackupEndpoints, BackupService}
-import cats.effect.{ContextShift, IO}
-import io.finch.circe._
-import io.finch.fs2._
-import com.twitter.finagle.Http
-import com.twitter.finagle.Service
-import com.twitter.finagle.http.{Request, Response}
-import com.twitter.finagle.http.filter.Cors
-import com.twitter.util.Await
-import model._
+import cats.effect.{ContextShift, ExitCode, IO, IOApp}
+import cats.implicits._
 import repository._
-import routing.ExceptionEncoders._
 import routing._
 import service._
 
@@ -22,29 +12,15 @@ import interpreters.{ReceiptFileQueue, _}
 import ocr.service.{GoogleOcrService, OcrServiceStub}
 import processing.{FileProcessor, OcrProcessor}
 import queue.{Queue, QueueProcessor}
-import io.finch.Endpoint
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.server.Router
+import org.http4s.server.blaze.BlazeServerBuilder
+import org.http4s.server.blaze._
+import org.http4s.implicits._
 
 import scala.concurrent.duration._
 
-// TODO switch to IOApp
-object ReceiptRestService extends App {
-  val policy: Cors.Policy = Cors.Policy(
-    allowsOrigin = _ => Some("*"),
-    allowsMethods = _ => Some(Seq("OPTIONS", "PATCH", "POST", "PUT", "GET", "DELETE")),
-    allowsHeaders = _ =>
-      Some(
-        Seq("Origin",
-            "X-Requested-With",
-            "Content-Type",
-            "Accept",
-            "Accept-Encoding",
-            "Accept-Language",
-            "Host",
-            "Referer",
-            "User-Agent",
-            "Authorization"))
-  )
+object ReceiptRestService extends IOApp {
 
   private implicit val executor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
@@ -60,12 +36,10 @@ object ReceiptRestService extends App {
     .allocated
     .unsafeRunSync()
 
-  val openIdService = new OpenIdService(httpClient)
-
   val pendingFileRepository = new PendingFileRepository()
 
   val queue            = new Queue()
-  val receiptFileQueue = new ReceiptFileQueue(queue)
+  val receiptFileQueue = new ReceiptFileQueue(new Queue())
 
   val receiptRepository = new ReceiptRepository()
   val ocrRepository     = new OcrRepository()
@@ -78,6 +52,7 @@ object ReceiptRestService extends App {
     } else
       new GoogleOcrService(new File(sys.env("GOOGLE_API_CREDENTIALS")), imageResizer)
 
+  val openIdService      = new OpenIdService(httpClient)
   val userInterpreter    = new UserInterpreter(userRepository, openIdService)
   val tokenInterpreter   = new TokenInterpreter[IO](sys.env("AUTH_TOKEN_SECRET").getBytes)
   val randomInterpreter  = new RandomInterpreterTagless()
@@ -104,36 +79,27 @@ object ReceiptRestService extends App {
   val pendingFile  = new PendingFileMongo(new PendingFileRepository())
   val receiptQueue = new ReceiptFileQueue(queue)
 
-  val receiptPrograms = new ReceiptPrograms[IO](
-    receiptInterpreter,
-    localFile,
-    remoteFile,
-    fileStore,
-    pendingFile,
-    receiptQueue,
-    randomInterpreter,
-    ocrInterpreter
-  )
-  val fileUploadPrograms = new FileUploadPrograms[IO](
-    sys.env("UPLOADS_FOLDER"),
-    localFile,
-    randomInterpreter
+  val routingConfig = RoutingConfig(
+    uploadsFolder = sys.env("UPLOADS_FOLDER"),
+    googleClientId = sys.env("GOOGLE_CLIENT_ID")
   )
 
-  val auth: Endpoint[IO, User] = new BearerAuth[IO, User](
-    new JwtVerificationInterpreter(),
-    subClaim => userPrograms.findUserByExternalId(subClaim.value)
-  ).auth
-
-  val receiptEndpoints =
-    new ReceiptEndpoints[IO](auth, receiptPrograms, fileUploadPrograms)
-
-  val pendingFileEndpoints = new PendingFileEndpoints[IO](auth, pendingFile)
-
-  val userEndpoints      = new UserEndpoints(auth)
-  val appConfigEndpoints = new AppConfigEndpoints[IO](sys.env("GOOGLE_CLIENT_ID"))
-  val oauthEndpoints     = new OauthEndpoints[IO](userPrograms)
-  val backupEndpoints    = new BackupEndpoints[IO](auth, new BackupService[IO](receiptInterpreter, remoteFile), tokenInterpreter)
+  val routing = new Routing[IO](
+    RoutingAlgebras(
+      jwtVerificationAlg = new JwtVerificationInterpreter(),
+      userAlg = userInterpreter,
+      randomAlg = randomInterpreter,
+      receiptStoreAlg = receiptInterpreter,
+      localFileAlg = localFile,
+      remoteFileAlg = remoteFile,
+      fileStoreAlg = fileStore,
+      pendingFileAlg = pendingFile,
+      queueAlg = receiptFileQueue,
+      ocrAlg = ocrInterpreter,
+      tokenAlg = tokenInterpreter
+    ),
+    routingConfig
+  )
 
   val fileProcessor = new FileProcessor(
     receiptInterpreter,
@@ -150,14 +116,15 @@ object ReceiptRestService extends App {
     case Left(e)  => println(s"Queue processor stopped with an error $e")
   }
 
-  val service: Service[Request, Response] = new Cors.HttpFilter(policy).andThen(
-    (userEndpoints.userInfo :+:
-      receiptEndpoints.all :+:
-      pendingFileEndpoints.pendingFiles :+:
-      appConfigEndpoints.getAppConfig :+:
-      oauthEndpoints.validateWithUserCreation :+:
-      backupEndpoints.all :+:
-      new VersionEndpoint[IO](System.getenv("VERSION")).version).toService)
+  override def run(args: List[String]): IO[ExitCode] = {
 
-  Await.ready(Http.server.serve(s"0.0.0.0:9000", service))
+    val httpApp = Router("/" -> routing.routes).orNotFound
+
+    val serve = BlazeServerBuilder[IO]
+      .bindHttp(9000, "0.0.0.0")
+      .withHttpApp(httpApp)
+      .serve
+
+    serve.compile.drain.as(ExitCode.Success)
+  }
 }

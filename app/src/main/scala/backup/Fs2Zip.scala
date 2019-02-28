@@ -34,17 +34,15 @@ object Fs2Zip {
 
   private def zipP1[F[_]](implicit F: ConcurrentEffect[F],
                           blockingEc: ExecutionContext,
-                          contextShift: ContextShift[F]
-                         ): Pipe[F, (String, Stream[F, Byte]), Byte] = entries => {
+                          contextShift: ContextShift[F]): Pipe[F, (String, Stream[F, Byte]), Byte] = entries => {
 
     Stream.eval(Queue.unbounded[F, Option[Chunk[Byte]]]).flatMap { q =>
-
       Stream.suspend {
         val os = new java.io.OutputStream {
 
           private def enqueueChunkSync(a: Option[Chunk[Byte]]) = {
             val done = new SyncVar[Either[Throwable, Unit]]
-            val enq = q.enqueue1(a).start.flatMap(_.join).runAsync(e => IO(done.put(e))).to[F]
+            val enq  = q.enqueue1(a).start.flatMap(_.join).runAsync(e => IO(done.put(e))).to[F]
             (contextShift.shift *> enq).toIO.unsafeRunSync
             done.get.fold(throw _, identity)
           }
@@ -81,8 +79,7 @@ object Fs2Zip {
           .bracket(F.delay(new ZipOutputStream(os)))((zos: ZipOutputStream) => F.delay(zos.close()))
           .flatMap((zos: ZipOutputStream) => entries.through(writeEntry(zos)))
 
-        val read = q.dequeue
-          .unNoneTerminate
+        val read = q.dequeue.unNoneTerminate
           .flatMap(Stream.chunk(_))
 
         read.concurrently(write)

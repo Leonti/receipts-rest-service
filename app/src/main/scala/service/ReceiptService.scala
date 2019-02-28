@@ -1,5 +1,7 @@
 package service
 
+import java.io.File
+
 import algebras._
 import cats.Monad
 import model.{RemoteFileId, _}
@@ -8,6 +10,7 @@ import io.circe.parser._
 import gnieh.diffson.circe._
 import cats.implicits._
 import cats.data.EitherT
+import fs2.Stream
 
 import scala.language.higherKinds
 
@@ -16,6 +19,15 @@ object ReceiptErrors {
   final case class FileAlreadyExists()                extends Error
   final case class ReceiptNotFound(receiptId: String) extends Error
 }
+
+case class ReceiptField[F[_]](name: String, stream: Stream[F, Byte])
+case class ReceiptForm[F[_]](
+    receipt: ReceiptField[F],
+    total: Option[BigDecimal],
+    description: String,
+    transactionTime: Long,
+    tags: List[String]
+)
 
 object Patch {
   val applyPatch: (ReceiptEntity, JsonPatch) => ReceiptEntity = (receiptEntity, jsonPatch) => {
@@ -26,7 +38,8 @@ object Patch {
   }
 }
 
-class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptStoreAlg[F],
+class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
+                                   receiptAlg: ReceiptStoreAlg[F],
                                    localFileAlg: LocalFileAlg[F],
                                    remoteFileAlg: RemoteFileAlg[F],
                                    fileStoreAlg: FileStoreAlg[F],
@@ -75,16 +88,19 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptStoreAlg[F],
     else
       EitherT.right[Error](Monad[F].pure(()))
 
-  def createReceipt(userId: UserId, receiptUpload: ReceiptUpload): F[Either[Error, ReceiptEntity]] = {
+  def createReceipt(userId: UserId, receiptForm: ReceiptForm[F]): F[Either[Error, ReceiptEntity]] = {
     val eitherT: EitherT[F, Error, ReceiptEntity] = for {
-      md5                     <- EitherT.right[Error](localFileAlg.getMd5(receiptUpload.receipt))
+      randomGuid <- EitherT.right[Error](generateGuid())
+      tmpFile = new File(new File(uploadsLocation), randomGuid)
+      _                       <- EitherT.right[Error](localFileAlg.streamToFile(receiptForm.receipt.stream, tmpFile))
+      md5                     <- EitherT.right[Error](localFileAlg.getMd5(tmpFile))
       exitingFilesWithSameMd5 <- EitherT.right[Error](fileStoreAlg.findByMd5(userId.value, md5))
       _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
       receiptId               <- EitherT.right[Error](generateGuid())
       fileId                  <- EitherT.right[Error](generateGuid())
       currentTimeMillis       <- EitherT.right[Error](getTime())
       remoteFileId = RemoteFileId(userId, fileId)
-      _ <- EitherT.right[Error](remoteFileAlg.saveRemoteFile(receiptUpload.receipt, remoteFileId))
+      _ <- EitherT.right[Error](remoteFileAlg.saveRemoteFile(tmpFile, remoteFileId))
       _ <- EitherT.right[Error](
         fileStoreAlg.saveStoredFile(
           StoredFile(
@@ -92,28 +108,28 @@ class ReceiptPrograms[F[_]: Monad](receiptAlg: ReceiptStoreAlg[F],
             id = fileId,
             md5 = md5,
           )))
-      fileMetadata <- EitherT.right[Error](localFileAlg.getFileMetaData(receiptUpload.receipt))
+      fileMetadata <- EitherT.right[Error](localFileAlg.getFileMetaData(tmpFile))
       receipt = ReceiptEntity(
         id = receiptId,
         userId = userId.value,
-        total = receiptUpload.total,
-        description = receiptUpload.description,
+        total = receiptForm.total,
+        description = receiptForm.description,
         timestamp = currentTimeMillis,
         lastModified = currentTimeMillis,
-        transactionTime = receiptUpload.transactionTime,
-        tags = receiptUpload.tags,
+        transactionTime = receiptForm.transactionTime,
+        tags = receiptForm.tags,
         files = List(
           FileEntity(
             id = fileId,
             parentId = None,
-            ext = ext(receiptUpload.fileName),
+            ext = ext(receiptForm.receipt.name),
             metaData = fileMetadata,
             timestamp = currentTimeMillis
           ))
       )
       _ <- EitherT.right[Error](saveReceipt(userId, receiptId, receipt))
-      _ <- EitherT.right[Error](submitPF(userId, receiptId, remoteFileId, ext(receiptUpload.fileName)))
-      _ <- EitherT.right[Error](localFileAlg.removeFile(receiptUpload.receipt))
+      _ <- EitherT.right[Error](submitPF(userId, receiptId, remoteFileId, ext(receiptForm.receipt.name)))
+      _ <- EitherT.right[Error](localFileAlg.removeFile(tmpFile))
     } yield receipt
 
     eitherT.value

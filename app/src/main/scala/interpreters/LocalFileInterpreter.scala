@@ -1,12 +1,11 @@
 package interpreters
-import java.io.{File, FileInputStream, FileOutputStream}
+import java.io.{File, FileInputStream}
 import java.nio.file.Files
 import java.security.{DigestInputStream, MessageDigest}
 
 import algebras.LocalFileAlg
 import fs2.{Stream, io}
 import cats.effect.{ContextShift, IO}
-import com.twitter.io.Buf
 import model.{FileMetaData, GenericMetaData, ImageMetaData}
 import util.SimpleImageInfo
 
@@ -39,11 +38,6 @@ class LocalFileInterpreter(bec: ExecutionContext) extends LocalFileAlg[IO] {
     } yield result
 
   override def moveFile(src: File, dst: File): IO[Unit] = IO(Files.move(src.toPath, dst.toPath)).map(_ => ())
-
-  override def bufToFile(src: Buf, dst: File): IO[Unit] = src match {
-    case Buf.ByteArray.Owned(bytes, _, _) => IO(new FileOutputStream(dst)).bracket(fw => IO(fw.write(bytes)))(fw => IO(fw.close()))
-    case _                                => IO.raiseError(new Exception("Buffer type is not supported"))
-  }
 
   override def streamToFile(source: Stream[IO, Byte], file: File): IO[File] =
     source

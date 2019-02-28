@@ -43,7 +43,8 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
   }
 
   private def getBackup(userId: String, backupToken: String): IO[Array[Byte]] = {
-
+    val url = s"$appHostPort/user/$userId/backup/download?access_token=$backupToken"
+    println(s"URL: '$url'")
     val binary: IO[Chunk[Byte]] = httpClient.expect[Chunk[Byte]](
       GET(org.http4s.Uri.unsafeFromString(s"$appHostPort/user/$userId/backup/download?access_token=$backupToken"))
     )

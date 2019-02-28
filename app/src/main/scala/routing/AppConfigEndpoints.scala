@@ -2,13 +2,15 @@ package routing
 
 import cats.Monad
 import cats.effect.Effect
-import io.finch._
 import model.AppConfig
+import org.http4s._
+import org.http4s.dsl.io._
+import org.http4s.circe.CirceEntityEncoder._
 
-class AppConfigEndpoints[F[_]: Monad](googleClientId: String)(implicit F: Effect[F]) extends Endpoint.Module[F] {
+class AppConfigEndpoints[F[_]: Effect](googleClientId: String) {
 
-  val getAppConfig: Endpoint[F, AppConfig] = get("config") {
-    Ok(AppConfig(googleClientId))
+  def routes: HttpRoutes[F] = HttpRoutes.of[F] {
+    case GET -> Root / "config" => Monad[F].pure(Response(status = Status.Ok).withEntity(AppConfig(googleClientId)))
   }
 
 }

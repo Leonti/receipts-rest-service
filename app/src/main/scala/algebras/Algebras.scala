@@ -2,7 +2,6 @@ package algebras
 
 import java.io.File
 import authentication.OAuth2AccessTokenResponse
-import com.twitter.io.Buf
 import model._
 import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
@@ -35,7 +34,6 @@ trait LocalFileAlg[F[_]] {
   def getFileMetaData(file: File): F[FileMetaData]
   def getMd5(file: File): F[String]
   def moveFile(src: File, dst: File): F[Unit]
-  def bufToFile(src: Buf, dst: File): F[Unit]
   def streamToFile(source: Stream[F, Byte], file: File): F[File]
   def removeFile(file: File): F[Unit]
 }

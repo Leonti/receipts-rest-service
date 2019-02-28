@@ -2,97 +2,158 @@ package routing
 
 import java.net.URLConnection
 
+import cats.data.Validated.{Invalid, Valid}
 import cats.effect.Effect
-import cats.Monad
-import fs2.Stream
-import io.finch._
-import io.finch.circe._
-import model.{ReceiptEntity, User, UserId}
-import service.{FileUploadPrograms, ReceiptErrors, ReceiptPrograms}
-import cats.implicits._
+import cats.{Apply, Monad}
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
+import fs2.text
+import org.http4s.multipart.Multipart
+import service.{ReceiptField, ReceiptForm}
+
+import scala.util.Try
+import model.{User, UserId}
+import service.ReceiptPrograms
 import gnieh.diffson.circe._
 import gnieh.diffson.circe.DiffsonProtocol._
-import com.twitter.finagle.http.Status
-import com.twitter.finagle.http.exp.Multipart.FileUpload
-import io.finch.Error.NotPresent
-import service.ReceiptErrors.Error
+
+import org.http4s._
+import org.http4s.dsl.io._
+import org.http4s.circe._
+import io.circe.syntax._
+import org.http4s.circe.CirceEntityDecoder._
+
+import cats.implicits._
 
 import scala.language.higherKinds
 
 class ReceiptEndpoints[F[_]: Monad](
-    auth: Endpoint[F, User],
-    receiptPrograms: ReceiptPrograms[F],
-    fileUploadPrograms: FileUploadPrograms[F]
-)(implicit F: Effect[F])
-    extends Endpoint.Module[F] {
+    receiptPrograms: ReceiptPrograms[F]
+)(implicit F: Effect[F]) {
 
-  private def optionResult[A](o: Option[A]): Output[A] =
-    o.fold[Output[A]](Output.failure(new Exception("Entity not found"), Status.NotFound))(v => Ok(v))
+  object LastModifiedParamMatcher extends OptionalQueryParamDecoderMatcher[Long]("last-modified")
+  object QueryParamMatcher        extends OptionalQueryParamDecoderMatcher[String]("q")
 
-  private def eitherResult(e: Either[Error, ReceiptEntity]): Output[ReceiptEntity] = e match {
-    case Right(receipt) => Created(receipt)
-    case Left(error) =>
-      error match {
-        case ReceiptErrors.FileAlreadyExists() =>
-          Output.failure(new Exception("Can't create receipt with the same file"), Status.BadRequest)
-        case ReceiptErrors.ReceiptNotFound(receiptId) =>
-          Output.failure(new Exception(s"Receipt $receiptId doesn't exist"), Status.NotFound)
+  private val service: AuthedService[User, F] = AuthedService {
+    case GET -> Root / "receipt" / receiptId as user =>
+      receiptPrograms.findById(UserId(user.id), receiptId).map {
+        case Some(receipt) => Response(status = Status.Ok).withEntity(receipt.asJson)
+        case None          => Response(status = Status.NotFound).withEmptyBody: Response[F]
+      }
+
+    case GET -> Root / "receipt" :? LastModifiedParamMatcher(lastModified) +& QueryParamMatcher(query) as user =>
+      receiptPrograms.findForUser(UserId(user.id), lastModified, query).map { receipts =>
+        Response(status = Status.Ok).withEntity(receipts.asJson)
       }
   }
 
-  val getReceipt: Endpoint[F, ReceiptEntity] =
-    get(auth :: "receipt" :: path[String]) { (user: User, receiptId: String) =>
-      receiptPrograms.findById(UserId(user.id), receiptId).map(optionResult)
-    }
-
-  val getReceipts: Endpoint[F, Seq[ReceiptEntity]] =
-    get(auth :: "receipt" :: paramOption[Long]("last-modified") :: paramOption[String]("q")) {
-      (user: User, lastModified: Option[Long], query: Option[String]) =>
-        receiptPrograms.findForUser(UserId(user.id), lastModified, query).map(Ok)
-    }
-
-  val createReceipt: Endpoint[F, ReceiptEntity] =
-    post(
-      auth :: "receipt" :: multipartFileUpload("receipt") ::
-        multipartAttribute("total") ::
-        multipartAttribute("description") ::
-        multipartAttribute("transactionTime") ::
-        multipartAttribute("tags")) {
-      (user: User, fileUpload: FileUpload, total: String, description: String, transactionTime: String, tags: String) =>
-        fileUploadPrograms.toReceiptUpload(fileUpload, total, description, transactionTime, tags).flatMap { receiptUpload =>
-          receiptPrograms.createReceipt(UserId(user.id), receiptUpload).map(eitherResult)
-        }
-    } handle {
-      case e: NotPresent => Output.failure(e, Status.BadRequest)
-    }
-
-  val patchReceipt: Endpoint[F, ReceiptEntity] =
-    patch(auth :: "receipt" :: path[String] :: jsonBody[JsonPatch]) { (user: User, receiptId: String, patch: JsonPatch) =>
-      receiptPrograms.patchReceipt(UserId(user.id), receiptId, patch).map(optionResult)
-    }
-
-  val getReceiptFile: Endpoint[F, Stream[F, Byte]] =
-    get(auth :: "receipt" :: path[String] :: "file" :: path[String]) { (user: User, receiptId: String, fileIdWithExt: String) =>
+  private val getReceiptFile: AuthedService[User, F] = AuthedService {
+    case GET -> Root / "receipt" / receiptId / fileIdWithExt as user => {
       val fileId = fileIdWithExt.split('.')(0)
 
       receiptPrograms
         .receiptFileWithExtension(UserId(user.id), receiptId, fileId)
-        .map(_.fold[Output[Stream[F, Byte]]](Output.failure(new Exception("Receipt not found")))(fileToServe => {
-          val mimeType = Option(URLConnection.guessContentTypeFromName("file." + fileToServe.ext)).getOrElse("application/octet-stream")
-
-          Ok(fileToServe.source)
-            .withHeader("Content-Type", mimeType)
-        }))
+        .map {
+          case Some(fileToServe) => {
+            val mimeType = Option(URLConnection.guessContentTypeFromName("file." + fileToServe.ext)).getOrElse("application/octet-stream")
+            Response(status = Status.Ok)
+              .withBodyStream(fileToServe.source)
+              .withHeaders(
+                Header("Content-Type", mimeType)
+              )
+          }
+          case None => Response(status = Status.NotFound).withEmptyBody: Response[F]
+        }
     }
-
-  val deleteReceipt: Endpoint[F, Unit] = delete(auth :: "receipt" :: path[String]) { (user: User, receiptId: String) =>
-    receiptPrograms
-      .removeReceipt(UserId(user.id), receiptId)
-      .map({
-        case Some(_) => Output.unit(Status.NoContent)
-        case None    => Output.failure(new Exception("Entity not found"), Status.NotFound)
-      })
   }
 
-  val all = createReceipt :+: getReceipt :+: getReceipts :+: getReceiptFile :+: patchReceipt :+: deleteReceipt
+  private val delete: AuthedService[User, F] = AuthedService {
+    case DELETE -> Root / "receipt" / receiptId as user =>
+      receiptPrograms.removeReceipt(UserId(user.id), receiptId).map {
+        case Some(_) => Response(status = Status.Ok).withEmptyBody: Response[F]
+        case None    => Response(status = Status.NotFound).withEmptyBody: Response[F]
+      }
+  }
+
+  private val patch: AuthedService[User, F] = AuthedService {
+    case req @ PATCH -> Root / "receipt" / receiptId as user =>
+      for {
+        patch <- req.req.as[JsonPatch]
+        resp <- receiptPrograms.patchReceipt(UserId(user.id), receiptId, patch).map {
+          case Some(receipt) => Response(status = Status.Ok).withEntity(receipt.asJson): Response[F]
+          case None          => Response(status = Status.NotFound).withEmptyBody: Response[F]
+        }
+      } yield resp
+  }
+
+  type ValidationResult[A] = ValidatedNel[String, A]
+
+  private def toValidatedForm(m: Multipart[F]): F[ValidationResult[ReceiptForm[F]]] = {
+    val validated: String => ValidatedNel[String, F[String]] = field =>
+      m.parts
+        .find(_.name.contains(field))
+        .map(_.body.through(text.utf8Decode).compile.foldMonoid)
+        .toValidNel(s"'$field' field is missing")
+
+    val validatedReceipt: ValidatedNel[String, ReceiptField[F]] = m.parts
+      .find(_.name.contains("receipt"))
+      .flatMap(filePart => filePart.filename.map(filename => ReceiptField(filename, filePart.body)))
+      .toValidNel("receipt field is missing or filename is not set")
+
+    val transactionTimeF: F[Validated[NonEmptyList[String], Long]] = validated("transactionTime").sequence
+      .map(_.andThen(t => Try(t.toLong).toOption.toValidNel("Field 'transactionTime' is not a number")))
+
+    val totalF: F[Validated[NonEmptyList[String], Option[BigDecimal]]] = validated("total").sequence
+      .map(_.map(total => Try(BigDecimal(total)).map(Some(_)).getOrElse(None)))
+
+    val tagsF: F[Validated[NonEmptyList[String], List[String]]] = validated("tags").sequence
+      .map(_.map(tags => if (tags.trim() == "") List() else tags.split(",").toList))
+
+    val nested: F[F[ValidatedNel[String, ReceiptForm[F]]]] = for {
+      transactionTimeV <- transactionTimeF
+      totalV           <- totalF
+      tagsV            <- tagsF
+    } yield
+      Apply[ValidatedNel[String, ?]]
+        .map5(
+          validatedReceipt,
+          totalV,
+          validated("description"),
+          transactionTimeV,
+          tagsV
+        ) {
+          case (receiptField, total, descriptionF, transactionTime, tags) =>
+            descriptionF.map { description =>
+              ReceiptForm(
+                receiptField,
+                total,
+                description,
+                transactionTime,
+                tags
+              )
+            }
+        }
+        .sequence
+
+    nested.flatMap(identity)
+  }
+
+  // TODO put proper error responses
+  private val createReceipt: AuthedService[User, F] = AuthedService {
+    case req @ POST -> Root / "receipt" as user =>
+      req.req.decode[Multipart[F]] { m =>
+        for {
+          receiptFormV <- toValidatedForm(m)
+          resp <- receiptFormV match {
+            case Valid(receiptForm) =>
+              receiptPrograms.createReceipt(UserId(user.id), receiptForm).map {
+                case Right(receipt) => Response(status = Status.Ok).withEntity(receipt.asJson): Response[F]
+                case Left(_)        => Response(status = Status.BadRequest).withEmptyBody: Response[F]
+              }
+            case Invalid(_) => Monad[F].pure(Response(status = Status.BadRequest).withEmptyBody: Response[F])
+          }
+        } yield resp
+      }
+  }
+
+  val authedRoutes: AuthedService[User, F] = createReceipt <+> service <+> getReceiptFile <+> delete <+> patch
 }

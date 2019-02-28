@@ -1,11 +1,9 @@
 package model
-import java.io.File
+import fs2.Stream
 
-case class ReceiptUpload(
-    receipt: File,
-    fileName: String,
-    total: Option[BigDecimal],
-    description: String,
-    transactionTime: Long,
-    tags: List[String]
-)
+case class ReceiptField[F[_]](name: String, stream: Stream[F, Byte])
+case class ReceiptUpload[F[_]](receipt: ReceiptField[F],
+                               total: Option[BigDecimal],
+                               description: String,
+                               transactionTime: Long,
+                               tags: List[String])

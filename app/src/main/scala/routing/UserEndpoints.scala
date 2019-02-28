@@ -1,12 +1,15 @@
 package routing
 import cats.Monad
 import cats.effect.Effect
-import io.finch._
 import model.{User, UserInfo}
+import org.http4s._
+import org.http4s.dsl.io._
+import org.http4s.circe.CirceEntityEncoder._
 
-class UserEndpoints[F[_]: Monad](auth: Endpoint[F, User])(implicit F: Effect[F]) extends Endpoint.Module[F] {
+class UserEndpoints[F[_]: Effect]() {
 
-  val userInfo: Endpoint[F, UserInfo] = get(auth :: "user" :: "info") { user: User =>
-    Ok(UserInfo(id = user.id, userName = user.userName))
+  val authedRoutes: AuthedService[User, F] = AuthedService {
+    case GET -> Root / "user" / "info" as user =>
+      Monad[F].pure(Response(status = Status.Ok).withEntity(UserInfo(id = user.id, userName = user.userName)))
   }
 }

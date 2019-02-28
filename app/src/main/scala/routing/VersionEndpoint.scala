@@ -2,10 +2,13 @@ package routing
 
 import cats.Monad
 import cats.effect.Effect
-import io.finch._
+import org.http4s._
+import org.http4s.dsl.io._
 
-class VersionEndpoint[F[_]: Monad](v: String)(implicit F: Effect[F]) extends Endpoint.Module[F] {
+class VersionEndpoint[F[_]: Effect](v: String) {
 
-  val version: Endpoint[F, String] = get("version") { Ok(v) }
+  def routes: HttpRoutes[F] = HttpRoutes.of[F] {
+    case GET -> Root / "version" => Monad[F].pure(Response(status = Status.Ok).withEntity(v))
+  }
 
 }
