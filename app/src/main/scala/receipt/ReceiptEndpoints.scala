@@ -1,30 +1,25 @@
-package routing
+package receipt
 
 import java.net.URLConnection
 
 import cats.data.Validated.{Invalid, Valid}
-import cats.effect.Effect
-import cats.{Apply, Monad}
 import cats.data.{NonEmptyList, Validated, ValidatedNel}
-import fs2.text
-import org.http4s.multipart.Multipart
-import service.{ReceiptField, ReceiptForm}
-
-import scala.util.Try
-import model.{User, UserId}
-import service.ReceiptPrograms
-import gnieh.diffson.circe._
-import gnieh.diffson.circe.DiffsonProtocol._
-
-import org.http4s._
-import org.http4s.dsl.io._
-import org.http4s.circe._
-import io.circe.syntax._
-import org.http4s.circe.CirceEntityDecoder._
-
+import cats.effect.Effect
 import cats.implicits._
+import cats.{Apply, Monad}
+import fs2.text
+import gnieh.diffson.circe.DiffsonProtocol._
+import gnieh.diffson.circe._
+import io.circe.syntax._
+import org.http4s._
+import org.http4s.circe.CirceEntityDecoder._
+import org.http4s.circe._
+import org.http4s.dsl.io._
+import org.http4s.multipart.Multipart
+import user.{User, UserId}
 
 import scala.language.higherKinds
+import scala.util.Try
 
 class ReceiptEndpoints[F[_]: Monad](
     receiptPrograms: ReceiptPrograms[F]

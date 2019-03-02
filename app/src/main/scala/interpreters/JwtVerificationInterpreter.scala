@@ -4,11 +4,12 @@ import algebras.JwtVerificationAlg
 import cats.Id
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import model.SubClaim
-import com.auth0.jwk.{UrlJwkProvider, GuavaCachedJwkProvider}
+import com.auth0.jwk.{GuavaCachedJwkProvider, UrlJwkProvider}
 import com.auth0.jwt.interfaces.RSAKeyProvider
 import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
+
+import authentication.SubClaim
 
 import scala.util.Try
 

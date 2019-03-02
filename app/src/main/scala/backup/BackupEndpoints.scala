@@ -1,14 +1,14 @@
 package backup
 
-import authentication.PathToken
+import authentication.{PathToken, SubClaim}
 import cats.Monad
 import cats.effect.{ConcurrentEffect, ContextShift}
 import cats.implicits._
-import model.{SubClaim, User, UserId}
 import org.http4s.{HttpRoutes, _}
 import org.http4s.dsl.io._
 import org.http4s.circe._
 import io.circe.syntax._
+import user.{User, UserId}
 
 import scala.concurrent.ExecutionContext
 

@@ -2,12 +2,12 @@ package authentication
 import algebras.JwtVerificationAlg
 import cats.data.{Kleisli, OptionT}
 import cats.effect.Effect
-import model.{SubClaim, User}
 import cats.{Id, Monad}
 import cats.implicits._
 import org.http4s._
 import org.http4s.headers.Authorization
 import org.http4s.server.AuthMiddleware
+import user.User
 
 import scala.language.higherKinds
 
@@ -34,7 +34,7 @@ class BearerAuth[F[_]: Effect](verificationAlg: JwtVerificationAlg[Id], fromBear
     })
 
   private val onFailure: AuthedService[String, F] = Kleisli(
-    req => OptionT.liftF(Monad[F].pure(Response(status = Status.Forbidden).withEntity(req.authInfo))))
+    req => OptionT.liftF(Monad[F].pure(Response(status = Status.Unauthorized).withEntity(req.authInfo))))
 
   val authMiddleware: AuthMiddleware[F, User] = AuthMiddleware(authUser, onFailure)
 

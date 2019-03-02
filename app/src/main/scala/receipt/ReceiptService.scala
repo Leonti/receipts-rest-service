@@ -1,16 +1,17 @@
-package service
+package receipt
 
 import java.io.File
 
 import algebras._
 import cats.Monad
-import model.{RemoteFileId, _}
 import io.circe.syntax._
 import io.circe.parser._
 import gnieh.diffson.circe._
 import cats.implicits._
 import cats.data.EitherT
 import fs2.Stream
+import pending.PendingFile
+import user.UserId
 
 import scala.language.higherKinds
 
@@ -178,7 +179,7 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
         val extOption = receiptOption.get.files.find(_.id == fileId).map(_.ext)
         remoteFileAlg
           .remoteFileStream(RemoteFileId(UserId(receiptOption.get.userId), fileId))
-          .map(stream => extOption.map(ext => FileToServe[F](stream, ext)))
+          .map(stream => extOption.map(ext => receipt.FileToServe[F](stream, ext)))
       } else {
         Monad[F].pure(None)
       }

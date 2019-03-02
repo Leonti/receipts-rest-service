@@ -1,13 +1,15 @@
 package routing
 import algebras._
-import authentication.{BearerAuth, PathToken}
+import authentication.{BearerAuth, OauthEndpoints, PathToken}
 import backup.{BackupEndpoints, BackupService}
 import cats.Id
 import cats.effect.{ConcurrentEffect, ContextShift}
-import service.{ReceiptPrograms, UserPrograms}
 import cats.implicits._
 import org.http4s.HttpRoutes
 import org.http4s.server.middleware.CORS
+import pending.PendingFileEndpoints
+import receipt.{ReceiptEndpoints, ReceiptPrograms}
+import user.{UserEndpoints, UserPrograms}
 
 import scala.concurrent.ExecutionContext
 

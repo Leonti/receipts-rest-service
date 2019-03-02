@@ -1,4 +1,5 @@
-package ocr.model
+package ocr
+
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 

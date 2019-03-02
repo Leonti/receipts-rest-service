@@ -7,7 +7,7 @@ import fs2.Stream
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.PutObjectRequest
-import model.RemoteFileId
+import receipt.RemoteFileId
 
 import scala.concurrent.ExecutionContext
 

@@ -4,7 +4,6 @@ import java.time.Instant
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import model.SubClaim
 
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.util.Try

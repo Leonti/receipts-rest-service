@@ -1,8 +1,7 @@
 package repository
-
-import model.User
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.bson.BSONDocument
+import user.User
 
 import scala.concurrent.Future
 

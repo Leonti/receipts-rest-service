@@ -4,9 +4,9 @@ import java.util.concurrent.Executors
 
 import algebras.QueueAlg
 import cats.effect.IO
-import model.RemoteFileId
 import queue.Models.JobId
 import queue.{Queue, ReceiptFileJob}
+import receipt.RemoteFileId
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 

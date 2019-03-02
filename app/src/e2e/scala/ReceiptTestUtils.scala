@@ -1,4 +1,4 @@
-import model.{PendingFile, ReceiptEntity}
+import model.ReceiptEntity
 import TestConfig._
 import cats.effect.{ContextShift, IO, Timer}
 import cats.syntax.all._
@@ -8,6 +8,7 @@ import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
 import org.http4s.headers._
 import org.http4s.multipart.Part
+import pending.PendingFile
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global

@@ -6,7 +6,7 @@ import java.security.{DigestInputStream, MessageDigest}
 import algebras.LocalFileAlg
 import fs2.{Stream, io}
 import cats.effect.{ContextShift, IO}
-import model.{FileMetaData, GenericMetaData, ImageMetaData}
+import receipt.{FileMetaData, GenericMetaData, ImageMetaData}
 import util.SimpleImageInfo
 
 import scala.concurrent.ExecutionContext

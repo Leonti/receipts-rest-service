@@ -1,9 +1,10 @@
-package model
+package receipt
 
 import io.circe.{Decoder, Encoder, HCursor, Json}
-import model.FileMetaData.FileMetadataBSONReader.FileMetadataBSONWriter
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import model.{Serialization, WithId}
+import receipt.FileMetaData.FileMetadataBSONReader.FileMetadataBSONWriter
 
 case class FileEntity(
     id: String,

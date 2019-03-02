@@ -9,7 +9,7 @@ import service._
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 import interpreters.{ReceiptFileQueue, _}
-import ocr.service.{GoogleOcrService, OcrServiceStub}
+import ocr.{GoogleOcrService, OcrServiceStub}
 import processing.{FileProcessor, OcrProcessor}
 import queue.{Queue, QueueProcessor}
 import org.http4s.client.blaze.BlazeClientBuilder
@@ -17,6 +17,7 @@ import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.blaze._
 import org.http4s.implicits._
+import user.UserPrograms
 
 import scala.concurrent.duration._
 

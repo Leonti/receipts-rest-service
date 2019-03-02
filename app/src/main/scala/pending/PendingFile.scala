@@ -1,7 +1,8 @@
-package model
+package pending
 
-import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
+import model.{Serialization, WithId}
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 
 case class PendingFile(id: String, userId: String, receiptId: String) extends WithId

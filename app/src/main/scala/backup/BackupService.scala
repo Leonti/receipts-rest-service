@@ -1,15 +1,15 @@
 package backup
 
 import algebras.{ReceiptStoreAlg, RemoteFileAlg}
-import model.{FileEntity, ReceiptEntity, RemoteFileId}
 import java.nio.charset.StandardCharsets
 
 import cats.Monad
 import cats.effect.{ConcurrentEffect, ContextShift}
-import model.UserId
 import io.circe.syntax._
 import cats.implicits._
 import fs2.Stream
+import receipt.{FileEntity, ReceiptEntity, RemoteFileId}
+import user.UserId
 
 import scala.concurrent.ExecutionContext
 

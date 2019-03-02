@@ -5,7 +5,7 @@ import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import queue.Models.JobId
 import io.circe.parser._
 import io.circe.syntax._
-import model.RemoteFileId
+import receipt.RemoteFileId
 
 trait QueueJob {
   def context: String

@@ -1,4 +1,4 @@
-package ocr.model
+package ocr
 
 import com.google.api.services.vision.v1.model.TextAnnotation
 import model.{Serialization}

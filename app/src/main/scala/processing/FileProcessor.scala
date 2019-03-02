@@ -5,6 +5,8 @@ import model._
 import queue._
 import cats.Monad
 import cats.implicits._
+import receipt.{FileEntity, ImageMetaData, RemoteFileId}
+import user.UserId
 
 import scala.language.higherKinds
 

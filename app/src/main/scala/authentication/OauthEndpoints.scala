@@ -1,15 +1,15 @@
-package routing
+package authentication
+
 import cats.effect.Effect
-import io.circe.{Decoder, Encoder}
-import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
-//import io.finch.circe._
 import cats.implicits._
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
+import model.AccessToken
 import org.http4s._
-import org.http4s.dsl.io._
-import org.http4s.circe.CirceEntityEncoder._
 import org.http4s.circe.CirceEntityDecoder._
-import model.{AccessToken, UserInfo}
-import service.UserPrograms
+import org.http4s.circe.CirceEntityEncoder._
+import org.http4s.dsl.io._
+import user.{UserInfo, UserPrograms}
 
 case class OpenIdToken(token: String)
 

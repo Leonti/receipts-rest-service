@@ -1,10 +1,12 @@
 package processing
 
-import model.{OcrText, RemoteFileId, UserId}
 import queue._
 import cats.Monad
 import cats.implicits._
 import algebras._
+import ocr.OcrText
+import receipt.RemoteFileId
+import user.UserId
 
 import scala.language.higherKinds
 

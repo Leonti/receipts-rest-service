@@ -1,6 +1,6 @@
-package model
+package ocr
 
-import ocr.model.OcrTextAnnotation
+import model.{Serialization, WithId}
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter, Macros}
 
 case class OcrEntity(

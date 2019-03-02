@@ -12,20 +12,6 @@ object AppConfig {
 case class ExternalUserInfo(email: String, sub: String)
 case class AccessToken(value: String)
 
-case class UserId(value: String) extends AnyVal
-
-object UserId {
-  implicit val userIdDecoder: Decoder[UserId] = deriveDecoder
-  implicit val userIdEncoder: Encoder[UserId] = deriveEncoder
-}
-
-case class RemoteFileId(userId: UserId, fileId: String)
-
-object RemoteFileId {
-  implicit val remoteFileIdDecoder: Decoder[RemoteFileId] = deriveDecoder
-  implicit val remoteFileIdEncoder: Encoder[RemoteFileId] = deriveEncoder
-}
-
 sealed trait ImageSize { def pixels: Int }
 case object WebSize extends ImageSize { val pixels: Int = 1000000 }
 

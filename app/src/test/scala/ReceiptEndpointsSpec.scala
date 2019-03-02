@@ -1,14 +1,14 @@
 import TestInterpreters._
 import cats.effect.{ContextShift, IO}
 import io.circe.Json
-import model._
 import org.http4s._
 import org.http4s.client.dsl.io._
-import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.headers.{Authorization, `Content-Type`}
 import org.http4s.multipart._
 import org.http4s.circe._
+import org.http4s.circe.CirceEntityDecoder._
 import org.scalatest.{FlatSpec, Matchers}
+import receipt.{FileEntity, GenericMetaData, ReceiptEntity, StoredFile}
 import routing.Routing
 
 import scala.concurrent.ExecutionContext.Implicits.global

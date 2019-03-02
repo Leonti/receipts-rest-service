@@ -1,13 +1,13 @@
-import model.{AccessToken, UserInfo}
+import model.AccessToken
 import TestConfig._
+import authentication.OpenIdToken
 import cats.effect.IO
 import org.http4s._
 import org.http4s.client.Client
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
 import org.http4s.circe.CirceEntityCodec._
-
-import routing.OpenIdToken
+import user.UserInfo
 
 class UserTestUtils(httpClient: Client[IO]) {
 

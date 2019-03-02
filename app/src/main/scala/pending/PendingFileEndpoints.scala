@@ -1,12 +1,12 @@
-package routing
+package pending
 
 import algebras.PendingFileAlg
 import cats.effect.Effect
-import model.User
 import cats.implicits._
 import org.http4s._
-import org.http4s.dsl.io._
 import org.http4s.circe.CirceEntityEncoder._
+import org.http4s.dsl.io._
+import user.User
 
 class PendingFileEndpoints[F[_]: Effect](pendingFileAlg: PendingFileAlg[F]) {
 

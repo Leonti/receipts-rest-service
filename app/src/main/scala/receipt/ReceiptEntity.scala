@@ -1,8 +1,9 @@
-package model
+package receipt
 
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import model.{Serialization, WithId}
 
 case class ReceiptEntity(
     id: String = java.util.UUID.randomUUID.toString, // TODO remove, provide guid

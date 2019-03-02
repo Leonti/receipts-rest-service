@@ -1,10 +1,16 @@
 package algebras
 
 import java.io.File
+
+import authentication.SubClaim
 import model._
-import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
 import fs2.Stream
+import ocr.{OcrEntity, OcrText, OcrTextAnnotation}
+import pending.PendingFile
+import receipt._
+import user.{User, UserId}
+
 import scala.language.higherKinds
 
 trait ReceiptStoreAlg[F[_]] {

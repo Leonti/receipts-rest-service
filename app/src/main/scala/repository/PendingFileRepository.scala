@@ -1,6 +1,5 @@
 package repository
-
-import model.PendingFile
+import pending.PendingFile
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.bson.BSONDocument
 

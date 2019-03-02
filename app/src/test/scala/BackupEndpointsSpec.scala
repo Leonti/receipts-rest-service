@@ -5,10 +5,10 @@ import java.util.zip.{ZipEntry, ZipInputStream}
 import TestInterpreters._
 import authentication.PathToken
 import cats.effect.{ContextShift, IO}
-import model._
 import org.http4s.headers.`Content-Type`
 import org.http4s._
 import org.scalatest.{FlatSpec, Matchers}
+import receipt.{FileEntity, GenericMetaData, ReceiptEntity, StoredFile}
 import routing.Routing
 
 import scala.concurrent.ExecutionContext.Implicits.global

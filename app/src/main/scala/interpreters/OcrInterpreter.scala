@@ -1,10 +1,6 @@
 package interpreters
 
 import java.io.File
-
-import model.{OcrEntity, OcrText}
-import ocr.model.{OcrContent, OcrSearchResult, OcrTextAnnotation}
-import ocr.service.OcrService
 import algebras.OcrAlg
 import repository.OcrRepository
 import cats.effect.IO
@@ -15,6 +11,7 @@ import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
 import org.http4s.circe._
 import io.circe.syntax._
+import ocr._
 import org.http4s.util.CaseInsensitiveString
 
 object OcrIntepreter {

@@ -1,11 +1,12 @@
 package interpreters
 import algebras.ReceiptStoreAlg
 import cats.effect.IO
+import receipt.{FileEntity, ReceiptEntity}
+import user.UserId
 //import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult
 
 //import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder
 //import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult
-import model.{FileEntity, ReceiptEntity, UserId}
 
 //import org.scanamo._
 //import org.scanamo.syntax._

@@ -1,8 +1,9 @@
 package repository
 
-import model.{FileEntity, ReceiptEntity}
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.bson.{BSONArray, BSONDocument, BSONString}
+import receipt.{FileEntity, ReceiptEntity}
+
 import scala.concurrent.Future
 
 class ReceiptRepository extends MongoDao[ReceiptEntity] {
