@@ -34,6 +34,7 @@ class ReceiptEndpoints[F[_]: Monad](
   object QueryParamMatcher        extends OptionalQueryParamDecoderMatcher[String]("q")
 
   private val service: AuthedService[User, F] = AuthedService {
+
     case GET -> Root / "receipt" / receiptId as user =>
       receiptPrograms.findById(UserId(user.id), receiptId).map {
         case Some(receipt) => Response(status = Status.Ok).withEntity(receipt.asJson)
@@ -47,7 +48,7 @@ class ReceiptEndpoints[F[_]: Monad](
   }
 
   private val getReceiptFile: AuthedService[User, F] = AuthedService {
-    case GET -> Root / "receipt" / receiptId / fileIdWithExt as user => {
+    case GET -> Root / "receipt" / receiptId / "file" / fileIdWithExt as user => {
       val fileId = fileIdWithExt.split('.')(0)
 
       receiptPrograms
@@ -69,7 +70,7 @@ class ReceiptEndpoints[F[_]: Monad](
   private val delete: AuthedService[User, F] = AuthedService {
     case DELETE -> Root / "receipt" / receiptId as user =>
       receiptPrograms.removeReceipt(UserId(user.id), receiptId).map {
-        case Some(_) => Response(status = Status.Ok).withEmptyBody: Response[F]
+        case Some(_) => Response(status = Status.NoContent).withEmptyBody: Response[F]
         case None    => Response(status = Status.NotFound).withEmptyBody: Response[F]
       }
   }
@@ -155,5 +156,5 @@ class ReceiptEndpoints[F[_]: Monad](
       }
   }
 
-  val authedRoutes: AuthedService[User, F] = createReceipt <+> service <+> getReceiptFile <+> delete <+> patch
+  val authedRoutes: AuthedService[User, F] = createReceipt <+> getReceiptFile <+> service <+> delete <+> patch
 }

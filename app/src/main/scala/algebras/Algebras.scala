@@ -1,7 +1,6 @@
 package algebras
 
 import java.io.File
-import authentication.OAuth2AccessTokenResponse
 import model._
 import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
@@ -65,11 +64,6 @@ trait PendingFileAlg[F[_]] {
   def findPendingFileForUserId(userId: String): F[List[PendingFile]]
   def deletePendingFileById(id: String): F[Unit]
   def deleteAllPendingFiles(): F[Unit]
-}
-
-trait TokenAlg[F[_]] {
-  def generatePathToken(path: String): F[OAuth2AccessTokenResponse]
-  def verifyPathToken(token: String): F[Either[String, SubClaim]]
 }
 
 trait EnvAlg[F[_]] {

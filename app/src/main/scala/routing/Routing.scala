@@ -1,6 +1,6 @@
 package routing
 import algebras._
-import authentication.BearerAuth
+import authentication.{BearerAuth, PathToken}
 import backup.{BackupEndpoints, BackupService}
 import cats.Id
 import cats.effect.{ConcurrentEffect, ContextShift}
@@ -21,13 +21,13 @@ case class RoutingAlgebras[F[_]](
     fileStoreAlg: FileStoreAlg[F],
     pendingFileAlg: PendingFileAlg[F],
     queueAlg: QueueAlg[F],
-    ocrAlg: OcrAlg[F],
-    tokenAlg: TokenAlg[F]
+    ocrAlg: OcrAlg[F]
 )
 
 case class RoutingConfig(
     uploadsFolder: String,
-    googleClientId: String
+    googleClientId: String,
+    authTokenSecret: Array[Byte]
 )
 
 class Routing[F[_]: ConcurrentEffect](algebras: RoutingAlgebras[F], config: RoutingConfig)(implicit cs: ContextShift[F],
@@ -61,7 +61,8 @@ class Routing[F[_]: ConcurrentEffect](algebras: RoutingAlgebras[F], config: Rout
   private val userEndpoints      = new UserEndpoints[F]()
   private val appConfigEndpoints = new AppConfigEndpoints[F](config.googleClientId)
   private val oauthEndpoints     = new OauthEndpoints[F](userPrograms)
-  private val backupEndpoints    = new BackupEndpoints[F](new BackupService[F](receiptStoreAlg, remoteFileAlg), tokenAlg)
+  private val backupEndpoints =
+    new BackupEndpoints[F](new BackupService[F](receiptStoreAlg, remoteFileAlg), new PathToken(config.authTokenSecret))
 
   private val authedRoutes = receiptEndpoints.authedRoutes <+>
     pendingFileEndpoints.authedRoutes <+>

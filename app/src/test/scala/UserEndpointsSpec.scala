@@ -1,3 +1,4 @@
+/*
 import TestInterpreters._
 import authentication.BearerAuth
 import cats.effect.IO
@@ -9,7 +10,7 @@ class UserEndpointsSpec extends FlatSpec with Matchers {
 
   private val USER_ID = "123-user"
   val successfulAuth = new BearerAuth[IO, User](
-    new TestVerificationAlg(Right(SubClaim(""))),
+    new JwtVerificationIntTest(Right(SubClaim(""))),
     _ => IO.pure(Some(User(USER_ID, "email", List())))
   ).auth
 
@@ -23,3 +24,4 @@ class UserEndpointsSpec extends FlatSpec with Matchers {
   }
 
 }
+*/

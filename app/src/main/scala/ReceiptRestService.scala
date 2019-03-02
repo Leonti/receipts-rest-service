@@ -54,7 +54,6 @@ object ReceiptRestService extends IOApp {
 
   val openIdService      = new OpenIdService(httpClient)
   val userInterpreter    = new UserInterpreter(userRepository, openIdService)
-  val tokenInterpreter   = new TokenInterpreter[IO](sys.env("AUTH_TOKEN_SECRET").getBytes)
   val randomInterpreter  = new RandomInterpreterTagless()
   val receiptInterpreter = new ReceiptStoreMongo(new ReceiptRepository())
   val ocrInterpreter =
@@ -81,7 +80,8 @@ object ReceiptRestService extends IOApp {
 
   val routingConfig = RoutingConfig(
     uploadsFolder = sys.env("UPLOADS_FOLDER"),
-    googleClientId = sys.env("GOOGLE_CLIENT_ID")
+    googleClientId = sys.env("GOOGLE_CLIENT_ID"),
+    authTokenSecret = sys.env("AUTH_TOKEN_SECRET").getBytes
   )
 
   val routing = new Routing[IO](
@@ -95,8 +95,7 @@ object ReceiptRestService extends IOApp {
       fileStoreAlg = fileStore,
       pendingFileAlg = pendingFile,
       queueAlg = receiptFileQueue,
-      ocrAlg = ocrInterpreter,
-      tokenAlg = tokenInterpreter
+      ocrAlg = ocrInterpreter
     ),
     routingConfig
   )
