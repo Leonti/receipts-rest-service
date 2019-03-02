@@ -1,10 +1,10 @@
-import model._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FlatSpec, Matchers}
-
 import cats.effect.{ContextShift, IO}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.scalatest.time.{Millis, Seconds, Span}
+import receipt.ImageMetaData
+
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
