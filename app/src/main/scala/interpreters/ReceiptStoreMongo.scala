@@ -1,9 +1,10 @@
 package interpreters
 
-import model.{FileEntity, ReceiptEntity, UserId}
 import algebras.ReceiptStoreAlg
 import cats.effect.IO
+import receipt.{FileEntity, ReceiptEntity}
 import repository.ReceiptRepository
+import user.UserId
 
 class ReceiptStoreMongo(receiptRepository: ReceiptRepository) extends ReceiptStoreAlg[IO] {
   override def getReceipt(userId: UserId, id: String): IO[Option[ReceiptEntity]] = IO.fromFuture(IO(receiptRepository.findById(id)))

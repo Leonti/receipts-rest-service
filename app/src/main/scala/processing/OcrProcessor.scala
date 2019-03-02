@@ -1,10 +1,12 @@
 package processing
 
-import model.{OcrText, RemoteFileId, UserId}
 import queue._
 import cats.Monad
 import cats.implicits._
 import algebras._
+import ocr.OcrText
+import receipt.RemoteFileId
+import user.UserId
 
 import scala.language.higherKinds
 
@@ -17,7 +19,7 @@ class OcrProcessor[F[_]: Monad](remoteFileAlg: RemoteFileAlg[F],
 
   def processJob(ocrJob: OcrJob): F[List[QueueJob]] =
     for {
-      fileSource <- remoteFileAlg.fetchRemoteFileInputStream(RemoteFileId(UserId(ocrJob.userId), ocrJob.fileId))
+      fileSource <- remoteFileAlg.remoteFileStream(RemoteFileId(UserId(ocrJob.userId), ocrJob.fileId))
       tmpFile    <- tmpFile()
       _          <- localFileAlg.streamToFile(fileSource, tmpFile)
       ocrResult  <- ocrImage(tmpFile)

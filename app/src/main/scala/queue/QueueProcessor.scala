@@ -14,7 +14,7 @@ import scala.concurrent.ExecutionContext
 class QueueProcessor(queue: Queue, fileProcessor: FileProcessor[IO], ocrProcessor: OcrProcessor[IO]) {
 
   // FIXME - figure out how to pick up job in a single thread, but process in multiple
-  private implicit val ec = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+  private implicit val ec               = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
   private implicit val timer: Timer[IO] = IO.timer(ec)
 
   def reserveNextJob(): IO[Unit] = {
@@ -49,7 +49,8 @@ class QueueProcessor(queue: Queue, fileProcessor: FileProcessor[IO], ocrProcesso
           // FXIME log error
           println(s"Job failed to complete $job ${sw.toString}")
           queue.bury(job.id)
-      }.toIO
+      }
+      .toIO
   }
 
   private def process(job: ReservedJob): IO[Unit] = {

@@ -32,10 +32,9 @@ val googleApiClient = "1.22.0"
 val scalaLoggingV   = "3.5.0"
 val logbackV        = "1.1.7"
 val diffsonV        = "3.0.0"
-val catsV           = "1.5.0"
+val catsV           = "1.6.0"
 val circeVersion = "0.11.1"
-val finchV = "0.23.0"
-val fs2V = "1.0.2"
+val fs2V = "1.0.3"
 val http4sVersion = "0.20.0-M5"
 val scanamoV = "1.0.0-M9"
 
@@ -56,8 +55,6 @@ lazy val root = (project in file("."))
 
 libraryDependencies ++= {
   Seq(
-    "com.github.finagle" %% "finch-core" % finchV,
-    "com.github.finagle" %% "finch-circe" % finchV,
     "com.amazonaws"         % "aws-java-sdk-s3"            % amazonS3V,
     "com.google.apis"       % "google-api-services-vision" % visionApiV excludeAll (
       ExclusionRule(organization="com.google.guava", name="guava-jdk5")

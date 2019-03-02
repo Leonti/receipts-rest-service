@@ -5,6 +5,8 @@ import model._
 import queue._
 import cats.Monad
 import cats.implicits._
+import receipt.{FileEntity, ImageMetaData, RemoteFileId}
+import user.UserId
 
 import scala.language.higherKinds
 
@@ -18,7 +20,7 @@ class FileProcessor[F[_]: Monad](
 
   def processJob(receiptFileJob: ReceiptFileJob): F[List[QueueJob]] =
     for {
-      fileStream   <- remoteFileAlg.fetchRemoteFileInputStream(receiptFileJob.remoteFileId)
+      fileStream   <- remoteFileAlg.remoteFileStream(receiptFileJob.remoteFileId)
       tmpFile      <- randomAlg.tmpFile()
       _            <- localFileAlg.streamToFile(fileStream, tmpFile)
       fileMetaData <- localFileAlg.getFileMetaData(tmpFile)

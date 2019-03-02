@@ -1,11 +1,16 @@
 package algebras
 
-import java.io.{File, InputStream}
-import authentication.OAuth2AccessTokenResponse
-import com.twitter.io.Buf
+import java.io.File
+
+import authentication.SubClaim
 import model._
-import ocr.model.OcrTextAnnotation
 import queue.Models.JobId
+import fs2.Stream
+import ocr.{OcrEntity, OcrText, OcrTextAnnotation}
+import pending.PendingFile
+import receipt._
+import user.{User, UserId}
+
 import scala.language.higherKinds
 
 trait ReceiptStoreAlg[F[_]] {
@@ -26,7 +31,7 @@ trait OcrAlg[F[_]] {
 
 trait RemoteFileAlg[F[_]] {
   def saveRemoteFile(file: File, fileId: RemoteFileId): F[Unit]
-  def fetchRemoteFileInputStream(fileId: RemoteFileId): F[InputStream]
+  def remoteFileStream(fileId: RemoteFileId): F[Stream[F, Byte]]
   def deleteRemoteFile(fileId: RemoteFileId): F[Unit]
 }
 
@@ -34,8 +39,7 @@ trait LocalFileAlg[F[_]] {
   def getFileMetaData(file: File): F[FileMetaData]
   def getMd5(file: File): F[String]
   def moveFile(src: File, dst: File): F[Unit]
-  def bufToFile(src: Buf, dst: File): F[Unit]
-  def streamToFile(source: InputStream, file: File): F[File]
+  def streamToFile(source: Stream[F, Byte], file: File): F[File]
   def removeFile(file: File): F[Unit]
 }
 
@@ -66,11 +70,6 @@ trait PendingFileAlg[F[_]] {
   def findPendingFileForUserId(userId: String): F[List[PendingFile]]
   def deletePendingFileById(id: String): F[Unit]
   def deleteAllPendingFiles(): F[Unit]
-}
-
-trait TokenAlg[F[_]] {
-  def generatePathToken(path: String): F[OAuth2AccessTokenResponse]
-  def verifyPathToken(token: String): F[Either[String, SubClaim]]
 }
 
 trait EnvAlg[F[_]] {

@@ -1,13 +1,16 @@
 package routing
 
-import io.finch._
-import io.finch.syntax._
+import cats.Monad
+import cats.effect.Effect
 import model.AppConfig
+import org.http4s._
+import org.http4s.dsl.io._
+import org.http4s.circe.CirceEntityEncoder._
 
-class AppConfigEndpoints(googleClientId: String) {
+class AppConfigEndpoints[F[_]: Effect](googleClientId: String) {
 
-  val getAppConfig: Endpoint[AppConfig] = get("config") {
-    Ok(AppConfig(googleClientId))
+  def routes: HttpRoutes[F] = HttpRoutes.of[F] {
+    case GET -> Root / "config" => Monad[F].pure(Response(status = Status.Ok).withEntity(AppConfig(googleClientId)))
   }
 
 }

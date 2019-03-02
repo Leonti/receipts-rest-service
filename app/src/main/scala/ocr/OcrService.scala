@@ -1,4 +1,4 @@
-package ocr.service
+package ocr
 
 import java.io.{File, FileInputStream}
 import java.nio.file.Files
@@ -12,7 +12,6 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.vision.v1.model.{AnnotateImageRequest, BatchAnnotateImagesRequest, Feature, Image}
 import com.google.api.services.vision.v1.{Vision, VisionScopes}
 import com.google.common.collect.ImmutableList
-import ocr.model.OcrTextAnnotation
 
 import scala.concurrent.{ExecutionContext, Future}
 

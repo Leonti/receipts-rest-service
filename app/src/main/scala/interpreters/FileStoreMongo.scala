@@ -1,7 +1,7 @@
 package interpreters
 import algebras.FileStoreAlg
 import cats.effect.IO
-import model.StoredFile
+import receipt.StoredFile
 import repository.StoredFileRepository
 
 class FileStoreMongo(storedFileRepository: StoredFileRepository) extends FileStoreAlg[IO] {

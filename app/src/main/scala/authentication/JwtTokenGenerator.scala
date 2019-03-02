@@ -1,13 +1,12 @@
-package service
-
+package authentication
 import java.time.Instant
 
-import authentication.OAuth2AccessTokenResponse
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import model.User
-
+import user.User
 import scala.concurrent.duration._
+
+import scala.concurrent.duration.FiniteDuration
 
 object JwtTokenGenerator {
   private val bearerTokenLifetime: FiniteDuration     = 60.minutes

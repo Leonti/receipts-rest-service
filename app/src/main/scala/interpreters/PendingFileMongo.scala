@@ -1,8 +1,7 @@
 package interpreters
-
-import model.PendingFile
 import algebras.PendingFileAlg
 import cats.effect.IO
+import pending.PendingFile
 import repository.PendingFileRepository
 
 class PendingFileMongo(pendingFileRepository: PendingFileRepository) extends PendingFileAlg[IO] {

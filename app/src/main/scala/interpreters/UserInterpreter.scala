@@ -1,10 +1,11 @@
 package interpreters
 
-import model.{AccessToken, ExternalUserInfo, User}
+import model.{AccessToken, ExternalUserInfo}
 import algebras.UserAlg
 import cats.effect.IO
 import repository.UserRepository
 import service.OpenIdService
+import user.User
 
 class UserInterpreter(userRepository: UserRepository, openIdService: OpenIdService) extends UserAlg[IO] {
   override def findUserByExternalId(id: String): IO[Option[User]]     = IO.fromFuture(IO(userRepository.findUserByExternalId(id)))

@@ -1,14 +1,15 @@
-package service
+package user
 
 import algebras._
 import cats.Monad
 import cats.implicits._
-import model.{AccessToken, User}
+import model.AccessToken
 
 import scala.language.higherKinds
 
 class UserPrograms[F[_]: Monad](userAlg: UserAlg[F], randomAlg: RandomAlg[F]) {
-  import userAlg._, randomAlg._
+  import randomAlg._
+  import userAlg._
 
   def findUserByExternalId(id: String): F[Option[User]] = userAlg.findUserByExternalId(id)
 

@@ -1,8 +1,8 @@
 package repository
 
-import model.StoredFile
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.bson.BSONDocument
+import receipt.StoredFile
 
 import scala.concurrent.Future
 
