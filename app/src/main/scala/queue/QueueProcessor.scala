@@ -20,11 +20,8 @@ class QueueProcessor[F[_]: Effect](queueAlg: QueueAlg[F], fileProcessor: FilePro
       .reserve()
       .flatMap({
         case Some(job: ReservedJob) =>
-          process(job).map(_ => 1.second).handleError(_ => 1.second)
-        case None => Monad[F].pure(10.seconds)
-      })
-      .flatMap(nextPickupTimeout => {
-        timer.sleep(nextPickupTimeout) *> reserveNextJob()
+          process(job).flatMap(_ => reserveNextJob())
+        case None => reserveNextJob()
       })
       .handleError(e => {
         // FIXME - log error
@@ -45,7 +42,7 @@ class QueueProcessor[F[_]: Effect](queueAlg: QueueAlg[F], fileProcessor: FilePro
     result.handleError(e => {
       val sw = new StringWriter
       e.printStackTrace(new PrintWriter(sw))
-      // FXIME log error
+      // FIXME log error
       println(s"Job failed to complete $job ${sw.toString}")
       queueAlg.bury(job.id)
     })

@@ -1,11 +1,14 @@
 package queue
 
 import algebras.QueueAlg
-import cats.effect.IO
+import cats.effect.{IO, Timer}
 import queue.Models._
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 import repository.MongoConnection
+
+import scala.concurrent.duration._
+import cats.implicits._
 
 import scala.concurrent.Future
 
@@ -62,7 +65,7 @@ package object Models {
   }
 }
 
-class QueueMongo extends QueueAlg[IO] with MongoConnection {
+class QueueMongo(implicit timer: Timer[IO]) extends QueueAlg[IO] with MongoConnection {
 
   lazy val collectionFuture: Future[BSONCollection] = dbFuture.map(db => db[BSONCollection]("queue"))
 
@@ -95,7 +98,14 @@ class QueueMongo extends QueueAlg[IO] with MongoConnection {
         )
       }))
 
-    IO.fromFuture(IO(future))
+    val reservation: IO[Option[ReservedJob]] = IO.fromFuture(IO(future))
+
+    val resultWithDelay: IO[Option[ReservedJob]] = reservation.flatMap({
+      case option@Some(_) => IO.pure(option)
+      case None => IO.sleep(10.seconds) *> IO.pure(None)
+    })
+
+    resultWithDelay
   }
 
   def delete(id: JobId): IO[Unit] = IO.fromFuture(IO(collectionFuture.flatMap(_.remove(BSONDocument("_id" -> id)).map(_ => ()))))
