@@ -9,23 +9,18 @@ import scala.language.higherKinds
 
 class UserPrograms[F[_]: Monad](userAlg: UserAlg[F], randomAlg: RandomAlg[F]) {
   import randomAlg._
-  import userAlg._
 
-  def findUserByExternalId(id: String): F[Option[User]] = userAlg.findUserByExternalId(id)
+  def findUserByExternalId(id: String): F[Option[UserIds]] = userAlg.findByExternalId(id)
 
-  def validateOpenIdUser(accessToken: AccessToken): F[User] =
+  def validateOpenIdUser(accessToken: AccessToken): F[UserIds] =
     for {
-      externalUserInfo <- getExternalUserInfoFromAccessToken(accessToken)
-      existingUser     <- findUserByUsername(externalUserInfo.email)
-      user <- if (existingUser.isDefined) {
-        saveUser(
-          existingUser.get.copy(
-            externalIds = externalUserInfo.sub +: existingUser.get.externalIds.filterNot(id => id == externalUserInfo.sub)
-          ))
-      } else {
-        generateGuid().flatMap(userId =>
-          saveUser(User(id = userId, userName = externalUserInfo.email, externalIds = List(externalUserInfo.sub))))
-
+      externalUserInfo <- userAlg.getExternalUserInfoFromAccessToken(accessToken)
+      existingUserIds  <- userAlg.findByUsername(externalUserInfo.email)
+      userIdsToSave <- existingUserIds match {
+        case userIds :: _ => Monad[F].pure(UserIds(id = userIds.id, username = userIds.username, externalId = externalUserInfo.sub))
+        case Nil =>
+          generateGuid().map(userId => UserIds(id = userId, username = externalUserInfo.email, externalId = externalUserInfo.sub))
       }
-    } yield user
+      _ <- userAlg.saveUserIds(userIdsToSave)
+    } yield userIdsToSave
 }

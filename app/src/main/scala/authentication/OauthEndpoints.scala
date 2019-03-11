@@ -26,7 +26,7 @@ class OauthEndpoints[F[_]: Effect](userPrograms: UserPrograms[F]) {
         openIdToken <- req.as[OpenIdToken]
         userInfo <- userPrograms
           .validateOpenIdUser(AccessToken(openIdToken.token))
-          .map(user => UserInfo(id = user.id, userName = user.userName))
+          .map(user => UserInfo(id = user.id, userName = user.username))
       } yield Response(status = Status.Created).withEntity(userInfo): Response[F]
   }
 

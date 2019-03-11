@@ -26,6 +26,6 @@ class OcrProcessor[F[_]: Monad](remoteFileAlg: RemoteFileAlg[F],
       _          <- saveOcrResult(ocrJob.userId, ocrJob.receiptId, ocrResult)
       _          <- addOcrToIndex(ocrJob.userId, ocrJob.receiptId, OcrText(ocrResult.text))
       _          <- localFileAlg.removeFile(tmpFile)
-      _          <- deletePendingFileById(ocrJob.pendingFileId)
+      _          <- deletePendingFileById(UserId(ocrJob.userId), ocrJob.pendingFileId)
     } yield List()
 }

@@ -3,6 +3,9 @@ import java.util.concurrent.Executors
 
 import cats.effect.{ContextShift, ExitCode, IO, IOApp}
 import cats.implicits._
+import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
+import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClient}
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import repository._
 import routing._
 import service._
@@ -27,8 +30,6 @@ object ReceiptRestService extends IOApp {
 
   private implicit val cs: ContextShift[IO] = IO.contextShift(executor)
 
-  val userRepository = new UserRepository()
-
   // TODO: Properly use resource
   val (httpClient, _) = BlazeClientBuilder[IO](executor)
     .withResponseHeaderTimeout(60.seconds)
@@ -43,7 +44,6 @@ object ReceiptRestService extends IOApp {
   val receiptFileQueue = new ReceiptFileQueue(new Queue())
 
   val receiptRepository = new ReceiptRepository()
-  val ocrRepository     = new OcrRepository()
 
   val imageResizer = new ImageMagickResizer()
   val ocrService =
@@ -53,13 +53,42 @@ object ReceiptRestService extends IOApp {
     } else
       new GoogleOcrService(new File(sys.env("GOOGLE_API_CREDENTIALS")), imageResizer)
 
+  val awsConfig = S3Config(
+    region = sys.env("S3_REGION"),
+    bucket = sys.env("S3_BUCKET"),
+    accessKey = sys.env("S3_ACCESS_KEY"),
+    secretKey = sys.env("S3_SECRET_ACCESS_KEY")
+  )
+
+  val amazonS3Client: AmazonS3 = {
+    val credentials = new BasicAWSCredentials(awsConfig.accessKey, awsConfig.secretKey)
+
+    val amazonS3ClientBuilder = AmazonS3ClientBuilder
+      .standard()
+      .withCredentials(new AWSStaticCredentialsProvider(credentials))
+    amazonS3ClientBuilder.withRegion(awsConfig.region).build()
+  }
+
+  val dynamoDbClient: AmazonDynamoDBAsync = {
+    val credentials = new BasicAWSCredentials(awsConfig.accessKey, awsConfig.secretKey)
+
+    AmazonDynamoDBAsyncClient
+      .asyncBuilder()
+      .withCredentials(new AWSStaticCredentialsProvider(credentials))
+      .withRegion(awsConfig.region)
+      .build()
+  }
+
+  val env                = sys.env("ENV")
   val openIdService      = new OpenIdService(httpClient)
-  val userInterpreter    = new UserInterpreter(userRepository, openIdService)
+  val userInterpreter    = new UserDynamo(openIdService, dynamoDbClient, s"user-ids-$env")
   val randomInterpreter  = new RandomInterpreterTagless()
-  val receiptInterpreter = new ReceiptStoreMongo(new ReceiptRepository())
+  val receiptInterpreter = new ReceiptsStoreDynamo(dynamoDbClient, s"receipts-$env")
+
   val ocrInterpreter =
     new OcrInterpreterTagless(httpClient,
-                              ocrRepository,
+                              awsConfig,
+                              amazonS3Client,
                               ocrService,
                               OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY")))
 
@@ -67,16 +96,12 @@ object ReceiptRestService extends IOApp {
 
   val localFile = new LocalFileInterpreter(executor)
   val remoteFile = new RemoteFileS3(
-    S3Config(
-      region = sys.env("S3_REGION"),
-      bucket = sys.env("S3_BUCKET"),
-      accessKey = sys.env("S3_ACCESS_KEY"),
-      secretKey = sys.env("S3_SECRET_ACCESS_KEY")
-    ),
+    awsConfig,
+    amazonS3Client,
     executor
   )
-  val fileStore    = new FileStoreMongo(new StoredFileRepository())
-  val pendingFile  = new PendingFileMongo(new PendingFileRepository())
+  val fileStore    = new FileStoreDynamo(dynamoDbClient, s"files-$env")
+  val pendingFile  = new PendingFileStoreDynamo(dynamoDbClient, s"pending-files-$env")
   val receiptQueue = new ReceiptFileQueue(queue)
 
   val routingConfig = RoutingConfig(

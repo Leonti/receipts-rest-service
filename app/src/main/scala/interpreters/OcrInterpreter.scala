@@ -1,9 +1,10 @@
 package interpreters
 
 import java.io.File
+
 import algebras.OcrAlg
-import repository.OcrRepository
 import cats.effect.IO
+import com.amazonaws.services.s3.AmazonS3
 import org.http4s._
 import org.http4s.headers._
 import org.http4s.client.Client
@@ -19,7 +20,8 @@ object OcrIntepreter {
 }
 
 class OcrInterpreterTagless(httpClient: Client[IO],
-                            ocrRepository: OcrRepository,
+                            config: S3Config,
+                            amazonS3Client: AmazonS3,
                             ocrService: OcrService,
                             ocrConfig: OcrIntepreter.OcrConfig)
     extends OcrAlg[IO] {
@@ -27,8 +29,11 @@ class OcrInterpreterTagless(httpClient: Client[IO],
   private implicit val ocrSearchResultDecoder: EntityDecoder[IO, OcrSearchResult] = jsonOf[IO, OcrSearchResult]
 
   override def ocrImage(file: File): IO[OcrTextAnnotation] = IO.fromFuture(IO(ocrService.ocrImage(file)))
-  override def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): IO[OcrEntity] =
-    IO.fromFuture(IO(ocrRepository.save(OcrEntity(userId = userId, id = receiptId, result = ocrResult))))
+
+  override def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): IO[Unit] = IO {
+    amazonS3Client.putObject(config.bucket, s"user/$userId/ocr/$receiptId", ocrResult.asJson.spaces2)
+  }
+
   override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): IO[Unit] =
     httpClient
       .expect[String](

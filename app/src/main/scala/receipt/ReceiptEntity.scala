@@ -6,7 +6,7 @@ import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import model.{Serialization, WithId}
 
 case class ReceiptEntity(
-    id: String = java.util.UUID.randomUUID.toString, // TODO remove, provide guid
+    id: String,
     userId: String,
     files: List[FileEntity] = List.empty,
     description: String = "",

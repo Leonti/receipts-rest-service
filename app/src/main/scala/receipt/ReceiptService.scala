@@ -95,7 +95,7 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
       tmpFile = new File(new File(uploadsLocation), randomGuid)
       _                       <- EitherT.right[Error](localFileAlg.streamToFile(receiptForm.receipt.stream, tmpFile))
       md5                     <- EitherT.right[Error](localFileAlg.getMd5(tmpFile))
-      exitingFilesWithSameMd5 <- EitherT.right[Error](fileStoreAlg.findByMd5(userId.value, md5))
+      exitingFilesWithSameMd5 <- EitherT.right[Error](fileStoreAlg.findByMd5(userId, md5))
       _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
       receiptId               <- EitherT.right[Error](generateGuid())
       fileId                  <- EitherT.right[Error](generateGuid())
@@ -128,7 +128,7 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
             timestamp = currentTimeMillis
           ))
       )
-      _ <- EitherT.right[Error](saveReceipt(userId, receiptId, receipt))
+      _ <- EitherT.right[Error](saveReceipt(receipt))
       _ <- EitherT.right[Error](submitPF(userId, receiptId, remoteFileId, ext(receiptForm.receipt.name)))
       _ <- EitherT.right[Error](localFileAlg.removeFile(tmpFile))
     } yield receipt
@@ -144,7 +144,7 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
       patchedReceipt = receiptOption.map(r => Patch.applyPatch(r, jsonPatch))
       currentTime <- getTime()
       _ <- if (patchedReceipt.isDefined) {
-        saveReceipt(userId, receiptId, patchedReceipt.get.copy(lastModified = currentTime))
+        saveReceipt(patchedReceipt.get.copy(lastModified = currentTime))
       } else {
         Monad[F].pure(())
       }
@@ -157,7 +157,7 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
       .map(file =>
         for {
           _ <- remoteFileAlg.deleteRemoteFile(RemoteFileId(userId, file.id))
-          r <- fileStoreAlg.deleteStoredFile(file.id)
+          r <- fileStoreAlg.deleteStoredFile(userId, file.id)
         } yield r)
       .sequence
 

@@ -3,58 +3,58 @@ import algebras.ReceiptStoreAlg
 import cats.effect.IO
 import receipt.{FileEntity, ReceiptEntity}
 import user.UserId
-//import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult
+import org.scanamo._
+import org.scanamo.syntax._
+import org.scanamo.auto._
+import org.scanamo.error.DynamoReadError
+import cats.implicits._
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
+import org.scanamo.query.{MultipleKeyList, UniqueKeys}
 
-//import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder
-//import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult
+class ReceiptsStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) extends ReceiptStoreAlg[IO] {
 
-//import org.scanamo._
-//import org.scanamo.syntax._
+  private val table = Table[ReceiptEntity](tableName)
 
-//import com.gu.scanamo._
-//import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
-//import io.github.howardjohn.scanamo.CirceDynamoFormat._
-
-class ReceiptsStoreDynamo extends ReceiptStoreAlg[IO] {
-  override def getReceipt(userId: UserId, id: String): IO[Option[ReceiptEntity]] = ???
-  /*
-    IO {
-
-    val table = Table[ReceiptEntity]("receipts")
-    val ops = table.putAll(Set(ReceiptEntity(
-      id = java.util.UUID.randomUUID.toString,
-      userId = "",
-      files= List.empty,
-      description = "hello",
-      total= None,
-      timestamp = System.currentTimeMillis,
-      lastModified = System.currentTimeMillis(),
-      transactionTime = System.currentTimeMillis(),
-      tags = List.empty
-    )))
-
-    val client = LocalDynamoDB.client()
-    val result: Seq[BatchWriteItemResult] = Scanamo.exec(client)(ops)
-    println(result)
-    None
+  override def getReceipt(userId: UserId, id: String): IO[Option[ReceiptEntity]] = IO {
+    val ops    = table.get('id -> id and 'userId -> userId.value)
+    val result = Scanamo.exec(client)(ops)
+    result.flatMap(_.toOption)
   }
-   */
-  override def deleteReceipt(userId: UserId, id: String): IO[Unit]                                = ???
-  override def saveReceipt(userId: UserId, id: String, receipt: ReceiptEntity): IO[ReceiptEntity] = ???
-  override def getReceipts(userId: UserId, ids: Seq[String]): IO[Seq[ReceiptEntity]]              = ???
-  /*
-    IO {
 
-    case class Farmer(name: String, age: Long)
-    val table = Table[Farmer]("receipts")
-    val ops = table.get('name -> "McDonald")
-    val client = LocalDynamoDB.client()
-    val result: Option[Either[DynamoReadError, Farmer]] = Scanamo.exec(client)(ops)
-    println(result)
-    Seq()
-    // table.get('name -> "McDonald")
+  override def deleteReceipt(userId: UserId, id: String): IO[Unit] = IO {
+    val ops = table.delete('id -> id and 'userId -> userId.value)
+    Scanamo.exec(client)(ops)
   }
-   */
-  override def userReceipts(userId: UserId): IO[Seq[ReceiptEntity]]                            = ???
-  override def addFileToReceipt(userId: UserId, receiptId: String, file: FileEntity): IO[Unit] = ???
+
+  override def saveReceipt(receipt: ReceiptEntity): IO[ReceiptEntity] = IO {
+    val ops = table.putAll(Set(receipt))
+    Scanamo.exec(client)(ops)
+    receipt
+  }
+
+  override def getReceipts(userId: UserId, ids: Seq[String]): IO[Seq[ReceiptEntity]] =
+    IO {
+      val values                                              = ids.map(id => (id, userId.value)).toSet
+      val ops                                                 = table.getAll(UniqueKeys(MultipleKeyList(('id, 'userId), values)))
+      val result: Set[Either[DynamoReadError, ReceiptEntity]] = Scanamo.exec(client)(ops)
+      result.toList.sequence
+    } flatMap {
+      case Right(receipts) => IO(receipts)
+      case Left(error)     => IO.raiseError(new Exception(error.toString))
+    }
+
+  override def userReceipts(userId: UserId): IO[Seq[ReceiptEntity]] =
+    IO {
+      val ops                                                 = table.index("userId-index").query('userId -> userId.value)
+      val result: Seq[Either[DynamoReadError, ReceiptEntity]] = Scanamo.exec(client)(ops)
+      result.toList.sequence
+    } flatMap {
+      case Right(receipts) => IO(receipts)
+      case Left(error)     => IO.raiseError(new Exception(error.toString))
+    }
+
+  override def addFileToReceipt(userId: UserId, receiptId: String, file: FileEntity): IO[Unit] = IO {
+    val ops = table.update('id -> receiptId and 'userId -> userId.value, append('files -> file))
+    Scanamo.exec(client)(ops)
+  }
 }
