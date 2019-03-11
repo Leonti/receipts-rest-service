@@ -11,10 +11,10 @@ import routing._
 import service._
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
-import interpreters.{ReceiptFileQueue, _}
+import interpreters.{_}
 import ocr.{GoogleOcrService, OcrServiceStub}
 import processing.{FileProcessor, OcrProcessor}
-import queue.{Queue, QueueProcessor}
+import queue.{QueueMongo, QueueProcessor}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -40,8 +40,7 @@ object ReceiptRestService extends IOApp {
 
   val pendingFileRepository = new PendingFileRepository()
 
-  val queue            = new Queue()
-  val receiptFileQueue = new ReceiptFileQueue(new Queue())
+  val queue            = new QueueMongo()
 
   val receiptRepository = new ReceiptRepository()
 
@@ -102,7 +101,6 @@ object ReceiptRestService extends IOApp {
   )
   val fileStore    = new FileStoreDynamo(dynamoDbClient, s"files-$env")
   val pendingFile  = new PendingFileStoreDynamo(dynamoDbClient, s"pending-files-$env")
-  val receiptQueue = new ReceiptFileQueue(queue)
 
   val routingConfig = RoutingConfig(
     uploadsFolder = sys.env("UPLOADS_FOLDER"),
@@ -120,7 +118,7 @@ object ReceiptRestService extends IOApp {
       remoteFileAlg = remoteFile,
       fileStoreAlg = fileStore,
       pendingFileAlg = pendingFile,
-      queueAlg = receiptFileQueue,
+      queueAlg = queue,
       ocrAlg = ocrInterpreter
     ),
     routingConfig
@@ -134,6 +132,7 @@ object ReceiptRestService extends IOApp {
     randomInterpreter
   )
   val ocrProcessor   = new OcrProcessor[IO](remoteFile, localFile, ocrInterpreter, randomInterpreter, pendingFile)
+
   val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor)
 
   queueProcessor.reserveNextJob().unsafeRunAsync {

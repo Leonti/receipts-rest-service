@@ -8,6 +8,7 @@ import queue.Models.JobId
 import fs2.Stream
 import ocr.{OcrText, OcrTextAnnotation}
 import pending.PendingFile
+import queue.{QueueJob, ReservedJob}
 import receipt._
 import user.{UserId, UserIds}
 
@@ -55,7 +56,11 @@ trait FileStoreAlg[F[_]] {
 }
 
 trait QueueAlg[F[_]] {
-  def submitToFileQueue(userId: String, receiptId: String, remoteFileId: RemoteFileId, fileExt: String, pendingFileId: String): F[JobId]
+  def submit(queueJob: QueueJob): F[Unit]
+  def reserve(): F[Option[ReservedJob]]
+  def delete(id: JobId): F[Unit]
+  def release(id: JobId): F[Unit]
+  def bury(id: JobId): F[Unit]
 }
 
 trait UserAlg[F[_]] {

@@ -9,6 +9,7 @@ import model._
 import ocr.{OcrText, OcrTextAnnotation}
 import pending.PendingFile
 import queue.Models.JobId
+import queue.{QueueJob, ReservedJob}
 import receipt._
 import routing.{RoutingAlgebras, RoutingConfig}
 import user.{UserId, UserIds}
@@ -71,11 +72,11 @@ object TestInterpreters {
   }
 
   class QueueIntTest extends QueueAlg[IO] {
-    override def submitToFileQueue(userId: String,
-                                   receiptId: String,
-                                   remoteFileId: RemoteFileId,
-                                   fileExt: String,
-                                   pendingFileId: String): IO[JobId] = IO.pure("")
+    override def submit(queueJob: QueueJob): IO[Unit] = IO.pure(())
+    override def reserve(): IO[Option[ReservedJob]] = IO.pure(None)
+    override def delete(id: JobId): IO[Unit]              = IO.pure(())
+    override def release(id: JobId): IO[Unit]             = IO.pure(())
+    override def bury(id: JobId): IO[Unit]                = IO.pure(())
   }
 
   class ReceiptStoreIntTest(

@@ -11,6 +11,7 @@ import cats.implicits._
 import cats.data.EitherT
 import fs2.Stream
 import pending.PendingFile
+import queue.ReceiptFileJob
 import user.UserId
 
 import scala.language.higherKinds
@@ -80,7 +81,13 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
           receiptId = receiptId
         )
       )
-      _ <- queueAlg.submitToFileQueue(userId.value, receiptId, remoteFileId, ext, pendingFile.id)
+      _ <- queueAlg.submit(ReceiptFileJob(
+        userId = userId.value,
+        receiptId = receiptId,
+        remoteFileId = remoteFileId,
+        fileExt = ext,
+        pendingFileId = pendingFileId
+      ))
     } yield pendingFile
 
   private def validateExistingFile(haveExisting: Boolean): EitherT[F, Error, Unit] =
