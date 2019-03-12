@@ -1,9 +1,10 @@
 package queue
 
 import java.io.{PrintWriter, StringWriter}
+
 import algebras.QueueAlg
 import cats.Monad
-import cats.effect.{Effect, Timer}
+import cats.effect.{ContextShift, Effect, Timer}
 import cats.syntax.all._
 import cats.instances.list._
 import processing.{FileProcessor, OcrProcessor}
@@ -12,7 +13,7 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContextExecutor
 
 class QueueProcessor[F[_]: Effect](queueAlg: QueueAlg[F], fileProcessor: FileProcessor[F], ocrProcessor: OcrProcessor[F])
-                                 (implicit val ec: ExecutionContextExecutor, timer: Timer[F]) {
+                                 (implicit val ec: ExecutionContextExecutor, timer: Timer[F], cs: ContextShift[F]) {
 
   def reserveNextJob(): F[Unit] = {
     println("Checking for new jobs")
@@ -20,8 +21,8 @@ class QueueProcessor[F[_]: Effect](queueAlg: QueueAlg[F], fileProcessor: FilePro
       .reserve()
       .flatMap({
         case Some(job: ReservedJob) =>
-          process(job).flatMap(_ => reserveNextJob())
-        case None => reserveNextJob()
+          process(job).flatMap(_ => cs.shift.flatMap(_ => reserveNextJob()))
+        case None => cs.shift.flatMap(_ => reserveNextJob())
       })
       .handleError(e => {
         // FIXME - log error
