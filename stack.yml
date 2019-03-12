@@ -133,4 +133,25 @@ Resources:
               AttributeName: "username"
               KeyType: "HASH"             
           Projection:
-            ProjectionType: "ALL"            
+            ProjectionType: "ALL"
+
+  JobDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      QueueName: !Sub "receipt-jobs-dlq-${Environment}"
+      ReceiveMessageWaitTimeSeconds: 3
+
+  JobQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      QueueName: !Sub "receipt-jobs-${Environment}"
+      ReceiveMessageWaitTimeSeconds: 3
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt: 
+            - "JobDLQ"
+            - "Arn"
+        maxReceiveCount: 10
+      VisibilityTimeout: 600        

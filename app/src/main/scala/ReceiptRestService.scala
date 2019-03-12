@@ -6,15 +6,16 @@ import cats.implicits._
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClient}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
+import com.amazonaws.services.sqs.{AmazonSQS, AmazonSQSClientBuilder}
 import repository._
 import routing._
 import service._
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
-import interpreters.{_}
+import interpreters._
 import ocr.{GoogleOcrService, OcrServiceStub}
 import processing.{FileProcessor, OcrProcessor}
-import queue.{QueueMongo, QueueProcessor}
+import queue.{ QueueProcessor, QueueSqs}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -39,8 +40,6 @@ object ReceiptRestService extends IOApp {
     .unsafeRunSync()
 
   val pendingFileRepository = new PendingFileRepository()
-
-  val queue            = new QueueMongo()
 
   val receiptRepository = new ReceiptRepository()
 
@@ -107,6 +106,16 @@ object ReceiptRestService extends IOApp {
     googleClientId = sys.env("GOOGLE_CLIENT_ID"),
     authTokenSecret = sys.env("AUTH_TOKEN_SECRET").getBytes
   )
+
+  val amazonSqsClient: AmazonSQS = {
+    val credentials = new BasicAWSCredentials(awsConfig.accessKey, awsConfig.secretKey)
+
+    val amazonS3ClientBuilder = AmazonSQSClientBuilder
+      .standard()
+      .withCredentials(new AWSStaticCredentialsProvider(credentials))
+    amazonS3ClientBuilder.withRegion(awsConfig.region).build()
+  }
+  val queue = new QueueSqs(amazonSqsClient, s"receipt-jobs-$env")
 
   val routing = new Routing[IO](
     RoutingAlgebras(
