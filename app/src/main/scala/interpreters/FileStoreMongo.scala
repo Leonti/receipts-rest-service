@@ -11,4 +11,8 @@ class FileStoreMongo(storedFileRepository: StoredFileRepository) extends FileSto
   override def findByMd5(userId: UserId, md5: String): IO[Seq[StoredFile]] =
     IO.fromFuture(IO(storedFileRepository.findForUserIdAndMd5(userId.value, md5)))
   override def deleteStoredFile(userId: UserId, id: String): IO[Unit] = IO.fromFuture(IO(storedFileRepository.deleteById(id)))
+
+  def findForUser(userId: UserId): IO[List[StoredFile]] =
+    IO.fromFuture(IO(storedFileRepository.findForUserId(userId.value)))
+
 }

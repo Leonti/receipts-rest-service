@@ -6,12 +6,25 @@ import user.UserId
 import org.scanamo._
 import org.scanamo.syntax._
 import org.scanamo.auto._
-import org.scanamo.error.DynamoReadError
+import org.scanamo.error.{DynamoReadError, NoPropertyOfType}
 import cats.implicits._
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
+import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import org.scanamo.query.{MultipleKeyList, UniqueKeys}
 
 class ReceiptsStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) extends ReceiptStoreAlg[IO] {
+
+  implicit val stringFormat: DynamoFormat[String] = new DynamoFormat[String] {
+    def read(av: AttributeValue): Either[DynamoReadError, String] =
+      if ((av.isNULL ne null) && av.isNULL)
+        Right("")
+      else
+        Either.fromOption(Option(av.getS), NoPropertyOfType("S", av))
+    def write(s: String): AttributeValue = s match {
+      case "" => new AttributeValue().withNULL(true)
+      case _  => new AttributeValue().withS(s)
+    }
+  }
 
   private val table = Table[ReceiptEntity](tableName)
 

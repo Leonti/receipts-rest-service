@@ -20,4 +20,7 @@ class StoredFileRepository extends MongoDao[StoredFile] {
                "userId" -> userId,
                "md5"    -> md5
              ))
+
+  def findForUserId(userId: String): Future[List[StoredFile]] =
+    findList(collectionFuture, BSONDocument("userId" -> userId))
 }
