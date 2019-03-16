@@ -1,14 +1,16 @@
 package queue
 
-import cats.effect.IO
+import algebras.QueueAlg
+import cats.effect.{IO, Timer}
 import queue.Models._
-import reactivemongo.api.Cursor
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter}
 import repository.MongoConnection
 
+import scala.concurrent.duration._
+import cats.implicits._
+
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
 
 package object Models {
   type JobId = String
@@ -63,11 +65,11 @@ package object Models {
   }
 }
 
-class Queue extends MongoConnection {
+class QueueMongo(implicit timer: Timer[IO]) extends QueueAlg[IO] with MongoConnection {
 
   lazy val collectionFuture: Future[BSONCollection] = dbFuture.map(db => db[BSONCollection]("queue"))
 
-  def put(queueJob: QueueJob): IO[JobId] = {
+  def submit(queueJob: QueueJob): IO[Unit] = {
     val job = Job(
       id = java.util.UUID.randomUUID.toString,
       payload = QueueJob.asString(queueJob),
@@ -75,7 +77,7 @@ class Queue extends MongoConnection {
       created = System.currentTimeMillis,
       runAfter = System.currentTimeMillis
     )
-    IO.fromFuture(IO(collectionFuture.flatMap(_.insert[Job](job).map(_ => job.id))))
+    IO.fromFuture(IO(collectionFuture.flatMap(_.insert[Job](job).map(_ => ()))))
   }
 
   def reserve(): IO[Option[ReservedJob]] = {
@@ -96,7 +98,14 @@ class Queue extends MongoConnection {
         )
       }))
 
-    IO.fromFuture(IO(future))
+    val reservation: IO[Option[ReservedJob]] = IO.fromFuture(IO(future))
+
+    val resultWithDelay: IO[Option[ReservedJob]] = reservation.flatMap({
+      case option@Some(_) => IO.pure(option)
+      case None => IO.sleep(10.seconds) *> IO.pure(None)
+    })
+
+    resultWithDelay
   }
 
   def delete(id: JobId): IO[Unit] = IO.fromFuture(IO(collectionFuture.flatMap(_.remove(BSONDocument("_id" -> id)).map(_ => ()))))
@@ -110,19 +119,6 @@ class Queue extends MongoConnection {
             BSONDocument("$set" -> BSONDocument("status" -> "READY"))
           ).map(_ => ()))))
 
-  def releaseWithDelay(id: JobId, delay: Duration): IO[Unit] =
-    IO.fromFuture(
-      IO(
-        collectionFuture.flatMap(
-          _.update(
-            BSONDocument("_id" -> id),
-            BSONDocument(
-              "$set" -> BSONDocument(
-                "status"   -> "READY",
-                "runAfter" -> (System.currentTimeMillis + delay.toMillis)
-              ))
-          ).map(_ => ()))))
-
   def bury(id: JobId): IO[Unit] =
     IO.fromFuture(
       IO(
@@ -131,14 +127,4 @@ class Queue extends MongoConnection {
             BSONDocument("_id"  -> id),
             BSONDocument("$set" -> BSONDocument("status" -> "BURIED"))
           ).map(_ => ()))))
-
-  def list(): IO[List[Job]] =
-    IO.fromFuture(
-      IO(
-        collectionFuture.flatMap(
-          _.find(BSONDocument())
-            .cursor[Job]()
-            .collect[List](-1, Cursor.FailOnError[List[Job]]()))))
-
-  def clear(): IO[Unit] = IO.fromFuture(IO(collectionFuture.flatMap(_.remove(BSONDocument()).map(_ => ()))))
 }

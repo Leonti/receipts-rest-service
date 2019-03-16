@@ -24,7 +24,7 @@ scalacOptions := Seq("-unchecked",
 
 addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersion.binary)
 
-val amazonS3V       = "1.11.241"
+val awsV       = "1.11.241"
 val scalaTestV      = "3.0.4"
 val reactiveMongoV  = "0.12.6"
 val visionApiV      = "v1-rev346-1.22.0"
@@ -55,7 +55,8 @@ lazy val root = (project in file("."))
 
 libraryDependencies ++= {
   Seq(
-    "com.amazonaws"         % "aws-java-sdk-s3"            % amazonS3V,
+    "com.amazonaws"         % "aws-java-sdk-s3"            % awsV,
+    "com.amazonaws"         % "aws-java-sdk-sqs"            % awsV,
     "com.google.apis"       % "google-api-services-vision" % visionApiV excludeAll (
       ExclusionRule(organization="com.google.guava", name="guava-jdk5")
       ),

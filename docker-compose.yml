@@ -27,6 +27,7 @@ services:
       - USE_OCR_STUB
       - OCR_SEARCH_HOST
       - OCR_SEARCH_API_KEY
+      - ENV
 
   assembly:
     image: leonti/sbt_1.2.1_openjdk8-alpine3.7:1.0

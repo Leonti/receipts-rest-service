@@ -6,13 +6,13 @@ import cats.implicits._
 import org.http4s._
 import org.http4s.circe.CirceEntityEncoder._
 import org.http4s.dsl.io._
-import user.User
+import user.{UserId, UserIds}
 
 class PendingFileEndpoints[F[_]: Effect](pendingFileAlg: PendingFileAlg[F]) {
 
-  val authedRoutes: AuthedService[User, F] = AuthedService {
+  val authedRoutes: AuthedService[UserIds, F] = AuthedService {
     case GET -> Root / "pending-file" as user =>
-      pendingFileAlg.findPendingFileForUserId(user.id).map(pf => Response(status = Status.Created).withEntity(pf))
+      pendingFileAlg.findPendingFileForUserId(UserId(user.id)).map(pf => Response(status = Status.Created).withEntity(pf))
   }
 
 }

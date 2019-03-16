@@ -6,31 +6,31 @@ import cats.Id
 import cats.effect.IO
 import fs2.Stream
 import model._
-import ocr.{OcrEntity, OcrText, OcrTextAnnotation}
+import ocr.{OcrText, OcrTextAnnotation}
 import pending.PendingFile
 import queue.Models.JobId
+import queue.{QueueJob, ReservedJob}
 import receipt._
 import routing.{RoutingAlgebras, RoutingConfig}
-import user.{User, UserId}
+import user.{UserId, UserIds}
 
 object TestInterpreters {
 
   val defaultUserId = "123-user"
   val defaultUsername = "123-username"
   val defaultExternalId = "externalId"
-  val defaultUsers = Seq(User(
+  val defaultUsers = List(UserIds(
     id = defaultUserId,
-    userName = defaultUsername,
-    externalIds = List(defaultExternalId)))
+    username = defaultUsername,
+    externalId = defaultExternalId))
   val defaultUserEmail = "email"
 
-  class UserIntTest(users: Seq[User] = defaultUsers, email: String = defaultUserEmail) extends UserAlg[IO] {
-    override def findUserByExternalId(id: String): IO[Option[User]] = IO.pure(users.find(_.externalIds.contains(id)))
-    override def findUserByUsername(
-                                     username: String): IO[Option[User]] = IO.pure(users.find(_.userName == username))
-    override def saveUser(user: User): IO[User] = IO.pure(user)
-    override def getExternalUserInfoFromAccessToken(
-                                                     accessToken: AccessToken): IO[ExternalUserInfo] = IO.pure(ExternalUserInfo(sub = "", email = email))
+  class UserIntTest(users: List[UserIds] = defaultUsers, email: String = defaultUserEmail) extends UserAlg[IO] {
+    def findByUsername(username: String): IO[List[UserIds]] = IO.pure(users.filter(_.username == username))
+    def findByExternalId(id: String): IO[Option[UserIds]] = IO.pure(users.find(_.externalId == id))
+    def saveUserIds(userIds: UserIds): IO[Unit] = IO.pure(())
+    def getExternalUserInfoFromAccessToken(accessToken: AccessToken): IO[ExternalUserInfo] =
+      IO.pure(ExternalUserInfo(sub = "", email = email))
   }
 
   val defaultRandomId = "randomId"
@@ -60,24 +60,23 @@ object TestInterpreters {
 
   class FileStoreIntTest(md5Response: Seq[StoredFile] = List()) extends FileStoreAlg[IO] {
     override def saveStoredFile(storedFile: StoredFile): IO[Unit] = IO.pure(())
-    override def findByMd5(userId: String,
+    override def findByMd5(userId: UserId,
                            md5: String): IO[Seq[StoredFile]] = IO.pure(md5Response)
-    override def deleteStoredFile(storedFileId: String): IO[Unit]               = IO.pure(())
+    override def deleteStoredFile(userId: UserId, storedFileId: String): IO[Unit]               = IO.pure(())
   }
 
   class PendingFileIntTest extends PendingFileAlg[IO] {
     override def savePendingFile(pendingFile: PendingFile): IO[PendingFile]                   = IO.pure(pendingFile)
-    override def findPendingFileForUserId(userId: String): IO[List[PendingFile]] = IO.pure(List())
-    override def deletePendingFileById(id: String): IO[Unit] = IO.pure(())
-    override def deleteAllPendingFiles(): IO[Unit]                                                                      = IO.pure(())
+    override def findPendingFileForUserId(userId: UserId): IO[List[PendingFile]] = IO.pure(List())
+    override def deletePendingFileById(userId: UserId, id: String): IO[Unit] = IO.pure(())
   }
 
   class QueueIntTest extends QueueAlg[IO] {
-    override def submitToFileQueue(userId: String,
-                                   receiptId: String,
-                                   remoteFileId: RemoteFileId,
-                                   fileExt: String,
-                                   pendingFileId: String): IO[JobId] = IO.pure("")
+    override def submit(queueJob: QueueJob): IO[Unit] = IO.pure(())
+    override def reserve(): IO[Option[ReservedJob]] = IO.pure(None)
+    override def delete(id: JobId): IO[Unit]              = IO.pure(())
+    override def release(id: JobId): IO[Unit]             = IO.pure(())
+    override def bury(id: JobId): IO[Unit]                = IO.pure(())
   }
 
   class ReceiptStoreIntTest(
@@ -85,8 +84,7 @@ object TestInterpreters {
     override def getReceipt(userId: UserId,
                             id: String): IO[Option[ReceiptEntity]] = IO.pure(receipts.find(_.id == id))
     override def deleteReceipt(userId: UserId, id: String): IO[Unit] = IO.pure(())
-    override def saveReceipt(userId: UserId, id: String,
-                             receipt: ReceiptEntity): IO[ReceiptEntity] = IO.pure(receipt)
+    override def saveReceipt(receipt: ReceiptEntity): IO[ReceiptEntity] = IO.pure(receipt)
     override def getReceipts(userId: UserId,
                              ids: Seq[String]): IO[Seq[ReceiptEntity]] = IO.pure(receipts)
     override def userReceipts(userId: UserId): IO[Seq[ReceiptEntity]] = IO.pure(receipts)
@@ -100,7 +98,7 @@ object TestInterpreters {
     override def ocrImage(file: File): IO[OcrTextAnnotation] = IO.pure(testAnnotation)
     override def saveOcrResult(userId: String,
                                receiptId: String,
-                               ocrResult: OcrTextAnnotation): IO[OcrEntity] = IO.pure(OcrEntity(userId = userId, id = receiptId, result = testAnnotation))
+                               ocrResult: OcrTextAnnotation): IO[Unit] = IO.pure(())
     override def addOcrToIndex(userId: String,
                                receiptId: String,
                                ocrText: OcrText): IO[Unit] = IO.pure(())

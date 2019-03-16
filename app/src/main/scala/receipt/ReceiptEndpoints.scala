@@ -16,7 +16,7 @@ import org.http4s.circe.CirceEntityDecoder._
 import org.http4s.circe._
 import org.http4s.dsl.io._
 import org.http4s.multipart.Multipart
-import user.{User, UserId}
+import user.{UserId, UserIds}
 
 import scala.language.higherKinds
 import scala.util.Try
@@ -28,7 +28,7 @@ class ReceiptEndpoints[F[_]: Monad](
   object LastModifiedParamMatcher extends OptionalQueryParamDecoderMatcher[Long]("last-modified")
   object QueryParamMatcher        extends OptionalQueryParamDecoderMatcher[String]("q")
 
-  private val service: AuthedService[User, F] = AuthedService {
+  private val service: AuthedService[UserIds, F] = AuthedService {
 
     case GET -> Root / "receipt" / receiptId as user =>
       receiptPrograms.findById(UserId(user.id), receiptId).map {
@@ -42,7 +42,7 @@ class ReceiptEndpoints[F[_]: Monad](
       }
   }
 
-  private val getReceiptFile: AuthedService[User, F] = AuthedService {
+  private val getReceiptFile: AuthedService[UserIds, F] = AuthedService {
     case GET -> Root / "receipt" / receiptId / "file" / fileIdWithExt as user => {
       val fileId = fileIdWithExt.split('.')(0)
 
@@ -62,7 +62,7 @@ class ReceiptEndpoints[F[_]: Monad](
     }
   }
 
-  private val delete: AuthedService[User, F] = AuthedService {
+  private val delete: AuthedService[UserIds, F] = AuthedService {
     case DELETE -> Root / "receipt" / receiptId as user =>
       receiptPrograms.removeReceipt(UserId(user.id), receiptId).map {
         case Some(_) => Response(status = Status.NoContent).withEmptyBody: Response[F]
@@ -70,7 +70,7 @@ class ReceiptEndpoints[F[_]: Monad](
       }
   }
 
-  private val patch: AuthedService[User, F] = AuthedService {
+  private val patch: AuthedService[UserIds, F] = AuthedService {
     case req @ PATCH -> Root / "receipt" / receiptId as user =>
       for {
         patch <- req.req.as[JsonPatch]
@@ -134,7 +134,7 @@ class ReceiptEndpoints[F[_]: Monad](
   }
 
   // TODO put proper error responses
-  private val createReceipt: AuthedService[User, F] = AuthedService {
+  private val createReceipt: AuthedService[UserIds, F] = AuthedService {
     case req @ POST -> Root / "receipt" as user =>
       req.req.decode[Multipart[F]] { m =>
         for {
@@ -151,5 +151,5 @@ class ReceiptEndpoints[F[_]: Monad](
       }
   }
 
-  val authedRoutes: AuthedService[User, F] = createReceipt <+> getReceiptFile <+> service <+> delete <+> patch
+  val authedRoutes: AuthedService[UserIds, F] = createReceipt <+> getReceiptFile <+> service <+> delete <+> patch
 }

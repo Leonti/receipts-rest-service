@@ -1,0 +1,157 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+
+  Environment: 
+    Type: String
+    Default: "ci"
+
+Resources:
+
+  ReceiptsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "receipts-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        -
+          AttributeName: "id"
+          AttributeType: "S"
+        -
+          AttributeName: "userId"
+          AttributeType: "S"
+      KeySchema:
+        -
+          AttributeName: "id"
+          KeyType: "HASH"
+        -
+          AttributeName: "userId"
+          KeyType: "RANGE"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "userId-index"
+          KeySchema:
+            -
+              AttributeName: "userId"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: "ALL"
+
+  PendingFilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "pending-files-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        -
+          AttributeName: "id"
+          AttributeType: "S"
+        -
+          AttributeName: "userId"
+          AttributeType: "S"
+      KeySchema:
+        -
+          AttributeName: "id"
+          KeyType: "HASH"
+        -
+          AttributeName: "userId"
+          KeyType: "RANGE"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "userId-index"
+          KeySchema:
+            -
+              AttributeName: "userId"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: "ALL"
+
+  FilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "files-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        -
+          AttributeName: "id"
+          AttributeType: "S"
+        -
+          AttributeName: "userId"
+          AttributeType: "S"
+        -
+          AttributeName: "md5"
+          AttributeType: "S"          
+      KeySchema:
+        -
+          AttributeName: "id"
+          KeyType: "HASH"
+        -
+          AttributeName: "userId"
+          KeyType: "RANGE"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "userId-md5-index"
+          KeySchema:
+            -
+              AttributeName: "md5"
+              KeyType: "HASH"
+            -  
+              AttributeName: "userId"
+              KeyType: "RANGE"              
+          Projection:
+            ProjectionType: "ALL"
+
+  UserIdsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "user-ids-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        -
+          AttributeName: "externalId"
+          AttributeType: "S"
+        -
+          AttributeName: "username"
+          AttributeType: "S"          
+      KeySchema:
+        -
+          AttributeName: "externalId"
+          KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "username-index"
+          KeySchema:
+            -
+              AttributeName: "username"
+              KeyType: "HASH"             
+          Projection:
+            ProjectionType: "ALL"
+
+  JobDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      QueueName: !Sub "receipt-jobs-dlq-${Environment}"
+      ReceiveMessageWaitTimeSeconds: 3
+
+  JobQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      QueueName: !Sub "receipt-jobs-${Environment}"
+      ReceiveMessageWaitTimeSeconds: 3
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt: 
+            - "JobDLQ"
+            - "Arn"
+        maxReceiveCount: 10
+      VisibilityTimeout: 600        

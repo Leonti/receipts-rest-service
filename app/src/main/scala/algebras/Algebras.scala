@@ -6,17 +6,18 @@ import authentication.SubClaim
 import model._
 import queue.Models.JobId
 import fs2.Stream
-import ocr.{OcrEntity, OcrText, OcrTextAnnotation}
+import ocr.{OcrText, OcrTextAnnotation}
 import pending.PendingFile
+import queue.{QueueJob, ReservedJob}
 import receipt._
-import user.{User, UserId}
+import user.{UserId, UserIds}
 
 import scala.language.higherKinds
 
 trait ReceiptStoreAlg[F[_]] {
   def getReceipt(userId: UserId, id: String): F[Option[ReceiptEntity]]
   def deleteReceipt(userId: UserId, id: String): F[Unit]
-  def saveReceipt(userId: UserId, id: String, receipt: ReceiptEntity): F[ReceiptEntity]
+  def saveReceipt(receipt: ReceiptEntity): F[ReceiptEntity]
   def getReceipts(userId: UserId, ids: Seq[String]): F[Seq[ReceiptEntity]]
   def userReceipts(userId: UserId): F[Seq[ReceiptEntity]]
   def addFileToReceipt(userId: UserId, receiptId: String, file: FileEntity): F[Unit]
@@ -24,7 +25,7 @@ trait ReceiptStoreAlg[F[_]] {
 
 trait OcrAlg[F[_]] {
   def ocrImage(file: File): F[OcrTextAnnotation]
-  def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): F[OcrEntity]
+  def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): F[Unit]
   def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): F[Unit]
   def findIdsByText(userId: String, query: String): F[Seq[String]]
 }
@@ -50,26 +51,29 @@ trait ImageResizeAlg[F[_]] {
 
 trait FileStoreAlg[F[_]] {
   def saveStoredFile(storedFile: StoredFile): F[Unit]
-  def findByMd5(userId: String, md5: String): F[Seq[StoredFile]]
-  def deleteStoredFile(storedFileId: String): F[Unit]
+  def findByMd5(userId: UserId, md5: String): F[Seq[StoredFile]]
+  def deleteStoredFile(userId: UserId, id: String): F[Unit]
 }
 
 trait QueueAlg[F[_]] {
-  def submitToFileQueue(userId: String, receiptId: String, remoteFileId: RemoteFileId, fileExt: String, pendingFileId: String): F[JobId]
+  def submit(queueJob: QueueJob): F[Unit]
+  def reserve(): F[Option[ReservedJob]]
+  def delete(id: JobId): F[Unit]
+  def release(id: JobId): F[Unit]
+  def bury(id: JobId): F[Unit]
 }
 
 trait UserAlg[F[_]] {
-  def findUserByUsername(username: String): F[Option[User]]
-  def findUserByExternalId(id: String): F[Option[User]]
-  def saveUser(user: User): F[User]
+  def findByUsername(username: String): F[List[UserIds]]
+  def findByExternalId(id: String): F[Option[UserIds]]
+  def saveUserIds(userIds: UserIds): F[Unit]
   def getExternalUserInfoFromAccessToken(accessToken: AccessToken): F[ExternalUserInfo]
 }
 
 trait PendingFileAlg[F[_]] {
   def savePendingFile(pendingFile: PendingFile): F[PendingFile]
-  def findPendingFileForUserId(userId: String): F[List[PendingFile]]
-  def deletePendingFileById(id: String): F[Unit]
-  def deleteAllPendingFiles(): F[Unit]
+  def findPendingFileForUserId(userId: UserId): F[List[PendingFile]]
+  def deletePendingFileById(userId: UserId, id: String): F[Unit]
 }
 
 trait EnvAlg[F[_]] {

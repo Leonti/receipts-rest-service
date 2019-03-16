@@ -8,7 +8,7 @@ import org.http4s.{HttpRoutes, _}
 import org.http4s.dsl.io._
 import org.http4s.circe._
 import io.circe.syntax._
-import user.{User, UserId}
+import user.{UserId, UserIds}
 
 import scala.concurrent.ExecutionContext
 
@@ -16,7 +16,7 @@ class BackupEndpoints[F[_]: Monad](backupService: BackupService[F], pathToken: P
                                                                                           cs: ContextShift[F],
                                                                                           ec: ExecutionContext) {
 
-  val authedRoutes: AuthedService[User, F] = AuthedService {
+  val authedRoutes: AuthedService[UserIds, F] = AuthedService {
     case GET -> Root / "backup" / "token" as user =>
       val token = pathToken.generatePathToken(s"/user/${user.id}/backup/download")
       Monad[F].pure(Response(status = Status.Ok).withEntity(token.asJson))

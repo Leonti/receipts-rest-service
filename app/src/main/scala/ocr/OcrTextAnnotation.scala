@@ -1,7 +1,10 @@
 package ocr
 
 import com.google.api.services.vision.v1.model.TextAnnotation
-import model.{Serialization}
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.generic.auto._
+import model.Serialization
 
 import collection.JavaConverters._
 import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter, Macros}
@@ -17,6 +20,9 @@ case class Page(height: Int, width: Int, property: TextProperty, blocks: Seq[Blo
 case class OcrTextAnnotation(pages: Seq[Page], text: String)
 
 object OcrTextAnnotation {
+
+  implicit val ocrContentDecoder: Decoder[OcrTextAnnotation] = deriveDecoder
+  implicit val ocrContentEncoder: Encoder[OcrTextAnnotation] = deriveEncoder
 
   implicit def detectedLanguageWriter: BSONDocumentWriter[DetectedLanguage] = Macros.writer[DetectedLanguage]
   implicit def textPropertyWriter: BSONDocumentWriter[TextProperty]         = Macros.writer[TextProperty]
