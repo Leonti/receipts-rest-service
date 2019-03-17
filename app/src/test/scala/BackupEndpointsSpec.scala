@@ -17,7 +17,6 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
 
   private implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
-
   it should "return the backup stream" in {
     val fileEntity =
       FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0l)
@@ -25,7 +24,7 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
 
     val routing = new Routing(testAlgebras.copy(
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig)
+      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
     val accessToken = new PathToken(authSecret).generatePathToken(s"/user/$defaultUserId/backup/download")
 

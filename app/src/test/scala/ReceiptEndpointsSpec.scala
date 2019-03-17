@@ -20,7 +20,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   val authHeader = Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
 
   it should "create receipt from file upload" in {
-    val routing = new Routing(testAlgebras, testConfig)
+    val routing = new Routing(testAlgebras, testConfig, global)
 
     val textContent: EntityBody[IO] = EntityEncoder[IO, String].toEntity("file content").body
     val formBody = Multipart[IO](
@@ -53,7 +53,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
   it should "reject receipt if file already exists" in {
     val routing = new Routing(testAlgebras.copy(
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig)
+      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
     val textContent: EntityBody[IO] = EntityEncoder[IO, String].toEntity("file content").body
     val formBody = Multipart[IO](
@@ -75,7 +75,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   }
 
   it should "reject receipt from file upload if form field is not present" in {
-    val routing = new Routing(testAlgebras, testConfig)
+    val routing = new Routing(testAlgebras, testConfig, global)
 
     val textContent: EntityBody[IO] = EntityEncoder[IO, String].toEntity("file content").body
     val formBody = Multipart[IO](
@@ -102,7 +102,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
     val routing = new Routing(testAlgebras.copy(
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig)
+      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
     val request: Request[IO] = Request(
       method = Method.GET,
@@ -123,7 +123,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
     val routing = new Routing(testAlgebras.copy(
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig)
+      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
     val request: Request[IO] = Request(
       method = Method.GET,
@@ -141,7 +141,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
     val routing = new Routing(testAlgebras.copy(
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig)
+      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
     val patchJson = Json.arr(
       Json.obj(
@@ -174,7 +174,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
     val routing = new Routing(testAlgebras.copy(
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig)
+      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
     val patchJson = Json.arr(
       Json.obj(
@@ -201,7 +201,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
     val routing = new Routing(testAlgebras.copy(
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig)
+      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
     val patchJson = Json.arr(
       Json.obj(
@@ -227,7 +227,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
     val routing = new Routing(testAlgebras.copy(
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig)
+      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
     val patchJson = Json.arr(
       Json.obj(
@@ -255,7 +255,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
     val routing = new Routing(testAlgebras.copy(
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig)
+      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
     val request: Request[IO] = Request(
       method = Method.DELETE,
@@ -273,7 +273,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
     val routing = new Routing(testAlgebras.copy(
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig)
+      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
     val request: Request[IO] = Request(
       method = Method.GET,

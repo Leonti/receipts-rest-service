@@ -18,14 +18,18 @@ class QueueSqs(client: AmazonSQS, queueName: String) extends QueueAlg[IO] {
   override def reserve(): IO[Option[ReservedJob]] = IO {
     val receiveMessageRequest = new ReceiveMessageRequest()
       .withQueueUrl(queueUrl)
-        .withMaxNumberOfMessages(1)
-    client.receiveMessage(receiveMessageRequest).getMessages.asScala.toList
+      .withMaxNumberOfMessages(1)
+    client
+      .receiveMessage(receiveMessageRequest)
+      .getMessages
+      .asScala
+      .toList
       .headOption
       .map(m => ReservedJob(m.getReceiptHandle, QueueJob.fromString(m.getBody)))
   }
-  override def delete(id: String): IO[Unit]              = IO {
+  override def delete(id: String): IO[Unit] = IO {
     client.deleteMessage(queueUrl, id)
   }
-  override def release(id: String): IO[Unit]             = IO.pure(())
-  override def bury(id: String): IO[Unit]                = IO.pure(())
+  override def release(id: String): IO[Unit] = IO.pure(())
+  override def bury(id: String): IO[Unit]    = IO.pure(())
 }

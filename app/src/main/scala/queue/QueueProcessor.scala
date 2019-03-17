@@ -10,23 +10,23 @@ import cats.instances.list._
 import processing.{FileProcessor, OcrProcessor}
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContextExecutor
 
-class QueueProcessor[F[_]: Effect](queueAlg: QueueAlg[F], fileProcessor: FileProcessor[F], ocrProcessor: OcrProcessor[F])
-                                 (implicit val ec: ExecutionContextExecutor, timer: Timer[F], cs: ContextShift[F]) {
+class QueueProcessor[F[_]: Effect: ContextShift: Timer](queueAlg: QueueAlg[F],
+                                                        fileProcessor: FileProcessor[F],
+                                                        ocrProcessor: OcrProcessor[F]) {
 
   def reserveNextJob(): F[Unit] = {
     queueAlg
       .reserve()
       .flatMap({
         case Some(job: ReservedJob) =>
-          process(job).flatMap(_ => cs.shift.flatMap(_ => reserveNextJob()))
-        case None => cs.shift.flatMap(_ => reserveNextJob())
+          process(job).flatMap(_ => ContextShift[F].shift.flatMap(_ => reserveNextJob()))
+        case None => ContextShift[F].shift.flatMap(_ => reserveNextJob())
       })
       .handleError(e => {
         // FIXME - log error
         println(s"Exception on reserving next job $e")
-        timer.sleep(10.seconds) *> reserveNextJob()
+        Timer[F].sleep(10.seconds) *> reserveNextJob()
       })
   }
 
@@ -34,9 +34,9 @@ class QueueProcessor[F[_]: Effect](queueAlg: QueueAlg[F], fileProcessor: FilePro
 
     val result = for {
       jobs <- childJobs
-      _ <- jobs.map(job => queueAlg.submit(job)).sequence
-      _ <- queueAlg.delete(job.id)
-      _ <- Monad[F].pure(println(s"Job finished successfully $job"))
+      _    <- jobs.map(job => queueAlg.submit(job)).sequence
+      _    <- queueAlg.delete(job.id)
+      _    <- Monad[F].pure(println(s"Job finished successfully $job"))
     } yield ()
 
     result.handleError(e => {

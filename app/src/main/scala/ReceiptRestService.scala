@@ -1,7 +1,7 @@
 import java.io.File
 import java.util.concurrent.Executors
 
-import cats.effect.{ContextShift, ExitCode, IO, IOApp}
+import cats.effect.{ExitCode, IO, IOApp}
 import cats.implicits._
 import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClient}
@@ -10,11 +10,11 @@ import com.amazonaws.services.sqs.{AmazonSQS, AmazonSQSClientBuilder}
 import routing._
 import service._
 
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.concurrent.ExecutionContext
 import interpreters._
 import ocr.{GoogleOcrService, OcrServiceStub}
 import processing.{FileProcessor, OcrProcessor}
-import queue.{ QueueProcessor, QueueSqs}
+import queue.{QueueProcessor, QueueSqs}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
@@ -26,12 +26,8 @@ import scala.concurrent.duration._
 
 object ReceiptRestService extends IOApp {
 
-  private implicit val executor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
-
-  private implicit val cs: ContextShift[IO] = IO.contextShift(executor)
-
-  // TODO: Properly use resource
-  val (httpClient, _) = BlazeClientBuilder[IO](executor)
+  val httpExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(30))
+  val (httpClient, _) = BlazeClientBuilder[IO](httpExecutor)
     .withResponseHeaderTimeout(60.seconds)
     .withRequestTimeout(60.seconds)
     .resource
@@ -87,14 +83,15 @@ object ReceiptRestService extends IOApp {
 
   val userPrograms = new UserPrograms(userInterpreter, randomInterpreter)
 
-  val localFile = new LocalFileInterpreter(executor)
+  val fileExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(30))
+  val localFile    = new LocalFileInterpreter(fileExecutor)
   val remoteFile = new RemoteFileS3(
     awsConfig,
     amazonS3Client,
-    executor
+    fileExecutor
   )
-  val fileStore    = new FileStoreDynamo(dynamoDbClient, s"files-$env")
-  val pendingFile  = new PendingFileStoreDynamo(dynamoDbClient, s"pending-files-$env")
+  val fileStore   = new FileStoreDynamo(dynamoDbClient, s"files-$env")
+  val pendingFile = new PendingFileStoreDynamo(dynamoDbClient, s"pending-files-$env")
 
   val routingConfig = RoutingConfig(
     uploadsFolder = sys.env("UPLOADS_FOLDER"),
@@ -112,6 +109,11 @@ object ReceiptRestService extends IOApp {
   }
   val queue = new QueueSqs(amazonSqsClient, s"receipt-jobs-$env")
 
+  //  private implicit val executor: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+
+  //  private implicit val cs: ContextShift[IO] = IO.contextShift(executor)
+
+  val backupExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(30))
   val routing = new Routing[IO](
     RoutingAlgebras(
       jwtVerificationAlg = new JwtVerificationInterpreter(),
@@ -125,7 +127,8 @@ object ReceiptRestService extends IOApp {
       queueAlg = queue,
       ocrAlg = ocrInterpreter
     ),
-    routingConfig
+    routingConfig,
+    backupExecutor
   )
 
   val fileProcessor = new FileProcessor(
@@ -135,8 +138,9 @@ object ReceiptRestService extends IOApp {
     imageResizer,
     randomInterpreter
   )
-  val ocrProcessor   = new OcrProcessor[IO](remoteFile, localFile, ocrInterpreter, randomInterpreter, pendingFile)
+  val ocrProcessor = new OcrProcessor[IO](remoteFile, localFile, ocrInterpreter, randomInterpreter, pendingFile)
 
+  val queueExecutor  = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(30))
   val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor)
 
   queueProcessor.reserveNextJob().unsafeRunAsync {

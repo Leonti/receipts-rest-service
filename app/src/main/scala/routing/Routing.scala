@@ -32,8 +32,7 @@ case class RoutingConfig(
     authTokenSecret: Array[Byte]
 )
 
-class Routing[F[_]: ConcurrentEffect](algebras: RoutingAlgebras[F], config: RoutingConfig)(implicit cs: ContextShift[F],
-                                                                                           ec: ExecutionContext) {
+class Routing[F[_]: ConcurrentEffect: ContextShift](algebras: RoutingAlgebras[F], config: RoutingConfig, bec: ExecutionContext) {
   import algebras._
 
   private val userPrograms = new UserPrograms[F](userAlg, randomAlg)
@@ -63,8 +62,9 @@ class Routing[F[_]: ConcurrentEffect](algebras: RoutingAlgebras[F], config: Rout
   private val userEndpoints      = new UserEndpoints[F]()
   private val appConfigEndpoints = new AppConfigEndpoints[F](config.googleClientId)
   private val oauthEndpoints     = new OauthEndpoints[F](userPrograms)
+
   private val backupEndpoints =
-    new BackupEndpoints[F](new BackupService[F](receiptStoreAlg, remoteFileAlg), new PathToken(config.authTokenSecret))
+    new BackupEndpoints[F](new BackupService[F](receiptStoreAlg, remoteFileAlg, bec), new PathToken(config.authTokenSecret))
 
   private val authedRoutes = receiptEndpoints.authedRoutes <+>
     pendingFileEndpoints.authedRoutes <+>

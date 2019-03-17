@@ -10,11 +10,7 @@ import org.http4s.circe._
 import io.circe.syntax._
 import user.{UserId, UserIds}
 
-import scala.concurrent.ExecutionContext
-
-class BackupEndpoints[F[_]: Monad](backupService: BackupService[F], pathToken: PathToken)(implicit F: ConcurrentEffect[F],
-                                                                                          cs: ContextShift[F],
-                                                                                          ec: ExecutionContext) {
+class BackupEndpoints[F[_]: Monad: ConcurrentEffect: ContextShift](backupService: BackupService[F], pathToken: PathToken) {
 
   val authedRoutes: AuthedService[UserIds, F] = AuthedService {
     case GET -> Root / "backup" / "token" as user =>

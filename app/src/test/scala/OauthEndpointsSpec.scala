@@ -16,7 +16,8 @@ class OauthEndpointsSpec extends FlatSpec with Matchers {
   it should "create user info from a token" in {
     val routing = new Routing(
       testAlgebras.copy(randomAlg = new RandomIntTest("userId")),
-      testConfig)
+      testConfig,
+      global)
 
     val token = Json.obj(
       "token" -> Json.fromString("token")

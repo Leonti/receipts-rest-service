@@ -81,13 +81,14 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
           receiptId = receiptId
         )
       )
-      _ <- queueAlg.submit(ReceiptFileJob(
-        userId = userId.value,
-        receiptId = receiptId,
-        remoteFileId = remoteFileId,
-        fileExt = ext,
-        pendingFileId = pendingFileId
-      ))
+      _ <- queueAlg.submit(
+        ReceiptFileJob(
+          userId = userId.value,
+          receiptId = receiptId,
+          remoteFileId = remoteFileId,
+          fileExt = ext,
+          pendingFileId = pendingFileId
+        ))
     } yield pendingFile
 
   private def validateExistingFile(haveExisting: Boolean): EitherT[F, Error, Unit] =

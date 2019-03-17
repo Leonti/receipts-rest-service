@@ -16,7 +16,7 @@ class UserSpec extends FlatSpec with Matchers {
   val authHeader = Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
 
   it should "should show user info" in {
-    val routing = new Routing(testAlgebras, testConfig)
+    val routing = new Routing(testAlgebras, testConfig, global)
 
     val request: Request[IO] = Request(
       method = Method.GET,
@@ -30,7 +30,7 @@ class UserSpec extends FlatSpec with Matchers {
   }
 
   it should "fail with invalid header" in {
-    val routing = new Routing(testAlgebras, testConfig)
+    val routing = new Routing(testAlgebras, testConfig, global)
 
     val request: Request[IO] = Request(
       method = Method.GET,
@@ -46,7 +46,7 @@ class UserSpec extends FlatSpec with Matchers {
   it should "fail when user doesn't exist" in {
     val routing = new Routing(testAlgebras.copy(
       userAlg = new UserIntTest(users = List())
-    ), testConfig)
+    ), testConfig, global)
 
     val request: Request[IO] = Request(
       method = Method.GET,

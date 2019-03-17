@@ -18,7 +18,7 @@ class ReceiptsStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) extend
     def read(av: AttributeValue): Either[DynamoReadError, String] =
       Either.fromOption(Option(av.getS), NoPropertyOfType("S", av)).map {
         case "DYNAMO_BUG" => ""
-        case s => s
+        case s            => s
       }
     def write(s: String): AttributeValue = s match {
       case "" => new AttributeValue().withS("DYNAMO_BUG")
