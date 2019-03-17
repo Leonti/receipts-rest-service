@@ -9,6 +9,4 @@
         <appender-ref ref="JSON" />
     </root>
 
-    <logger name="reactivemongo" level="WARN" />
-
 </configuration>

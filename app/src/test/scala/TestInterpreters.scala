@@ -8,7 +8,6 @@ import fs2.Stream
 import model._
 import ocr.{OcrText, OcrTextAnnotation}
 import pending.PendingFile
-import queue.Models.JobId
 import queue.{QueueJob, ReservedJob}
 import receipt._
 import routing.{RoutingAlgebras, RoutingConfig}
@@ -74,9 +73,9 @@ object TestInterpreters {
   class QueueIntTest extends QueueAlg[IO] {
     override def submit(queueJob: QueueJob): IO[Unit] = IO.pure(())
     override def reserve(): IO[Option[ReservedJob]] = IO.pure(None)
-    override def delete(id: JobId): IO[Unit]              = IO.pure(())
-    override def release(id: JobId): IO[Unit]             = IO.pure(())
-    override def bury(id: JobId): IO[Unit]                = IO.pure(())
+    override def delete(id: String): IO[Unit]              = IO.pure(())
+    override def release(id: String): IO[Unit]             = IO.pure(())
+    override def bury(id: String): IO[Unit]                = IO.pure(())
   }
 
   class ReceiptStoreIntTest(

@@ -26,7 +26,6 @@ addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersi
 
 val awsV       = "1.11.241"
 val scalaTestV      = "3.0.4"
-val reactiveMongoV  = "0.12.6"
 val visionApiV      = "v1-rev346-1.22.0"
 val googleApiClient = "1.22.0"
 val scalaLoggingV   = "3.5.0"
@@ -63,7 +62,6 @@ libraryDependencies ++= {
     "com.google.api-client" % "google-api-client"          % googleApiClient excludeAll (
       ExclusionRule(organization="com.google.guava", name="guava-jdk5")
       ),
-    "org.reactivemongo"     %% "reactivemongo"             % reactiveMongoV,
     "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
     "org.typelevel"        %% "cats-core"              % catsV,
     "org.gnieh"     %% "diffson-circe" % diffsonV,

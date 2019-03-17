@@ -4,10 +4,8 @@ import com.google.api.services.vision.v1.model.TextAnnotation
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.generic.auto._
-import model.Serialization
 
 import collection.JavaConverters._
-import reactivemongo.bson.{BSONDocument, BSONDocumentReader, BSONDocumentWriter, Macros}
 case class DetectedLanguage(languageCode: String)
 case class TextProperty(detectedLanguages: Seq[DetectedLanguage])
 case class Vertex(x: Option[Int], y: Option[Int])
@@ -23,49 +21,6 @@ object OcrTextAnnotation {
 
   implicit val ocrContentDecoder: Decoder[OcrTextAnnotation] = deriveDecoder
   implicit val ocrContentEncoder: Encoder[OcrTextAnnotation] = deriveEncoder
-
-  implicit def detectedLanguageWriter: BSONDocumentWriter[DetectedLanguage] = Macros.writer[DetectedLanguage]
-  implicit def textPropertyWriter: BSONDocumentWriter[TextProperty]         = Macros.writer[TextProperty]
-
-  implicit object VertexWriter extends BSONDocumentWriter[Vertex] {
-    def write(vertex: Vertex): BSONDocument = {
-      BSONDocument(
-        "x" -> vertex.x.getOrElse(-1),
-        "y" -> vertex.y.getOrElse(-1)
-      )
-    }
-  }
-
-  implicit def boundingPolyWriter: BSONDocumentWriter[BoundingPoly]           = Macros.writer[BoundingPoly]
-  implicit def symbolWriter: BSONDocumentWriter[Symbol]                       = Macros.writer[Symbol]
-  implicit def wordWriter: BSONDocumentWriter[Word]                           = Macros.writer[Word]
-  implicit def paragraphWriter: BSONDocumentWriter[Paragraph]                 = Macros.writer[Paragraph]
-  implicit def blockWriter: BSONDocumentWriter[Block]                         = Macros.writer[Block]
-  implicit def pageWriter: BSONDocumentWriter[Page]                           = Macros.writer[Page]
-  implicit def ocrTextAnnotationWriter: BSONDocumentWriter[OcrTextAnnotation] = Macros.writer[OcrTextAnnotation]
-
-  implicit def detectedLanguageReader: BSONDocumentReader[DetectedLanguage] = Macros.reader[DetectedLanguage]
-  implicit def textPropertyReader: BSONDocumentReader[TextProperty]         = Macros.reader[TextProperty]
-
-  implicit object VertexBSONReader extends BSONDocumentReader[Vertex] {
-
-    def read(doc: BSONDocument): Vertex =
-      Serialization.deserialize(
-        doc,
-        Vertex(
-          x = if (doc.getAs[Int]("x").get == -1) None else Some(doc.getAs[Int]("x").get),
-          y = if (doc.getAs[Int]("y").get == -1) None else Some(doc.getAs[Int]("y").get)
-        )
-      )
-  }
-
-  implicit def boundingPolyReader: BSONDocumentReader[BoundingPoly]           = Macros.reader[BoundingPoly]
-  implicit def symbolReader: BSONDocumentReader[Symbol]                       = Macros.reader[Symbol]
-  implicit def wordReader: BSONDocumentReader[Word]                           = Macros.reader[Word]
-  implicit def paragraphReader: BSONDocumentReader[Paragraph]                 = Macros.reader[Paragraph]
-  implicit def blockReader: BSONDocumentReader[Block]                         = Macros.reader[Block]
-  implicit def pageReader: BSONDocumentReader[Page]                           = Macros.reader[Page]
-  implicit def ocrTextAnnotationReader: BSONDocumentReader[OcrTextAnnotation] = Macros.reader[OcrTextAnnotation]
 
   def fromTextAnnotation(textAnnotation: TextAnnotation): OcrTextAnnotation = {
 

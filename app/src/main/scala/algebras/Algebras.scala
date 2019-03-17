@@ -4,7 +4,6 @@ import java.io.File
 
 import authentication.SubClaim
 import model._
-import queue.Models.JobId
 import fs2.Stream
 import ocr.{OcrText, OcrTextAnnotation}
 import pending.PendingFile
@@ -58,9 +57,9 @@ trait FileStoreAlg[F[_]] {
 trait QueueAlg[F[_]] {
   def submit(queueJob: QueueJob): F[Unit]
   def reserve(): F[Option[ReservedJob]]
-  def delete(id: JobId): F[Unit]
-  def release(id: JobId): F[Unit]
-  def bury(id: JobId): F[Unit]
+  def delete(id: String): F[Unit]
+  def release(id: String): F[Unit]
+  def bury(id: String): F[Unit]
 }
 
 trait UserAlg[F[_]] {

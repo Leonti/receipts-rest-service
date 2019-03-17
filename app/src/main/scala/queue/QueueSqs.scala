@@ -3,7 +3,6 @@ import algebras.QueueAlg
 import cats.effect.IO
 import com.amazonaws.services.sqs.AmazonSQS
 import com.amazonaws.services.sqs.model.{ReceiveMessageRequest, SendMessageRequest}
-import queue.Models.JobId
 import collection.JavaConverters._
 
 class QueueSqs(client: AmazonSQS, queueName: String) extends QueueAlg[IO] {
@@ -24,9 +23,9 @@ class QueueSqs(client: AmazonSQS, queueName: String) extends QueueAlg[IO] {
       .headOption
       .map(m => ReservedJob(m.getReceiptHandle, QueueJob.fromString(m.getBody)))
   }
-  override def delete(id: JobId): IO[Unit]              = IO {
+  override def delete(id: String): IO[Unit]              = IO {
     client.deleteMessage(queueUrl, id)
   }
-  override def release(id: JobId): IO[Unit]             = IO.pure(())
-  override def bury(id: JobId): IO[Unit]                = IO.pure(())
+  override def release(id: String): IO[Unit]             = IO.pure(())
+  override def bury(id: String): IO[Unit]                = IO.pure(())
 }

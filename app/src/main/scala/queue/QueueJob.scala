@@ -2,7 +2,6 @@ package queue
 
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
-import queue.Models.JobId
 import io.circe.parser._
 import io.circe.syntax._
 import receipt.RemoteFileId
@@ -39,7 +38,7 @@ object OcrJob {
   implicit val ocrJobEncoder: Encoder[OcrJob] = deriveEncoder
 }
 
-case class ReservedJob(id: JobId, job: QueueJob)
+case class ReservedJob(id: String, job: QueueJob)
 
 object QueueJob {
 

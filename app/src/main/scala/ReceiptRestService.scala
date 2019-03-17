@@ -7,7 +7,6 @@ import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClient}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.services.sqs.{AmazonSQS, AmazonSQSClientBuilder}
-import repository._
 import routing._
 import service._
 
@@ -38,10 +37,6 @@ object ReceiptRestService extends IOApp {
     .resource
     .allocated
     .unsafeRunSync()
-
-  val pendingFileRepository = new PendingFileRepository()
-
-  val receiptRepository = new ReceiptRepository()
 
   val imageResizer = new ImageMagickResizer()
   val ocrService =
