@@ -6,10 +6,10 @@ import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClient}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import interpreters._
-import repository.{ReceiptRepository, StoredFileRepository}
+import repository.{OcrRepository, ReceiptRepository, StoredFileRepository}
 import user.UserId
 import cats.implicits._
-import receipt.{RemoteFileId, StoredFile}
+import receipt.{ReceiptEntity, RemoteFileId, StoredFile}
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 object Migration extends App {
@@ -41,7 +41,24 @@ object Migration extends App {
   }
 
   val oldReceipts = new ReceiptStoreMongo(new ReceiptRepository())
-  val receiptStore = new ReceiptsStoreDynamo(dynamoDbClient, s"receipts-prod")
+  val receiptStore = new ReceiptsStoreDynamo(dynamoDbClient, s"receipts-ci")
+
+
+  receiptStore.saveReceipt(ReceiptEntity(
+    "id-12345",
+    "user-1234567",
+    List(),
+    "",
+    None,
+    1l,
+    1l,
+    1l,
+    List()
+  )).unsafeRunSync()
+
+  val userReceipts = receiptStore.userReceipts(UserId("user-1234567")).unsafeRunSync()
+
+  println(userReceipts)
 
   val userId = UserId("fbd953fe-3da2-46d3-9a8d-49e37ddf7e88")
 
@@ -49,7 +66,7 @@ object Migration extends App {
     .traverse(receipt => {
       receiptStore.saveReceipt(receipt).flatMap(receipt => IO(println(s"Migrated receipt ${receipt.id}")))
     }))
-  migrateReceipts.unsafeRunSync()
+ // migrateReceipts.unsafeRunSync()
 
   val oldFiles = new FileStoreMongo(new StoredFileRepository())
   val fileStore = new FileStoreDynamo(dynamoDbClient, s"files-prod")
@@ -81,6 +98,18 @@ object Migration extends App {
     }))
 
  // migrateFiles.unsafeRunSync()
+
+  val ocrRepository = new OcrRepository()
+  val ocrs = IO.fromFuture(IO(ocrRepository.findByUserId(userId.value)))
+
+  val ocr = new OcrInterpreterTagless(null, awsConfig, amazonS3Client, null, null)
+
+  val migrateOcr = ocrs.flatMap(_.traverse(ocrEntity => {
+    ocr.saveOcrResult(ocrEntity.userId, ocrEntity.id, ocrEntity.result)
+      .flatMap(_ => IO(println(s"Migrated ocr ${ocrEntity.id}")))
+  }))
+
+//  migrateOcr.unsafeRunSync()
 
 /*
   receiptStore.saveReceipt(ReceiptEntity(

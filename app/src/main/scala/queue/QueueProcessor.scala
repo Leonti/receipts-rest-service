@@ -16,7 +16,6 @@ class QueueProcessor[F[_]: Effect](queueAlg: QueueAlg[F], fileProcessor: FilePro
                                  (implicit val ec: ExecutionContextExecutor, timer: Timer[F], cs: ContextShift[F]) {
 
   def reserveNextJob(): F[Unit] = {
-    println("Checking for new jobs")
     queueAlg
       .reserve()
       .flatMap({

@@ -16,12 +16,12 @@ class ReceiptsStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) extend
 
   implicit val stringFormat: DynamoFormat[String] = new DynamoFormat[String] {
     def read(av: AttributeValue): Either[DynamoReadError, String] =
-      if ((av.isNULL ne null) && av.isNULL)
-        Right("")
-      else
-        Either.fromOption(Option(av.getS), NoPropertyOfType("S", av))
+      Either.fromOption(Option(av.getS), NoPropertyOfType("S", av)).map {
+        case "DYNAMO_BUG" => ""
+        case s => s
+      }
     def write(s: String): AttributeValue = s match {
-      case "" => new AttributeValue().withNULL(true)
+      case "" => new AttributeValue().withS("DYNAMO_BUG")
       case _  => new AttributeValue().withS(s)
     }
   }

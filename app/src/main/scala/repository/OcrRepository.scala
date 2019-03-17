@@ -18,6 +18,9 @@ class OcrRepository extends MongoDao[OcrEntity] {
 
   def findById(id: String): Future[Option[OcrEntity]] = find(collectionFuture, queryById(id))
 
+  def findByUserId(userId: String): Future[List[OcrEntity]] =
+    findList(collectionFuture, BSONDocument("userId" -> userId))
+
   def findTextOnlyForUserId(userId: String, query: String): Future[List[OcrTextOnly]] =
     collectionFuture.flatMap(
       _.find(BSONDocument(
