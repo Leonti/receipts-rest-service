@@ -9,19 +9,21 @@ import cats.syntax.all._
 import cats.instances.list._
 import processing.{FileProcessor, OcrProcessor}
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 class QueueProcessor[F[_]: Effect: ContextShift: Timer](queueAlg: QueueAlg[F],
                                                         fileProcessor: FileProcessor[F],
-                                                        ocrProcessor: OcrProcessor[F]) {
+                                                        ocrProcessor: OcrProcessor[F],
+                                                        bec: ExecutionContext) {
 
   def reserveNextJob(): F[Unit] = {
     queueAlg
       .reserve()
       .flatMap({
         case Some(job: ReservedJob) =>
-          process(job).flatMap(_ => ContextShift[F].shift.flatMap(_ => reserveNextJob()))
-        case None => ContextShift[F].shift.flatMap(_ => reserveNextJob())
+          ContextShift[F].evalOn(bec)(process(job)).flatMap(_ => ContextShift[F].evalOn(bec)(reserveNextJob()))
+        case None => ContextShift[F].evalOn(bec)(reserveNextJob())
       })
       .handleError(e => {
         // FIXME - log error

@@ -141,7 +141,7 @@ object ReceiptRestService extends IOApp {
   val ocrProcessor = new OcrProcessor[IO](remoteFile, localFile, ocrInterpreter, randomInterpreter, pendingFile)
 
   val queueExecutor  = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(30))
-  val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor)
+  val queueProcessor = new QueueProcessor(queue, fileProcessor, ocrProcessor, queueExecutor)
 
   queueProcessor.reserveNextJob().unsafeRunAsync {
     case Right(_) => println("Queue processor finished running")
