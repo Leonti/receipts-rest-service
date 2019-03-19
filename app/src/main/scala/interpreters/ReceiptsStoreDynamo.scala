@@ -15,13 +15,15 @@ import org.scanamo.query.{MultipleKeyList, UniqueKeys}
 class ReceiptsStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) extends ReceiptStoreAlg[IO] {
 
   implicit val stringFormat: DynamoFormat[String] = new DynamoFormat[String] {
+    override val default = Some("")
+
     def read(av: AttributeValue): Either[DynamoReadError, String] =
-      Either.fromOption(Option(av.getS), NoPropertyOfType("S", av)).map {
-        case "DYNAMO_BUG" => ""
-        case s            => s
-      }
+      if ((av.isNULL ne null) && av.isNULL)
+        Right("")
+      else
+        Either.fromOption(Option(av.getS), NoPropertyOfType("S", av))
     def write(s: String): AttributeValue = s match {
-      case "" => new AttributeValue().withS("DYNAMO_BUG")
+      case "" => new AttributeValue().withNULL(true)
       case _  => new AttributeValue().withS(s)
     }
   }

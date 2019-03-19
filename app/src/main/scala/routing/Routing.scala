@@ -66,13 +66,17 @@ class Routing[F[_]: ConcurrentEffect: ContextShift](algebras: RoutingAlgebras[F]
   private val backupEndpoints =
     new BackupEndpoints[F](new BackupService[F](receiptStoreAlg, remoteFileAlg, bec), new PathToken(config.authTokenSecret))
 
+  private val versionEndpoint =
+    new VersionEndpoint[F]("latest")
+
   private val authedRoutes = receiptEndpoints.authedRoutes <+>
     pendingFileEndpoints.authedRoutes <+>
     userEndpoints.authedRoutes <+>
     backupEndpoints.authedRoutes
   private val publicRoutes = oauthEndpoints.routes <+>
     backupEndpoints.routes <+>
-    appConfigEndpoints.routes
+    appConfigEndpoints.routes <+>
+    versionEndpoint.routes
 
   val routes: HttpRoutes[F] = CORS(publicRoutes <+> auth.authMiddleware(authedRoutes))
 }
