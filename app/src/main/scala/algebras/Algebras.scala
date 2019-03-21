@@ -19,6 +19,7 @@ trait ReceiptStoreAlg[F[_]] {
   def saveReceipt(receipt: ReceiptEntity): F[ReceiptEntity]
   def getReceipts(userId: UserId, ids: Seq[String]): F[Seq[ReceiptEntity]]
   def userReceipts(userId: UserId): F[Seq[ReceiptEntity]]
+  def recentUserReceipts(userId: UserId, lastModified: Long): F[Seq[ReceiptEntity]]
   def addFileToReceipt(userId: UserId, receiptId: String, file: FileEntity): F[Unit]
 }
 

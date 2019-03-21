@@ -87,6 +87,8 @@ object TestInterpreters {
     override def getReceipts(userId: UserId,
                              ids: Seq[String]): IO[Seq[ReceiptEntity]] = IO.pure(receipts)
     override def userReceipts(userId: UserId): IO[Seq[ReceiptEntity]] = IO.pure(receipts)
+    override def recentUserReceipts(userId: UserId,
+                                    lastModified: Long): IO[Seq[ReceiptEntity]] = IO.pure(receipts)
     override def addFileToReceipt(userId: UserId, receiptId: String,
                                   file: FileEntity): IO[Unit] = IO.pure(())
   }

@@ -60,7 +60,18 @@ class ReceiptsStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) extend
 
   override def userReceipts(userId: UserId): IO[Seq[ReceiptEntity]] =
     IO {
-      val ops                                                 = table.index("userId-index").query('userId -> userId.value)
+      val ops                                                 = table.index("userId-lastModified-index").query('userId -> userId.value)
+      val result: Seq[Either[DynamoReadError, ReceiptEntity]] = Scanamo.exec(client)(ops)
+      result.toList.sequence
+    } flatMap {
+      case Right(receipts) => IO(receipts)
+      case Left(error)     => IO.raiseError(new Exception(error.toString))
+    }
+
+  override def recentUserReceipts(userId: UserId, lastModified: Long): IO[Seq[ReceiptEntity]] =
+    IO {
+      val ops                                                 = table.index("userId-lastModified-index")
+        .query('userId -> userId.value and ('lastModified > lastModified))
       val result: Seq[Either[DynamoReadError, ReceiptEntity]] = Scanamo.exec(client)(ops)
       result.toList.sequence
     } flatMap {

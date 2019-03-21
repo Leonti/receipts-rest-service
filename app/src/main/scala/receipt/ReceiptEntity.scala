@@ -10,9 +10,9 @@ case class ReceiptEntity(
     files: List[FileEntity] = List.empty,
     description: String = "",
     total: Option[BigDecimal] = None,
-    timestamp: Long = System.currentTimeMillis,
-    lastModified: Long = System.currentTimeMillis(),
-    transactionTime: Long = System.currentTimeMillis(),
+    timestamp: Long = 0,
+    lastModified: Long = 0,
+    transactionTime: Long = 0,
     tags: List[String] = List.empty
 ) extends WithId
 

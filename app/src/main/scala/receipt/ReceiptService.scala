@@ -60,15 +60,13 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
   }
 
   def findForUser(userId: UserId, lastModifiedOption: Option[Long] = None, queryOption: Option[String] = None): F[Seq[ReceiptEntity]] =
-    for {
-
-      unfilteredReceipts <- queryOption
-        .flatMap(query => if (query.trim.isEmpty) None else Some(query))
-        .map(query => receiptsForQuery(userId, query))
-        .getOrElse(userReceipts(userId))
-
-      receipts = unfilteredReceipts.filter(receiptEntity => receiptEntity.lastModified > lastModifiedOption.getOrElse(0l))
-    } yield receipts
+    queryOption.flatMap(query => if (query.trim.isEmpty) None else Some(query)) match {
+      case Some(query) => receiptsForQuery(userId, query).map(_.filter(_.lastModified > lastModifiedOption.getOrElse(0l)))
+      case None => lastModifiedOption match {
+        case Some(lastModified) => recentUserReceipts(userId, lastModified)
+        case None => userReceipts(userId)
+      }
+    }
 
   private def ext(fileName: String): String = fileName.split("\\.")(1)
   private def submitPF(userId: UserId, receiptId: String, remoteFileId: RemoteFileId, ext: String): F[PendingFile] =
