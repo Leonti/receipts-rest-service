@@ -6,24 +6,15 @@ import java.security.{DigestInputStream, MessageDigest}
 import algebras.LocalFileAlg
 import fs2.{Stream, io}
 import cats.effect.{ContextShift, IO}
-import receipt.{FileMetaData, GenericMetaData, ImageMetaData}
-import util.SimpleImageInfo
+import receipt.GenericMetaData
 
 import scala.concurrent.ExecutionContext
-import scala.util.Try
 
 class LocalFileInterpreter(bec: ExecutionContext) extends LocalFileAlg[IO] {
   private implicit val cs: ContextShift[IO] = IO.contextShift(bec)
 
-  override def getFileMetaData(file: File): IO[FileMetaData] = IO {
-    val image: Option[SimpleImageInfo] = Try {
-      Some(new SimpleImageInfo(file))
-    } getOrElse None
-
-    image
-      .map(i => ImageMetaData(length = file.length, width = i.getWidth, height = i.getHeight))
-      .getOrElse(GenericMetaData(length = file.length))
-  }
+  override def getGenericMetaData(file: File): IO[GenericMetaData] =
+    IO(GenericMetaData(length = file.length))
 
   override def getMd5(file: File): IO[String] =
     for {

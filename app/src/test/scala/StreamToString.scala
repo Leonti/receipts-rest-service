@@ -1,9 +1,14 @@
 import java.nio.charset.StandardCharsets
 
-import cats.effect.IO
+import TestInterpreters.TestProgram
 import fs2.Stream
+import cats.implicits._
+
 object StreamToString {
 
-  def streamToString(stream: Stream[IO, Byte]): String = new String(stream.compile.toList.unsafeRunSync.toArray, StandardCharsets.UTF_8)
+  def streamToString(stream: Stream[TestProgram, Byte]): String = {
+    val byteArray = stream.compile.toList.run.unsafeRunSync._2.toArray
+    new String(byteArray, StandardCharsets.UTF_8)
+  }
 
 }

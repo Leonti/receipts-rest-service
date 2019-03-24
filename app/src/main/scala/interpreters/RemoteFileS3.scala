@@ -15,7 +15,7 @@ case class S3Config(region: String, bucket: String, accessKey: String, secretKey
 class RemoteFileS3(config: S3Config, amazonS3Client: AmazonS3, bec: ExecutionContext) extends RemoteFileAlg[IO] {
   private implicit val cs: ContextShift[IO] = IO.contextShift(bec)
 
-  private def toS3Key(fileId: RemoteFileId): String = s"user/${fileId.userId.value}/${fileId.fileId}"
+  private def toS3Key(fileId: RemoteFileId): String = s"user/${fileId.userId.value}/files/${fileId.fileId}"
 
   override def saveRemoteFile(file: File, fileId: RemoteFileId): IO[Unit] =
     IO {

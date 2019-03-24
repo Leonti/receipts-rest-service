@@ -2,10 +2,10 @@ import TestInterpreters._
 import cats.effect.{ContextShift, IO}
 import io.circe.Json
 import org.http4s._
-import org.http4s.client.dsl.io._
 import org.http4s.headers.{Authorization, `Content-Type`}
 import org.http4s.multipart._
 import org.http4s.circe._
+import cats.implicits._
 import org.http4s.circe.CirceEntityDecoder._
 import org.scalatest.{FlatSpec, Matchers}
 import receipt.{FileEntity, GenericMetaData, ReceiptEntity, StoredFile}
@@ -22,8 +22,8 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "create receipt from file upload" in {
     val routing = new Routing(testAlgebras, testConfig, global)
 
-    val textContent: EntityBody[IO] = EntityEncoder[IO, String].toEntity("file content").body
-    val formBody = Multipart[IO](
+    val textContent: EntityBody[TestProgram] = EntityEncoder[TestProgram, String].toEntity("file content").body
+    val formBody = Multipart[TestProgram](
       Vector(
         Part.fileData("receipt", "receipt.png", textContent, `Content-Type`(org.http4s.MediaType.application.`octet-stream`)),
         Part.formData("total", "12.38"),
@@ -33,12 +33,17 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       )
     )
 
-    val headers: Headers = formBody.headers.put(authHeader)
-    val request = Method.POST(formBody, Uri.uri("/receipt")).map(_.withHeaders(headers)).unsafeRunSync()
+    val request: Request[TestProgram] = Request(
+      method = Method.POST,
+      uri = Uri.uri("/receipt"),
+      body = EntityEncoder[TestProgram, Multipart[TestProgram]].toEntity(formBody).body,
+      headers = formBody.headers.put(authHeader)
+    )
+    val (sideEffects, response) = routing.routes.run(request).value.run.unsafeRunSync
 
-    val response = routing.routes.run(request).value.unsafeRunSync().map(_.as[ReceiptEntity].unsafeRunSync())
+    val receipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
-    response shouldBe Some(ReceiptEntity(
+    receipt shouldBe Some(ReceiptEntity(
       id = defaultRandomId,
       userId = defaultUserId,
       total = Some(BigDecimal(12.38)),
@@ -47,16 +52,19 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       lastModified = 0,
       transactionTime = 1480130712396l,
       tags = List("veggies", "food"),
-      files = List(FileEntity(defaultRandomId, None, "png", GenericMetaData(length = 0), timestamp = 0))
+      files = List()
     ))
+
+    sideEffects should contain(TestInterpreters.PendingFileSaved)
+    sideEffects should contain(TestInterpreters.PendingFileSubmitted)
   }
 
   it should "reject receipt if file already exists" in {
     val routing = new Routing(testAlgebras.copy(
       fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
-    val textContent: EntityBody[IO] = EntityEncoder[IO, String].toEntity("file content").body
-    val formBody = Multipart[IO](
+    val textContent: EntityBody[TestProgram] = EntityEncoder[TestProgram, String].toEntity("file content").body
+    val formBody = Multipart[TestProgram](
       Vector(
         Part.fileData("receipt", "receipt.png", textContent, `Content-Type`(org.http4s.MediaType.application.`octet-stream`)),
         Part.formData("total", "12.38"),
@@ -66,10 +74,15 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       )
     )
 
-    val headers: Headers = formBody.headers.put(authHeader)
-    val request = Method.POST(formBody, Uri.uri("/receipt")).map(_.withHeaders(headers)).unsafeRunSync()
+    val request: Request[TestProgram] = Request(
+      method = Method.POST,
+      uri = Uri.uri("/receipt"),
+      body = EntityEncoder[TestProgram, Multipart[TestProgram]].toEntity(formBody).body,
+      headers = formBody.headers.put(authHeader)
+    )
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
 
-    val status = routing.routes.run(request).value.unsafeRunSync().map(_.status)
+    val status = response.map(_.status)
 
     status shouldBe Some(Status.BadRequest)
   }
@@ -77,8 +90,8 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "reject receipt from file upload if form field is not present" in {
     val routing = new Routing(testAlgebras, testConfig, global)
 
-    val textContent: EntityBody[IO] = EntityEncoder[IO, String].toEntity("file content").body
-    val formBody = Multipart[IO](
+    val textContent: EntityBody[TestProgram] = EntityEncoder[TestProgram, String].toEntity("file content").body
+    val formBody = Multipart[TestProgram](
       Vector(
         Part.fileData("receipt", "receipt.png", textContent, `Content-Type`(org.http4s.MediaType.application.`octet-stream`)),
         Part.formData("total", "12.38"),
@@ -87,10 +100,15 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       )
     )
 
-    val headers: Headers = formBody.headers.put(authHeader)
-    val request = Method.POST(formBody, Uri.uri("/receipt")).map(_.withHeaders(headers)).unsafeRunSync()
+    val request: Request[TestProgram] = Request(
+      method = Method.POST,
+      uri = Uri.uri("/receipt"),
+      body = EntityEncoder[TestProgram, Multipart[TestProgram]].toEntity(formBody).body,
+      headers = formBody.headers.put(authHeader)
+    )
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
 
-    val status = routing.routes.run(request).value.unsafeRunSync().map(_.status)
+    val status = response.map(_.status)
 
     status shouldBe Some(Status.BadRequest)
   }
@@ -104,13 +122,13 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
       fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.unsafeFromString(s"/receipt/2/file/${fileEntity.id}.txt"),
       headers = Headers(authHeader)
     )
 
-    val response = routing.routes.run(request).value.unsafeRunSync()
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
     val content = response.map(res => StreamToString.streamToString(res.body))
     val contentType = response.flatMap(_.headers.get(`Content-Type`).map(_.value))
 
@@ -125,13 +143,14 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
       fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
       headers = Headers(authHeader)
     )
 
-    val responseReceipt = routing.routes.run(request).value.unsafeRunSync().map(_.as[ReceiptEntity].unsafeRunSync())
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val responseReceipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
     responseReceipt shouldBe Some(receipt)
   }
@@ -156,14 +175,15 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       )
     )
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.PATCH,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
-      body = EntityEncoder[IO, Json].toEntity(patchJson).body,
+      body = EntityEncoder[TestProgram, Json].toEntity(patchJson).body,
       headers = Headers(authHeader)
     )
 
-    val responseReceipt = routing.routes.run(request).value.unsafeRunSync().map(_.as[ReceiptEntity].unsafeRunSync())
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val responseReceipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
     responseReceipt.map(_.description) shouldBe Some("some new description")
     responseReceipt.flatMap(_.total) shouldBe Some(BigDecimal("12.38"))
@@ -184,14 +204,15 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       )
     )
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.PATCH,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
-      body = EntityEncoder[IO, Json].toEntity(patchJson).body,
+      body = EntityEncoder[TestProgram, Json].toEntity(patchJson).body,
       headers = Headers(authHeader)
     )
 
-    val responseReceipt = routing.routes.run(request).value.unsafeRunSync().map(_.as[ReceiptEntity].unsafeRunSync())
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val responseReceipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
     responseReceipt.flatMap(_.total) shouldBe None
   }
@@ -210,14 +231,15 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       )
     )
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.PATCH,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
-      body = EntityEncoder[IO, Json].toEntity(patchJson).body,
+      body = EntityEncoder[TestProgram, Json].toEntity(patchJson).body,
       headers = Headers(authHeader)
     )
 
-    val responseReceipt = routing.routes.run(request).value.unsafeRunSync().map(_.as[ReceiptEntity].unsafeRunSync())
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val responseReceipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
     responseReceipt.flatMap(_.total) shouldBe None
   }
@@ -237,14 +259,15 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       )
     )
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.PATCH,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
-      body = EntityEncoder[IO, Json].toEntity(patchJson).body,
+      body = EntityEncoder[TestProgram, Json].toEntity(patchJson).body,
       headers = Headers(authHeader)
     )
 
-    val responseReceipt = routing.routes.run(request).value.unsafeRunSync().map(_.as[ReceiptEntity].unsafeRunSync())
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val responseReceipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
     responseReceipt.map(_.tags) shouldBe Some(List("vegetables", "food"))
   }
@@ -257,13 +280,14 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
       fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.DELETE,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
       headers = Headers(authHeader)
     )
 
-    val status = routing.routes.run(request).value.unsafeRunSync().map(_.status)
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val status = response.map(_.status)
 
     status shouldBe Some(Status.NoContent)
   }
@@ -275,13 +299,14 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
       fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.uri("/receipt"),
       headers = Headers(authHeader)
     )
 
-    val responseReceipts = routing.routes.run(request).value.unsafeRunSync().map(_.as[List[ReceiptEntity]].unsafeRunSync())
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val responseReceipts = response.map(_.as[List[ReceiptEntity]].run.unsafeRunSync._2)
 
     responseReceipts shouldBe Some(List(receipt))
   }

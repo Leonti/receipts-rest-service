@@ -3,6 +3,8 @@ import java.io.File
 import algebras._
 import authentication.{OAuth2AccessTokenResponse, SubClaim}
 import cats.Id
+import cats.implicits._
+import cats.data.WriterT
 import cats.effect.IO
 import fs2.Stream
 import model._
@@ -15,6 +17,22 @@ import user.{UserId, UserIds}
 
 object TestInterpreters {
 
+  sealed trait SideEffect
+  final object PendingFileSaved extends  SideEffect
+  final object PendingFileSubmitted extends  SideEffect
+  final case class FileEntityAdded(fe: FileEntity) extends SideEffect
+  final case class LocalFileRemoved(file: File) extends SideEffect
+  final case class LocalFileStreamSaved(file: File) extends SideEffect
+
+  type TestProgram[A] = WriterT[IO, List[SideEffect], A]
+
+  private def wrapped[A](value: A): TestProgram[A] =
+    WriterT[IO, List[SideEffect], A](IO.pure((List(), value)))
+  private def wrapped[A](value: A, se: SideEffect): TestProgram[A] =
+    WriterT[IO, List[SideEffect], A](IO.pure((List(se), value)))
+  private def wrapped(se: SideEffect): TestProgram[Unit] =
+    WriterT[IO, List[SideEffect], Unit](IO.pure((List(se), ())))
+
   val defaultUserId = "123-user"
   val defaultUsername = "123-username"
   val defaultExternalId = "externalId"
@@ -24,88 +42,95 @@ object TestInterpreters {
     externalId = defaultExternalId))
   val defaultUserEmail = "email"
 
-  class UserIntTest(users: List[UserIds] = defaultUsers, email: String = defaultUserEmail) extends UserAlg[IO] {
-    def findByUsername(username: String): IO[List[UserIds]] = IO.pure(users.filter(_.username == username))
-    def findByExternalId(id: String): IO[Option[UserIds]] = IO.pure(users.find(_.externalId == id))
-    def saveUserIds(userIds: UserIds): IO[Unit] = IO.pure(())
-    def getExternalUserInfoFromAccessToken(accessToken: AccessToken): IO[ExternalUserInfo] =
-      IO.pure(ExternalUserInfo(sub = "", email = email))
+  class UserIntTest(users: List[UserIds] = defaultUsers, email: String = defaultUserEmail) extends UserAlg[TestProgram] {
+    def findByUsername(username: String): TestProgram[List[UserIds]] = wrapped(users.filter(_.username == username))
+    def findByExternalId(id: String): TestProgram[Option[UserIds]] = wrapped(users.find(_.externalId == id))
+    def saveUserIds(userIds: UserIds): TestProgram[Unit] = wrapped(())
+    def getExternalUserInfoFromAccessToken(accessToken: AccessToken): TestProgram[ExternalUserInfo] =
+      wrapped(ExternalUserInfo(sub = "", email = email))
   }
 
   val defaultRandomId = "randomId"
   val defaultTime = 0
-  val defaultTmpFile = new File("")
+  val defaultTmpFile = new File("tmp-file")
+  val defaultResizedFile = new File("resized")
 
-  class RandomIntTest(id: String = defaultRandomId, time: Long = defaultTime, file: File = defaultTmpFile) extends RandomAlg[IO] {
-    override def generateGuid(): IO[String] = IO.pure(id)
-    override def getTime(): IO[Long]                = IO.pure(time)
-    override def tmpFile(): IO[File]             = IO.pure(file)
+  class RandomIntTest(id: String = defaultRandomId, time: Long = defaultTime, file: File = defaultTmpFile) extends RandomAlg[TestProgram] {
+    override def generateGuid(): TestProgram[String] = wrapped(id)
+    override def getTime(): TestProgram[Long]                = wrapped(time)
+    override def tmpFile(): TestProgram[File]             = wrapped(file)
   }
 
-  class RemoteFileIntTest extends RemoteFileAlg[IO] {
-    override def saveRemoteFile(file: File, fileId: RemoteFileId): IO[Unit]        = IO.pure(())
-    override def deleteRemoteFile(fileId: RemoteFileId): IO[Unit]                                 = IO.pure(())
-    override def remoteFileStream(fileId: RemoteFileId): IO[Stream[IO, Byte]] =
-      IO.pure(Stream.fromIterator[IO, Byte]("some text".getBytes.toIterator))
+  class RemoteFileIntTest extends RemoteFileAlg[TestProgram] {
+    override def saveRemoteFile(file: File, fileId: RemoteFileId): TestProgram[Unit]        = wrapped(())
+    override def deleteRemoteFile(fileId: RemoteFileId): TestProgram[Unit]                                 = wrapped(())
+    override def remoteFileStream(fileId: RemoteFileId): TestProgram[Stream[TestProgram, Byte]] =
+      wrapped(Stream.fromIterator[TestProgram, Byte]("some text".getBytes.toIterator))
   }
 
-  class LocalFileIntTest extends LocalFileAlg[IO] {
-    override def getFileMetaData(file: File): IO[FileMetaData] = IO.pure(GenericMetaData(length = 0))
-    override def getMd5(file: File): IO[String] = IO.pure("")
-    override def moveFile(src: File, dst: File): IO[Unit]        = IO.pure(())
-    override def removeFile(file: File): IO[Unit]                                                      = IO.pure(())
-    override def streamToFile(source: Stream[IO, Byte], file: File): IO[File] = IO.pure(file)
+  class LocalFileIntTest(genericMetaData: GenericMetaData = GenericMetaData(length = 0)) extends LocalFileAlg[TestProgram] {
+    override def getGenericMetaData(file: File): TestProgram[GenericMetaData] = wrapped(genericMetaData)
+    override def getMd5(file: File): TestProgram[String] = wrapped("")
+    override def moveFile(src: File, dst: File): TestProgram[Unit]        = wrapped(())
+    override def removeFile(file: File): TestProgram[Unit]                                                      =
+      wrapped(LocalFileRemoved(file))
+    override def streamToFile(source: Stream[TestProgram, Byte], file: File): TestProgram[File] =
+      wrapped(file, LocalFileStreamSaved(file))
   }
 
-  class FileStoreIntTest(md5Response: Seq[StoredFile] = List()) extends FileStoreAlg[IO] {
-    override def saveStoredFile(storedFile: StoredFile): IO[Unit] = IO.pure(())
+  class FileStoreIntTest(md5Response: List[StoredFile] = List()) extends FileStoreAlg[TestProgram] {
+    override def saveStoredFile(storedFile: StoredFile): TestProgram[Unit] = wrapped(())
     override def findByMd5(userId: UserId,
-                           md5: String): IO[Seq[StoredFile]] = IO.pure(md5Response)
-    override def deleteStoredFile(userId: UserId, storedFileId: String): IO[Unit]               = IO.pure(())
+                           md5: String): TestProgram[List[StoredFile]] = wrapped(md5Response)
+    override def deleteStoredFile(userId: UserId, storedFileId: String): TestProgram[Unit]               = wrapped(())
   }
 
-  class PendingFileIntTest extends PendingFileAlg[IO] {
-    override def savePendingFile(pendingFile: PendingFile): IO[PendingFile]                   = IO.pure(pendingFile)
-    override def findPendingFileForUserId(userId: UserId): IO[List[PendingFile]] = IO.pure(List())
-    override def deletePendingFileById(userId: UserId, id: String): IO[Unit] = IO.pure(())
+  class PendingFileIntTest extends PendingFileAlg[TestProgram] {
+    override def savePendingFile(pendingFile: PendingFile): TestProgram[PendingFile]                   =
+      wrapped(pendingFile, PendingFileSaved)
+    override def findPendingFileForUserId(userId: UserId): TestProgram[List[PendingFile]] =
+      wrapped(List())
+    override def deletePendingFileById(userId: UserId, id: String): TestProgram[Unit] = wrapped(())
   }
 
-  class QueueIntTest extends QueueAlg[IO] {
-    override def submit(queueJob: QueueJob): IO[Unit] = IO.pure(())
-    override def reserve(): IO[Option[ReservedJob]] = IO.pure(None)
-    override def delete(id: String): IO[Unit]              = IO.pure(())
-    override def release(id: String): IO[Unit]             = IO.pure(())
-    override def bury(id: String): IO[Unit]                = IO.pure(())
+  class QueueIntTest extends QueueAlg[TestProgram] {
+    override def submit(queueJob: QueueJob): TestProgram[Unit] =
+      wrapped(PendingFileSubmitted)
+    override def reserve(): TestProgram[Option[ReservedJob]] = wrapped(None)
+    override def delete(id: String): TestProgram[Unit]              = wrapped(())
+    override def release(id: String): TestProgram[Unit]             = wrapped(())
+    override def bury(id: String): TestProgram[Unit]                = wrapped(())
   }
 
   class ReceiptStoreIntTest(
-                                   receipts: Seq[ReceiptEntity] = List()) extends ReceiptStoreAlg[IO] {
+                                   receipts: List[ReceiptEntity] = List()) extends ReceiptStoreAlg[TestProgram] {
     override def getReceipt(userId: UserId,
-                            id: String): IO[Option[ReceiptEntity]] = IO.pure(receipts.find(_.id == id))
-    override def deleteReceipt(userId: UserId, id: String): IO[Unit] = IO.pure(())
-    override def saveReceipt(receipt: ReceiptEntity): IO[ReceiptEntity] = IO.pure(receipt)
+                            id: String): TestProgram[Option[ReceiptEntity]] = wrapped(receipts.find(_.id == id))
+    override def deleteReceipt(userId: UserId, id: String): TestProgram[Unit] = wrapped(())
+    override def saveReceipt(receipt: ReceiptEntity): TestProgram[ReceiptEntity] = wrapped(receipt)
     override def getReceipts(userId: UserId,
-                             ids: Seq[String]): IO[Seq[ReceiptEntity]] = IO.pure(receipts)
-    override def userReceipts(userId: UserId): IO[Seq[ReceiptEntity]] = IO.pure(receipts)
+                             ids: List[String]): TestProgram[List[ReceiptEntity]] = wrapped(receipts)
+    override def userReceipts(userId: UserId): TestProgram[List[ReceiptEntity]] = wrapped(receipts)
     override def recentUserReceipts(userId: UserId,
-                                    lastModified: Long): IO[Seq[ReceiptEntity]] = IO.pure(receipts)
+                                    lastModified: Long): TestProgram[List[ReceiptEntity]] = wrapped(receipts)
     override def addFileToReceipt(userId: UserId, receiptId: String,
-                                  file: FileEntity): IO[Unit] = IO.pure(())
+                                  file: FileEntity): TestProgram[Unit] =
+      wrapped(FileEntityAdded(file))
   }
 
-  class OcrIntTest() extends OcrAlg[IO] {
+  class OcrIntTest() extends OcrAlg[TestProgram] {
     val testAnnotation = OcrTextAnnotation(text = "Parsed ocr text", pages = List())
 
-    override def ocrImage(file: File): IO[OcrTextAnnotation] = IO.pure(testAnnotation)
+    override def ocrImage(file: File): TestProgram[OcrTextAnnotation] = wrapped(testAnnotation)
     override def saveOcrResult(userId: String,
                                receiptId: String,
-                               ocrResult: OcrTextAnnotation): IO[Unit] = IO.pure(())
+                               ocrResult: OcrTextAnnotation): TestProgram[Unit] = wrapped(())
     override def addOcrToIndex(userId: String,
                                receiptId: String,
-                               ocrText: OcrText): IO[Unit] = IO.pure(())
+                               ocrText: OcrText): TestProgram[Unit] = wrapped(())
     override def findIdsByText(userId: String,
-                               query: String): IO[Seq[String]] =
-      IO.pure(Seq())
+                               query: String): TestProgram[List[String]] =
+      wrapped(List[String]())
   }
 
   val defaultVerifyResult = Right(SubClaim(defaultExternalId))
@@ -114,9 +139,16 @@ object TestInterpreters {
     override def verify(token: String): Id[Either[String, SubClaim]] = result
   }
 
+  class ImageIntTest(isImage: Boolean, imageMetaData: ImageMetaData = ImageMetaData(width = 1, height = 2, length = 3)) extends ImageAlg[TestProgram] {
+    override def resizeToPixelSize(file: File, pixels: Long): TestProgram[File] = wrapped(defaultResizedFile)
+    override def resizeToFileSize(file: File, sizeInMb: Double): TestProgram[File] = wrapped(defaultResizedFile)
+    override def isImage(file: File): TestProgram[Boolean]                                        = wrapped(isImage)
+    override def getImageMetaData(file: File): TestProgram[ImageMetaData]          = wrapped(imageMetaData)
+  }
+
   val defaultPathToken = OAuth2AccessTokenResponse("", "", 10)
 
-  val testAlgebras: RoutingAlgebras[IO] = RoutingAlgebras(
+  val testAlgebras: RoutingAlgebras[TestProgram] = RoutingAlgebras(
     jwtVerificationAlg = new JwtVerificationIntTest(),
     userAlg = new UserIntTest(),
     randomAlg = new RandomIntTest(),

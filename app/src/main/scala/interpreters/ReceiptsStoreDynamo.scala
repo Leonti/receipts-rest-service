@@ -47,7 +47,7 @@ class ReceiptsStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) extend
     receipt
   }
 
-  override def getReceipts(userId: UserId, ids: Seq[String]): IO[Seq[ReceiptEntity]] =
+  override def getReceipts(userId: UserId, ids: List[String]): IO[List[ReceiptEntity]] =
     IO {
       val values                                              = ids.map(id => (id, userId.value)).toSet
       val ops                                                 = table.getAll(UniqueKeys(MultipleKeyList(('id, 'userId), values)))
@@ -58,22 +58,23 @@ class ReceiptsStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) extend
       case Left(error)     => IO.raiseError(new Exception(error.toString))
     }
 
-  override def userReceipts(userId: UserId): IO[Seq[ReceiptEntity]] =
+  override def userReceipts(userId: UserId): IO[List[ReceiptEntity]] =
     IO {
-      val ops                                                 = table.index("userId-lastModified-index").query('userId -> userId.value)
-      val result: Seq[Either[DynamoReadError, ReceiptEntity]] = Scanamo.exec(client)(ops)
-      result.toList.sequence
+      val ops                                                  = table.index("userId-lastModified-index").query('userId -> userId.value)
+      val result: List[Either[DynamoReadError, ReceiptEntity]] = Scanamo.exec(client)(ops)
+      result.sequence
     } flatMap {
       case Right(receipts) => IO(receipts)
       case Left(error)     => IO.raiseError(new Exception(error.toString))
     }
 
-  override def recentUserReceipts(userId: UserId, lastModified: Long): IO[Seq[ReceiptEntity]] =
+  override def recentUserReceipts(userId: UserId, lastModified: Long): IO[List[ReceiptEntity]] =
     IO {
-      val ops                                                 = table.index("userId-lastModified-index")
+      val ops = table
+        .index("userId-lastModified-index")
         .query('userId -> userId.value and ('lastModified > lastModified))
-      val result: Seq[Either[DynamoReadError, ReceiptEntity]] = Scanamo.exec(client)(ops)
-      result.toList.sequence
+      val result: List[Either[DynamoReadError, ReceiptEntity]] = Scanamo.exec(client)(ops)
+      result.sequence
     } flatMap {
       case Right(receipts) => IO(receipts)
       case Left(error)     => IO.raiseError(new Exception(error.toString))

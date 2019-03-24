@@ -19,7 +19,7 @@ class FileStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) extends Fi
     Scanamo.exec(client)(ops)
   }
 
-  override def findByMd5(userId: UserId, md5: String): IO[Seq[StoredFile]] =
+  override def findByMd5(userId: UserId, md5: String): IO[List[StoredFile]] =
     IO {
       val ops = table
         .index("userId-md5-index")

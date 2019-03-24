@@ -2,6 +2,7 @@ import TestInterpreters._
 import cats.effect.{ContextShift, IO}
 import org.http4s.headers.Authorization
 import org.http4s._
+import cats.implicits._
 import org.http4s.circe.CirceEntityDecoder._
 import org.scalatest.{FlatSpec, Matchers}
 import routing.Routing
@@ -18,27 +19,28 @@ class UserSpec extends FlatSpec with Matchers {
   it should "should show user info" in {
     val routing = new Routing(testAlgebras, testConfig, global)
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.uri("/user/info"),
       headers = Headers(authHeader)
     )
 
-    val userInfo = routing.routes.run(request).value.unsafeRunSync().map(_.as[UserInfo].unsafeRunSync())
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
 
-    userInfo.map(_.id) shouldBe Some(defaultUserId)
+    response.map(_.as[UserInfo].run.unsafeRunSync()).map(_._2.id) shouldBe Some(defaultUserId)
   }
 
   it should "fail with invalid header" in {
     val routing = new Routing(testAlgebras, testConfig, global)
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.uri("/user/info"),
       headers = Headers(Header("Authorization", "Bear"))
     )
 
-    val status = routing.routes.run(request).value.unsafeRunSync().map(_.status)
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val status = response.map(_.status)
 
     status shouldBe Some(Status.Unauthorized)
   }
@@ -48,13 +50,14 @@ class UserSpec extends FlatSpec with Matchers {
       userAlg = new UserIntTest(users = List())
     ), testConfig, global)
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.uri("/user/info"),
       headers = Headers(authHeader)
     )
 
-    val status = routing.routes.run(request).value.unsafeRunSync().map(_.status)
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val status = response.map(_.status)
 
     status shouldBe Some(Status.Unauthorized)
   }

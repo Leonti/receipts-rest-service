@@ -2,8 +2,9 @@ import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import java.util.zip.{ZipEntry, ZipInputStream}
 
-import TestInterpreters._
+import TestInterpreters.{TestProgram, _}
 import authentication.PathToken
+import cats.implicits._
 import cats.effect.{ContextShift, IO}
 import org.http4s.headers.`Content-Type`
 import org.http4s._
@@ -28,13 +29,13 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
 
     val accessToken = new PathToken(authSecret).generatePathToken(s"/user/$defaultUserId/backup/download")
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.unsafeFromString(s"/user/$defaultUserId/backup/download?access_token=${accessToken.accessToken}")
     )
 
-    val response = routing.routes.run(request).value.unsafeRunSync()
-    val content = response.map(res => res.body.compile.toList.unsafeRunSync.toArray)
+    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync()
+    val content = response.map(res => res.body.compile.toList.run.unsafeRunSync._2.toArray)
     val contentType = response.flatMap(_.headers.get(`Content-Type`).map(_.value))
 
     contentType shouldBe Some("application/zip")

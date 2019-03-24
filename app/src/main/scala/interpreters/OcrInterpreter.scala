@@ -44,7 +44,7 @@ class OcrInterpreterTagless(httpClient: Client[IO],
         ))
       .map(_ => ())
 
-  override def findIdsByText(userId: String, query: String): IO[Seq[String]] =
+  override def findIdsByText(userId: String, query: String): IO[List[String]] =
     httpClient
       .expect[OcrSearchResult](
         GET(

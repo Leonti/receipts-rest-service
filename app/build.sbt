@@ -62,7 +62,6 @@ libraryDependencies ++= {
     "com.google.api-client" % "google-api-client"          % googleApiClient excludeAll (
       ExclusionRule(organization="com.google.guava", name="guava-jdk5")
       ),
-    "com.drewnoakes"       % "metadata-extractor" % "2.9.0",
     "org.typelevel"        %% "cats-core"              % catsV,
     "org.gnieh"     %% "diffson-circe" % diffsonV,
     "com.auth0" % "java-jwt" % "3.4.0" excludeAll (
@@ -72,7 +71,6 @@ libraryDependencies ++= {
     "org.scanamo" %% "scanamo" % scanamoV,
     "org.scanamo" %% "scanamo-cats-effect" % scanamoV,
     "org.scanamo" %% "scanamo-testkit" % scanamoV,
-    //"io.github.howardjohn" %% "scanamo-circe" % "0.2.1",
     "co.fs2" %% "fs2-core" % fs2V,
     "co.fs2" %% "fs2-io" % fs2V,
     "org.scalatest" %% "scalatest"          % scalaTestV % "e2e,it,test"

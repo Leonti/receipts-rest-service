@@ -52,20 +52,21 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
   import receiptAlg._, randomAlg._, ocrAlg._
   import ReceiptErrors._
 
-  private def receiptsForQuery(userId: UserId, query: String): F[Seq[ReceiptEntity]] = {
+  private def receiptsForQuery(userId: UserId, query: String): F[List[ReceiptEntity]] = {
     for {
       receiptIds <- findIdsByText(userId.value, query)
       receipts   <- getReceipts(userId, receiptIds)
     } yield receipts
   }
 
-  def findForUser(userId: UserId, lastModifiedOption: Option[Long] = None, queryOption: Option[String] = None): F[Seq[ReceiptEntity]] =
+  def findForUser(userId: UserId, lastModifiedOption: Option[Long] = None, queryOption: Option[String] = None): F[List[ReceiptEntity]] =
     queryOption.flatMap(query => if (query.trim.isEmpty) None else Some(query)) match {
       case Some(query) => receiptsForQuery(userId, query).map(_.filter(_.lastModified > lastModifiedOption.getOrElse(0l)))
-      case None => lastModifiedOption match {
-        case Some(lastModified) => recentUserReceipts(userId, lastModified)
-        case None => userReceipts(userId)
-      }
+      case None =>
+        lastModifiedOption match {
+          case Some(lastModified) => recentUserReceipts(userId, lastModified)
+          case None               => userReceipts(userId)
+        }
     }
 
   private def ext(fileName: String): String = fileName.split("\\.")(1)
@@ -104,18 +105,16 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
       exitingFilesWithSameMd5 <- EitherT.right[Error](fileStoreAlg.findByMd5(userId, md5))
       _                       <- validateExistingFile(exitingFilesWithSameMd5.nonEmpty)
       receiptId               <- EitherT.right[Error](generateGuid())
-      fileId                  <- EitherT.right[Error](generateGuid())
       currentTimeMillis       <- EitherT.right[Error](getTime())
-      remoteFileId = RemoteFileId(userId, fileId)
+      remoteFileId = RemoteFileId(userId, receiptId)
       _ <- EitherT.right[Error](remoteFileAlg.saveRemoteFile(tmpFile, remoteFileId))
       _ <- EitherT.right[Error](
         fileStoreAlg.saveStoredFile(
           StoredFile(
             userId = userId.value,
-            id = fileId,
+            id = receiptId,
             md5 = md5,
           )))
-      fileMetadata <- EitherT.right[Error](localFileAlg.getFileMetaData(tmpFile))
       receipt = ReceiptEntity(
         id = receiptId,
         userId = userId.value,
@@ -124,15 +123,7 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
         timestamp = currentTimeMillis,
         lastModified = currentTimeMillis,
         transactionTime = receiptForm.transactionTime,
-        tags = receiptForm.tags,
-        files = List(
-          FileEntity(
-            id = fileId,
-            parentId = None,
-            ext = ext(receiptForm.receipt.name),
-            metaData = fileMetadata,
-            timestamp = currentTimeMillis
-          ))
+        tags = receiptForm.tags
       )
       _ <- EitherT.right[Error](saveReceipt(receipt))
       _ <- EitherT.right[Error](submitPF(userId, receiptId, remoteFileId, ext(receiptForm.receipt.name)))

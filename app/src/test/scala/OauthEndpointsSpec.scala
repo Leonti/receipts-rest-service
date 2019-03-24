@@ -3,6 +3,7 @@ import cats.effect.{ContextShift, IO}
 import io.circe.Json
 import org.http4s._
 import org.http4s.circe._
+import cats.implicits._
 import org.http4s.circe.CirceEntityDecoder._
 import org.scalatest.{FlatSpec, Matchers}
 import routing.Routing
@@ -23,15 +24,14 @@ class OauthEndpointsSpec extends FlatSpec with Matchers {
       "token" -> Json.fromString("token")
     )
 
-    val request: Request[IO] = Request(
+    val request: Request[TestProgram] = Request(
       method = Method.POST,
       uri = Uri.uri("/oauth/openid"),
-      body = EntityEncoder[IO, Json].toEntity(token).body
+      body = EntityEncoder[TestProgram, Json].toEntity(token).body
     )
 
-    val userInfo = routing.routes.run(request).value.unsafeRunSync().map(_.as[UserInfo].unsafeRunSync())
-
-    userInfo.map(_.id) shouldBe Some("userId")
+    val (_, userInfo) = routing.routes.run(request).value.run.unsafeRunSync()
+    userInfo.map(_.as[UserInfo].run.unsafeRunSync()).map(_._2.id) shouldBe Some("userId")
   }
 
 }

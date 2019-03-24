@@ -3,7 +3,7 @@ package ocr
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
-case class OcrSearchResult(ids: Seq[String])
+case class OcrSearchResult(ids: List[String])
 
 object OcrSearchResult {
   implicit val ocrSearchResultDecoder: Decoder[OcrSearchResult] = deriveDecoder

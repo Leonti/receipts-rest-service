@@ -34,7 +34,7 @@ object ReceiptRestService extends IOApp {
     .allocated
     .unsafeRunSync()
 
-  val imageResizer = new ImageMagickResizer()
+  val imageResizer = new ImageInt()
   val ocrService =
     if (sys.env("USE_OCR_STUB").toBoolean) {
       println("Using OCR stub")
