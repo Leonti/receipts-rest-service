@@ -43,8 +43,8 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
 
     val checkInterval = 1.second
 
-    if (retry > 60) {
-      IO.raiseError(new RuntimeException("Could not get receipt entity in time"))
+    if (retry > 120) {
+      IO.raiseError(new RuntimeException(s"Could not get receipt entity in time $receiptId"))
     } else {
       for {
         pending <- pendingFilesIO
