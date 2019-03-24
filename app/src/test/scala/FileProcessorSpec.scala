@@ -26,6 +26,7 @@ class FileProcessorSpec extends FlatSpec with Matchers {
           files = List(expectedFileEntity1, expectedFileEntity2)
         )
       )),
+      testAlgebras.pendingFileAlg,
       testAlgebras.localFileAlg,
       testAlgebras.remoteFileAlg,
       new ImageIntTest(true, imageMetaData),
@@ -70,6 +71,7 @@ class FileProcessorSpec extends FlatSpec with Matchers {
           files = List(expectedFileEntity)
         )
       )),
+      testAlgebras.pendingFileAlg,
       new LocalFileIntTest(genericMetaData = genericMetaData),
       testAlgebras.remoteFileAlg,
       new ImageIntTest(isImage = false),
@@ -88,6 +90,7 @@ class FileProcessorSpec extends FlatSpec with Matchers {
 
     sideEffects should contain(FileEntityAdded(expectedFileEntity))
     sideEffects should contain(LocalFileRemoved(defaultTmpFile))
+    sideEffects should contain(PendingFileRemoved)
   }
 
 }

@@ -12,6 +12,7 @@ import scala.language.higherKinds
 
 class FileProcessor[F[_]: Monad](
     receiptAlg: ReceiptStoreAlg[F],
+    pendingFileAlg: PendingFileAlg[F],
     localFileAlg: LocalFileAlg[F],
     remoteFileAlg: RemoteFileAlg[F],
     imageAlg: ImageAlg[F],
@@ -70,6 +71,7 @@ class FileProcessor[F[_]: Monad](
               timestamp = timestamp
             )
           )
+          _ <- pendingFileAlg.deletePendingFileById(UserId(receiptFileJob.userId), receiptFileJob.pendingFileId)
         } yield ()
       _              <- localFileAlg.removeFile(tmpFile)
       updatedReceipt <- receiptAlg.getReceipt(UserId(receiptFileJob.userId), receiptFileJob.receiptId)

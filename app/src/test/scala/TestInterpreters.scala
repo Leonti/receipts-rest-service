@@ -20,6 +20,7 @@ object TestInterpreters {
   sealed trait SideEffect
   final object PendingFileSaved extends  SideEffect
   final object PendingFileSubmitted extends  SideEffect
+  final object PendingFileRemoved extends SideEffect
   final case class FileEntityAdded(fe: FileEntity) extends SideEffect
   final case class LocalFileRemoved(file: File) extends SideEffect
   final case class LocalFileStreamSaved(file: File) extends SideEffect
@@ -90,7 +91,8 @@ object TestInterpreters {
       wrapped(pendingFile, PendingFileSaved)
     override def findPendingFileForUserId(userId: UserId): TestProgram[List[PendingFile]] =
       wrapped(List())
-    override def deletePendingFileById(userId: UserId, id: String): TestProgram[Unit] = wrapped(())
+    override def deletePendingFileById(userId: UserId, id: String): TestProgram[Unit] =
+      wrapped(PendingFileRemoved)
   }
 
   class QueueIntTest extends QueueAlg[TestProgram] {

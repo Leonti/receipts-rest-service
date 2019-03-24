@@ -133,6 +133,7 @@ object ReceiptRestService extends IOApp {
 
   val fileProcessor = new FileProcessor(
     receiptInterpreter,
+    pendingFile,
     localFile,
     remoteFile,
     imageResizer,
