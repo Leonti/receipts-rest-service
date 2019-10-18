@@ -5,16 +5,17 @@ import java.io.File
 import algebras._
 import cats.Monad
 import io.circe.syntax._
-import io.circe.parser._
-import gnieh.diffson.circe._
+import diffson.jsonpatch._
 import cats.implicits._
 import cats.data.EitherT
 import fs2.Stream
+import io.circe.Json
 import pending.PendingFile
 import queue.ReceiptFileJob
 import user.UserId
 
 import scala.language.higherKinds
+import scala.util.Try
 
 object ReceiptErrors {
   sealed trait Error
@@ -32,11 +33,11 @@ case class ReceiptForm[F[_]](
 )
 
 object Patch {
-  val applyPatch: (ReceiptEntity, JsonPatch) => ReceiptEntity = (receiptEntity, jsonPatch) => {
-    val asJson: String =
-      receiptEntity.copy(total = if (receiptEntity.total.isDefined) receiptEntity.total else Some(BigDecimal("0"))).asJson.noSpaces
-    val patched: String = jsonPatch(asJson)
-    decode[ReceiptEntity](patched).toSeq.head
+  val applyPatch: (ReceiptEntity, JsonPatch[Json]) => ReceiptEntity = (receiptEntity, jsonPatch) => {
+    val asJson: Json =
+      receiptEntity.copy(total = if (receiptEntity.total.isDefined) receiptEntity.total else Some(BigDecimal("0"))).asJson
+    val patched = jsonPatch[Try](asJson).toOption.get
+    patched.as[ReceiptEntity].toOption.get
   }
 }
 
@@ -135,7 +136,7 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
 
   type OptionalReceipt = Option[ReceiptEntity]
 
-  def patchReceipt(userId: UserId, receiptId: String, jsonPatch: JsonPatch): F[Option[ReceiptEntity]] =
+  def patchReceipt(userId: UserId, receiptId: String, jsonPatch: JsonPatch[Json]): F[Option[ReceiptEntity]] =
     for {
       receiptOption <- getReceipt(userId, receiptId)
       patchedReceipt = receiptOption.map(r => Patch.applyPatch(r, jsonPatch))

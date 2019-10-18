@@ -8,8 +8,9 @@ import cats.effect.Effect
 import cats.implicits._
 import cats.{Apply, Monad}
 import fs2.text
-import gnieh.diffson.circe.DiffsonProtocol._
-import gnieh.diffson.circe._
+import diffson.circe._
+import diffson.jsonpatch._
+import io.circe.Json
 import io.circe.syntax._
 import org.http4s._
 import org.http4s.circe.CirceEntityDecoder._
@@ -28,7 +29,7 @@ class ReceiptEndpoints[F[_]: Monad](
   object LastModifiedParamMatcher extends OptionalQueryParamDecoderMatcher[Long]("last-modified")
   object QueryParamMatcher        extends OptionalQueryParamDecoderMatcher[String]("q")
 
-  private val service: AuthedService[UserIds, F] = AuthedService {
+  private val service: AuthedRoutes[UserIds, F] = AuthedRoutes.of {
 
     case GET -> Root / "receipt" / receiptId as user =>
       receiptPrograms.findById(UserId(user.id), receiptId).map {
@@ -42,7 +43,7 @@ class ReceiptEndpoints[F[_]: Monad](
       }
   }
 
-  private val getReceiptFile: AuthedService[UserIds, F] = AuthedService {
+  private val getReceiptFile: AuthedRoutes[UserIds, F] = AuthedRoutes.of {
     case GET -> Root / "receipt" / receiptId / "file" / fileIdWithExt as user => {
       val fileId = fileIdWithExt.split('.')(0)
 
@@ -62,7 +63,7 @@ class ReceiptEndpoints[F[_]: Monad](
     }
   }
 
-  private val delete: AuthedService[UserIds, F] = AuthedService {
+  private val delete: AuthedRoutes[UserIds, F] = AuthedRoutes.of {
     case DELETE -> Root / "receipt" / receiptId as user =>
       receiptPrograms.removeReceipt(UserId(user.id), receiptId).map {
         case Some(_) => Response(status = Status.NoContent).withEmptyBody: Response[F]
@@ -70,10 +71,10 @@ class ReceiptEndpoints[F[_]: Monad](
       }
   }
 
-  private val patch: AuthedService[UserIds, F] = AuthedService {
+  private val patch: AuthedRoutes[UserIds, F] = AuthedRoutes.of {
     case req @ PATCH -> Root / "receipt" / receiptId as user =>
       for {
-        patch <- req.req.as[JsonPatch]
+        patch <- req.req.as[JsonPatch[Json]]
         resp <- receiptPrograms.patchReceipt(UserId(user.id), receiptId, patch).map {
           case Some(receipt) => Response(status = Status.Ok).withEntity(receipt.asJson): Response[F]
           case None          => Response(status = Status.NotFound).withEmptyBody: Response[F]
@@ -134,7 +135,7 @@ class ReceiptEndpoints[F[_]: Monad](
   }
 
   // TODO put proper error responses
-  private val createReceipt: AuthedService[UserIds, F] = AuthedService {
+  private val createReceipt: AuthedRoutes[UserIds, F] = AuthedRoutes.of {
     case req @ POST -> Root / "receipt" as user =>
       req.req.decode[Multipart[F]] { m =>
         for {
@@ -151,5 +152,5 @@ class ReceiptEndpoints[F[_]: Monad](
       }
   }
 
-  val authedRoutes: AuthedService[UserIds, F] = createReceipt <+> getReceiptFile <+> service <+> delete <+> patch
+  val authedRoutes: AuthedRoutes[UserIds, F] = createReceipt <+> getReceiptFile <+> service <+> delete <+> patch
 }

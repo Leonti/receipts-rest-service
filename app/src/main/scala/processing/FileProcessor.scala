@@ -78,13 +78,14 @@ class FileProcessor[F[_]: Monad](
     } yield
       updatedReceipt
         .map { receipt =>
-          if (isImage) List(
-            OcrJob(
-              userId = receiptFileJob.userId,
-              receiptId = receiptFileJob.receiptId,
-              fileId = receipt.files.filter(_.parentId.isEmpty).head.id,
-              pendingFileId = receiptFileJob.pendingFileId
-            ))
+          if (isImage)
+            List(
+              OcrJob(
+                userId = receiptFileJob.userId,
+                receiptId = receiptFileJob.receiptId,
+                fileId = receipt.files.filter(_.parentId.isEmpty).head.id,
+                pendingFileId = receiptFileJob.pendingFileId
+              ))
           else List()
         }
         .getOrElse(List())

@@ -8,7 +8,7 @@ import org.http4s.dsl.io._
 
 class UserEndpoints[F[_]: Effect]() {
 
-  val authedRoutes: AuthedService[UserIds, F] = AuthedService {
+  val authedRoutes: AuthedRoutes[UserIds, F] = AuthedRoutes.of {
     case GET -> Root / "user" / "info" as user =>
       Monad[F].pure(Response(status = Status.Ok).withEntity(UserInfo(id = user.id, userName = user.username)))
   }

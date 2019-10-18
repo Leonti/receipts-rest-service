@@ -27,7 +27,8 @@ object Fs2Zip {
         val createEntry = Stream.eval(F.delay {
           zos.putNextEntry(new ZipEntry(name))
         })
-        val writeEntry = data.through(io.writeOutputStream(F.delay(zos.asInstanceOf[OutputStream]), blockingEc, closeAfterUse = false))
+        val writeEntry = data.through(
+          io.writeOutputStream(F.delay(zos.asInstanceOf[OutputStream]), Blocker.liftExecutionContext(blockingEc), closeAfterUse = false))
         val closeEntry = Stream.eval(F.delay(zos.closeEntry()))
         createEntry ++ writeEntry ++ closeEntry
     }

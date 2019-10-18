@@ -12,7 +12,7 @@ import user.{UserId, UserIds}
 
 class BackupEndpoints[F[_]: Monad: ConcurrentEffect: ContextShift](backupService: BackupService[F], pathToken: PathToken) {
 
-  val authedRoutes: AuthedService[UserIds, F] = AuthedService {
+  val authedRoutes: AuthedRoutes[UserIds, F] = AuthedRoutes.of {
     case GET -> Root / "backup" / "token" as user =>
       val token = pathToken.generatePathToken(s"/user/${user.id}/backup/download")
       Monad[F].pure(Response(status = Status.Ok).withEntity(token.asJson))

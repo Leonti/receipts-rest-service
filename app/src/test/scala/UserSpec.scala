@@ -22,7 +22,7 @@ class UserSpec extends FlatSpec with Matchers {
     val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.uri("/user/info"),
-      headers = Headers(authHeader)
+      headers = Headers.of(authHeader)
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
@@ -36,7 +36,7 @@ class UserSpec extends FlatSpec with Matchers {
     val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.uri("/user/info"),
-      headers = Headers(Header("Authorization", "Bear"))
+      headers = Headers.of(Header("Authorization", "Bear"))
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
@@ -53,7 +53,7 @@ class UserSpec extends FlatSpec with Matchers {
     val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.uri("/user/info"),
-      headers = Headers(authHeader)
+      headers = Headers.of(authHeader)
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync

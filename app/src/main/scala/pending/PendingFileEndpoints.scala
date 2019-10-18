@@ -10,7 +10,7 @@ import user.{UserId, UserIds}
 
 class PendingFileEndpoints[F[_]: Effect](pendingFileAlg: PendingFileAlg[F]) {
 
-  val authedRoutes: AuthedService[UserIds, F] = AuthedService {
+  val authedRoutes: AuthedRoutes[UserIds, F] = AuthedRoutes.of {
     case GET -> Root / "pending-file" as user =>
       pendingFileAlg.findPendingFileForUserId(UserId(user.id)).map(pf => Response(status = Status.Created).withEntity(pf))
   }

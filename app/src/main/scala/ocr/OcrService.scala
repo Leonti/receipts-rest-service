@@ -5,7 +5,7 @@ import java.nio.file.Files
 import java.util.concurrent.Executors
 
 import algebras.ImageAlg
-import cats.effect.IO
+import cats.effect.{ContextShift, IO}
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
@@ -21,7 +21,8 @@ trait OcrService {
 
 class GoogleOcrService(credentialsFile: File, imageResizeAlg: ImageAlg[IO]) extends OcrService {
 
-  private implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+  private implicit val ec                   = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+  private implicit val cs: ContextShift[IO] = IO.contextShift(ec)
 
   def ocrImage(file: File): Future[OcrTextAnnotation] = {
     if (file.length() >= 4000000) {

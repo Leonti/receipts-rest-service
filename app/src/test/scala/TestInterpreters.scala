@@ -66,7 +66,7 @@ object TestInterpreters {
     override def saveRemoteFile(file: File, fileId: RemoteFileId): TestProgram[Unit]        = wrapped(())
     override def deleteRemoteFile(fileId: RemoteFileId): TestProgram[Unit]                                 = wrapped(())
     override def remoteFileStream(fileId: RemoteFileId): TestProgram[Stream[TestProgram, Byte]] =
-      wrapped(Stream.fromIterator[TestProgram, Byte]("some text".getBytes.toIterator))
+      wrapped(Stream.fromIterator[TestProgram]("some text".getBytes.toIterator))
   }
 
   class LocalFileIntTest(genericMetaData: GenericMetaData = GenericMetaData(length = 0)) extends LocalFileAlg[TestProgram] {

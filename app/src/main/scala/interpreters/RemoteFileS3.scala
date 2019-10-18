@@ -2,7 +2,7 @@ package interpreters
 import java.io.{File, InputStream}
 
 import algebras.RemoteFileAlg
-import cats.effect.{ContextShift, IO}
+import cats.effect.{Blocker, ContextShift, IO}
 import fs2.Stream
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.PutObjectRequest
@@ -26,7 +26,7 @@ class RemoteFileS3(config: S3Config, amazonS3Client: AmazonS3, bec: ExecutionCon
     IO(
       fs2.io.readInputStream(IO(amazonS3Client.getObject(config.bucket, toS3Key(fileId)).getObjectContent.asInstanceOf[InputStream]),
                              1024,
-                             bec))
+                             Blocker.liftExecutionContext(bec)))
   }
   override def deleteRemoteFile(fileId: RemoteFileId): IO[Unit] = IO {
     amazonS3Client.deleteObject(config.bucket, toS3Key(fileId))

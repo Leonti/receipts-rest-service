@@ -5,7 +5,7 @@ import java.security.{DigestInputStream, MessageDigest}
 
 import algebras.LocalFileAlg
 import fs2.{Stream, io}
-import cats.effect.{ContextShift, IO}
+import cats.effect.{Blocker, ContextShift, IO}
 import receipt.GenericMetaData
 
 import scala.concurrent.ExecutionContext
@@ -32,7 +32,7 @@ class LocalFileInterpreter(bec: ExecutionContext) extends LocalFileAlg[IO] {
 
   override def streamToFile(source: Stream[IO, Byte], file: File): IO[File] =
     source
-      .through(io.file.writeAll[IO](file.toPath, bec))
+      .through(io.file.writeAll[IO](file.toPath, Blocker.liftExecutionContext(bec)))
       .compile
       .drain
       .map(_ => file)

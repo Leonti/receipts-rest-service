@@ -6,7 +6,7 @@ import sbt.librarymanagement.Configurations.Runtime
 name := "receipts-rest-service"
 organization := "rocks.leonti"
 version := "1.0"
-scalaVersion := "2.12.4"
+scalaVersion := "2.12.8"
 test in assembly := {}
 
 scalacOptions := Seq("-unchecked",
@@ -25,16 +25,16 @@ scalacOptions := Seq("-unchecked",
 addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersion.binary)
 
 val awsV       = "1.11.241"
-val scalaTestV      = "3.0.4"
+val scalaTestV      = "3.0.8"
 val visionApiV      = "v1-rev346-1.22.0"
 val googleApiClient = "1.22.0"
-val scalaLoggingV   = "3.5.0"
+val scalaLoggingV   = "3.9.2"
 val logbackV        = "1.1.7"
-val diffsonV        = "3.0.0"
-val catsV           = "1.6.0"
-val circeVersion = "0.11.1"
-val fs2V = "1.0.3"
-val http4sVersion = "0.20.0-M5"
+val diffsonV        = "4.0.0"
+val catsV           = "2.0.0"
+val circeVersion = "0.12.2"
+val fs2V = "2.0.1"
+val http4sVersion = "0.21.0-M5"
 val scanamoV = "1.0.0-M9"
 
 val logging = Seq(

@@ -125,7 +125,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.unsafeFromString(s"/receipt/2/file/${fileEntity.id}.txt"),
-      headers = Headers(authHeader)
+      headers = Headers.of(authHeader)
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
@@ -146,7 +146,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
-      headers = Headers(authHeader)
+      headers = Headers.of(authHeader)
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
@@ -179,7 +179,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       method = Method.PATCH,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
       body = EntityEncoder[TestProgram, Json].toEntity(patchJson).body,
-      headers = Headers(authHeader)
+      headers = Headers.of(authHeader)
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
@@ -208,7 +208,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       method = Method.PATCH,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
       body = EntityEncoder[TestProgram, Json].toEntity(patchJson).body,
-      headers = Headers(authHeader)
+      headers = Headers.of(authHeader)
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
@@ -235,7 +235,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       method = Method.PATCH,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
       body = EntityEncoder[TestProgram, Json].toEntity(patchJson).body,
-      headers = Headers(authHeader)
+      headers = Headers.of(authHeader)
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
@@ -263,7 +263,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       method = Method.PATCH,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
       body = EntityEncoder[TestProgram, Json].toEntity(patchJson).body,
-      headers = Headers(authHeader)
+      headers = Headers.of(authHeader)
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
@@ -283,7 +283,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val request: Request[TestProgram] = Request(
       method = Method.DELETE,
       uri = Uri.unsafeFromString(s"/receipt/${receipt.id}"),
-      headers = Headers(authHeader)
+      headers = Headers.of(authHeader)
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
@@ -302,7 +302,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     val request: Request[TestProgram] = Request(
       method = Method.GET,
       uri = Uri.uri("/receipt"),
-      headers = Headers(authHeader)
+      headers = Headers.of(authHeader)
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
