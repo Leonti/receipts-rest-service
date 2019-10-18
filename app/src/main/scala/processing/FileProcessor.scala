@@ -8,8 +8,6 @@ import cats.implicits._
 import receipt.{FileEntity, RemoteFileId}
 import user.UserId
 
-import scala.language.higherKinds
-
 class FileProcessor[F[_]: Monad](
     receiptAlg: ReceiptStoreAlg[F],
     pendingFileAlg: PendingFileAlg[F],

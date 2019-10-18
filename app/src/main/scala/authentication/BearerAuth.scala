@@ -9,8 +9,6 @@ import org.http4s.headers.Authorization
 import org.http4s.server.AuthMiddleware
 import user.UserIds
 
-import scala.language.higherKinds
-
 class BearerAuth[F[_]: Effect](verificationAlg: JwtVerificationAlg[Id], fromBearerTokenClaim: SubClaim => F[Option[UserIds]]) {
   import verificationAlg._
 

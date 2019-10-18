@@ -13,8 +13,6 @@ import io.circe.Json
 import pending.PendingFile
 import queue.ReceiptFileJob
 import user.UserId
-
-import scala.language.higherKinds
 import scala.util.Try
 
 object ReceiptErrors {
@@ -62,7 +60,7 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
 
   def findForUser(userId: UserId, lastModifiedOption: Option[Long] = None, queryOption: Option[String] = None): F[List[ReceiptEntity]] =
     queryOption.flatMap(query => if (query.trim.isEmpty) None else Some(query)) match {
-      case Some(query) => receiptsForQuery(userId, query).map(_.filter(_.lastModified > lastModifiedOption.getOrElse(0l)))
+      case Some(query) => receiptsForQuery(userId, query).map(_.filter(_.lastModified > lastModifiedOption.getOrElse(0L)))
       case None =>
         lastModifiedOption match {
           case Some(lastModified) => recentUserReceipts(userId, lastModified)

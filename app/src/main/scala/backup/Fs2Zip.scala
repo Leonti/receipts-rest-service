@@ -7,9 +7,11 @@ import cats.effect.implicits._
 import cats.implicits._
 import fs2.{Chunk, Pipe, Stream, io}
 import java.util.zip.{ZipEntry, ZipOutputStream}
-import fs2.concurrent.Queue
 
-import scala.concurrent.{ExecutionContext, SyncVar}
+import fs2.concurrent.Queue
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
+
+import scala.concurrent.ExecutionContext
 
 // https://github.com/slamdata/fs2-gzip/blob/master/core/src/main/scala/fs2/gzip/package.scala
 // https://github.com/scalavision/fs2-helper/blob/master/src/main/scala/fs2helper/zip.scala
@@ -42,10 +44,10 @@ object Fs2Zip {
         val os = new java.io.OutputStream {
 
           private def enqueueChunkSync(a: Option[Chunk[Byte]]) = {
-            val done = new SyncVar[Either[Throwable, Unit]]
+            val done = new LinkedBlockingQueue[Either[Throwable, Unit]](1)
             val enq  = q.enqueue1(a).start.flatMap(_.join).runAsync(e => IO(done.put(e))).to[F]
             (contextShift.shift *> enq).toIO.unsafeRunSync
-            done.get.fold(throw _, identity)
+            done.poll(10, TimeUnit.SECONDS).fold(throw _, identity)
           }
           @scala.annotation.tailrec
           private def addChunk(c: Chunk[Byte]): Unit = {

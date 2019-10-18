@@ -5,8 +5,6 @@ import cats.Monad
 import cats.implicits._
 import model.AccessToken
 
-import scala.language.higherKinds
-
 class UserPrograms[F[_]: Monad](userAlg: UserAlg[F], randomAlg: RandomAlg[F]) {
   import randomAlg._
 

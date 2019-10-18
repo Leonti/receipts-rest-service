@@ -11,18 +11,19 @@ import pending.PendingFile
 import user.UserId
 
 class PendingFileStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) extends PendingFileAlg[IO] {
-  private val table = Table[PendingFile](tableName)
+  private val table   = Table[PendingFile](tableName)
+  private val scanamo = Scanamo(client)
 
   override def savePendingFile(pendingFile: PendingFile): IO[PendingFile] = IO {
     val ops = table.putAll(Set(pendingFile))
-    Scanamo.exec(client)(ops)
+    scanamo.exec(ops)
     pendingFile
   }
 
   override def findPendingFileForUserId(userId: UserId): IO[List[PendingFile]] =
     IO {
-      val ops                                               = table.index("userId-index").query('userId -> userId.value)
-      val result: Seq[Either[DynamoReadError, PendingFile]] = Scanamo.exec(client)(ops)
+      val ops                                               = table.index("userId-index").query("userId" -> userId.value)
+      val result: Seq[Either[DynamoReadError, PendingFile]] = scanamo.exec(ops)
       result.toList.sequence
     } flatMap {
       case Right(pf)   => IO(pf)
@@ -30,7 +31,7 @@ class PendingFileStoreDynamo(client: AmazonDynamoDBAsync, tableName: String) ext
     }
 
   override def deletePendingFileById(userId: UserId, id: String): IO[Unit] = IO {
-    val ops = table.delete('id -> id and 'userId -> userId.value)
-    Scanamo.exec(client)(ops)
+    val ops = table.delete("id" -> id and "userId" -> userId.value)
+    scanamo.exec(ops)
   }
 }

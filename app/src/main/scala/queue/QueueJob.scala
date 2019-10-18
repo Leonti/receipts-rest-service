@@ -45,9 +45,9 @@ object QueueJob {
   def fromString(asString: String): QueueJob = {
     val contextHolder = decode[ContextHolder](asString)
 
-    contextHolder.right.get.context match { // FIXME - don't use right.get
-      case "RECEIPT_FILE" => decode[ReceiptFileJob](asString).right.get
-      case "RECEIPT_OCR"  => decode[OcrJob](asString).right.get
+    contextHolder.toOption.get.context match { // FIXME - don't use right.get
+      case "RECEIPT_FILE" => decode[ReceiptFileJob](asString).toOption.get
+      case "RECEIPT_OCR"  => decode[OcrJob](asString).toOption.get
     }
   }
 

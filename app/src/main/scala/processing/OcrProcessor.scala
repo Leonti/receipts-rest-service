@@ -8,8 +8,6 @@ import ocr.OcrText
 import receipt.RemoteFileId
 import user.UserId
 
-import scala.language.higherKinds
-
 class OcrProcessor[F[_]: Monad](remoteFileAlg: RemoteFileAlg[F],
                                 localFileAlg: LocalFileAlg[F],
                                 ocrAlg: OcrAlg[F],

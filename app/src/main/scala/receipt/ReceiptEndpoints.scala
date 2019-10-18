@@ -18,8 +18,6 @@ import org.http4s.circe._
 import org.http4s.dsl.io._
 import org.http4s.multipart.Multipart
 import user.{UserId, UserIds}
-
-import scala.language.higherKinds
 import scala.util.Try
 
 class ReceiptEndpoints[F[_]: Monad](

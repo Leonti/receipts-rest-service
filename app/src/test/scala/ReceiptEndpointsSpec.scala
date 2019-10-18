@@ -50,7 +50,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       description = "some description",
       timestamp = 0,
       lastModified = 0,
-      transactionTime = 1480130712396l,
+      transactionTime = 1480130712396L,
       tags = List("veggies", "food"),
       files = List()
     ))
@@ -115,7 +115,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
   it should "return a file content" in {
     val fileEntity =
-      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0l)
+      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0L)
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List(fileEntity))
 
     val routing = new Routing(testAlgebras.copy(

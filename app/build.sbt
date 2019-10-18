@@ -6,7 +6,7 @@ import sbt.librarymanagement.Configurations.Runtime
 name := "receipts-rest-service"
 organization := "rocks.leonti"
 version := "1.0"
-scalaVersion := "2.12.8"
+scalaVersion := "2.13.1"
 test in assembly := {}
 
 scalacOptions := Seq("-unchecked",
@@ -14,15 +14,14 @@ scalacOptions := Seq("-unchecked",
                      "-feature",
                      "-language:higherKinds",
                      "-Xfatal-warnings",
-                     "-Ywarn-dead-code",
-                     "-Ywarn-inaccessible",
-                     "-Ywarn-unused",
-                     "-Ywarn-unused-import",
-                     "-Ypartial-unification",
+                     "-Wdead-code",
+                     "-Xlint:inaccessible",
+                     "-Xlint:unused",
+                     "-Wunused:imports",
                      "-encoding",
                      "utf8")
 
-addCompilerPlugin("org.spire-math" % "kind-projector" % "0.9.3" cross CrossVersion.binary)
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
 
 val awsV       = "1.11.241"
 val scalaTestV      = "3.0.8"
@@ -35,7 +34,7 @@ val catsV           = "2.0.0"
 val circeVersion = "0.12.2"
 val fs2V = "2.0.1"
 val http4sVersion = "0.21.0-M5"
-val scanamoV = "1.0.0-M9"
+val scanamoV = "1.0.0-M11"
 
 val logging = Seq(
   "ch.qos.logback"             % "logback-classic"          % logbackV,

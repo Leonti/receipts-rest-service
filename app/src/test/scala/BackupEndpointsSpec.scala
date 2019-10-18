@@ -20,7 +20,7 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
 
   it should "return the backup stream" in {
     val fileEntity =
-      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0l)
+      FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0L)
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List(fileEntity))
 
     val routing = new Routing(testAlgebras.copy(
@@ -45,7 +45,7 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
 
   def toZipEntries(bytes: Array[Byte]): List[ZipEntry] = {
     val zipStream  = new ZipInputStream(new ByteArrayInputStream(bytes))
-    val zipEntries = Stream.continually(zipStream.getNextEntry).takeWhile(_ != null).toList
+    val zipEntries = LazyList.continually(zipStream.getNextEntry).takeWhile(_ != null).toList
     zipStream.close()
 
     zipEntries

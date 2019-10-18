@@ -3,7 +3,7 @@ import algebras.QueueAlg
 import cats.effect.IO
 import com.amazonaws.services.sqs.AmazonSQS
 import com.amazonaws.services.sqs.model.{ReceiveMessageRequest, SendMessageRequest}
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class QueueSqs(client: AmazonSQS, queueName: String) extends QueueAlg[IO] {
 

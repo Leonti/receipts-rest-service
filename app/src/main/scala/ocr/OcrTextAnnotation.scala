@@ -4,8 +4,7 @@ import com.google.api.services.vision.v1.model.TextAnnotation
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.generic.auto._
-
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 case class DetectedLanguage(languageCode: String)
 case class TextProperty(detectedLanguages: Seq[DetectedLanguage])
 case class Vertex(x: Option[Int], y: Option[Int])
@@ -29,7 +28,7 @@ object OcrTextAnnotation {
     }
 
     def toTextProperty(p: com.google.api.services.vision.v1.model.TextProperty): TextProperty = {
-      TextProperty(detectedLanguages = p.getDetectedLanguages.asScala.map(toDetectedLanguage))
+      TextProperty(detectedLanguages = p.getDetectedLanguages.asScala.map(toDetectedLanguage).toSeq)
     }
 
     def toVertex(vertex: com.google.api.services.vision.v1.model.Vertex): Vertex = {
@@ -40,7 +39,7 @@ object OcrTextAnnotation {
     }
 
     def toBoundingPoly(boundingBox: com.google.api.services.vision.v1.model.BoundingPoly): BoundingPoly = {
-      BoundingPoly(vertices = boundingBox.getVertices.asScala.map(toVertex))
+      BoundingPoly(vertices = boundingBox.getVertices.asScala.map(toVertex).toSeq)
     }
 
     def toSymbol(s: com.google.api.services.vision.v1.model.Symbol): Symbol = {
@@ -50,20 +49,22 @@ object OcrTextAnnotation {
     def toWord(word: com.google.api.services.vision.v1.model.Word): Word = {
       Word(boundingBox = toBoundingPoly(word.getBoundingBox),
            property = toTextProperty(word.getProperty),
-           symbols = word.getSymbols.asScala.map(toSymbol))
+           symbols = word.getSymbols.asScala.map(toSymbol).toSeq)
     }
 
     def toParagraph(paragraph: com.google.api.services.vision.v1.model.Paragraph): Paragraph = {
-      Paragraph(boundingBox = toBoundingPoly(paragraph.getBoundingBox),
-                property = toTextProperty(paragraph.getProperty),
-                words = paragraph.getWords.asScala.map(toWord))
+      Paragraph(
+        boundingBox = toBoundingPoly(paragraph.getBoundingBox),
+        property = toTextProperty(paragraph.getProperty),
+        words = paragraph.getWords.asScala.map(toWord).toSeq
+      )
     }
 
     def toBlock(b: com.google.api.services.vision.v1.model.Block): Block = {
       Block(
         blockType = b.getBlockType,
         boundingBox = toBoundingPoly(b.getBoundingBox),
-        paragraphs = b.getParagraphs.asScala.map(toParagraph),
+        paragraphs = b.getParagraphs.asScala.map(toParagraph).toSeq,
         property = toTextProperty(b.getProperty)
       )
     }
@@ -72,9 +73,9 @@ object OcrTextAnnotation {
       Page(height = page.getHeight,
            width = page.getWidth,
            property = toTextProperty(page.getProperty),
-           blocks = page.getBlocks.asScala.map(toBlock))
+           blocks = page.getBlocks.asScala.map(toBlock).toSeq)
     }
 
-    OcrTextAnnotation(text = textAnnotation.getText, pages = textAnnotation.getPages.asScala.map(toPage))
+    OcrTextAnnotation(text = textAnnotation.getText, pages = textAnnotation.getPages.asScala.map(toPage).toSeq)
   }
 }

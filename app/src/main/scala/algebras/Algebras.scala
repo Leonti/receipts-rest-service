@@ -11,8 +11,6 @@ import queue.{QueueJob, ReservedJob}
 import receipt._
 import user.{UserId, UserIds}
 
-import scala.language.higherKinds
-
 trait ReceiptStoreAlg[F[_]] {
   def getReceipt(userId: UserId, id: String): F[Option[ReceiptEntity]]
   def deleteReceipt(userId: UserId, id: String): F[Unit]

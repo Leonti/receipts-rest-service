@@ -12,23 +12,24 @@ import user.UserIds
 
 class UserDynamo(openIdService: OpenIdService, client: AmazonDynamoDBAsync, tableName: String) extends UserAlg[IO] {
 
-  private val table = Table[UserIds](tableName)
+  private val table   = Table[UserIds](tableName)
+  private val scanamo = Scanamo(client)
 
   override def findByUsername(username: String): IO[List[UserIds]] = IO {
-    val ops    = table.index("username-index").query('username -> username)
-    val result = Scanamo.exec(client)(ops)
+    val ops    = table.index("username-index").query("username" -> username)
+    val result = scanamo.exec(ops)
     result.flatMap(_.toOption)
   }
 
   override def findByExternalId(id: String): IO[Option[UserIds]] = IO {
-    val ops    = table.query('externalId -> id)
-    val result = Scanamo.exec(client)(ops)
+    val ops    = table.query("externalId" -> id)
+    val result = scanamo.exec(ops)
     result.flatMap(_.toOption).headOption
   }
 
   override def saveUserIds(userIds: UserIds): IO[Unit] = IO {
     val ops = table.putAll(Set(userIds))
-    Scanamo.exec(client)(ops)
+    scanamo.exec(ops)
   }
 
   override def getExternalUserInfoFromAccessToken(accessToken: AccessToken): IO[ExternalUserInfo] =
