@@ -40,7 +40,7 @@ services:
       - ./app/Dockerfile:/app/Dockerfile
       - $HOME/.ivy2:/root/.ivy2
       - $HOME/.sbt:/root/.sbt
-    command: bash -c "sbt assembly && cp Dockerfile /app/target && cp /app/target/scala-2.12/receipts-rest-service-assembly-1.0.jar /app/target/receipts.jar"
+    command: bash -c "sbt assembly && cp Dockerfile /app/target && cp /app/target/scala-2.13/receipts-rest-service-assembly-1.0.jar /app/target/receipts.jar"
 
   test:
     image: leonti/sbt_1.2.1_openjdk8-alpine3.7:1.0
