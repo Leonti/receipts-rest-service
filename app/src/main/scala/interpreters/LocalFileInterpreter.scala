@@ -20,11 +20,13 @@ class LocalFileInterpreter(bec: ExecutionContext) extends LocalFileAlg[IO] {
     for {
       md5 <- IO(MessageDigest.getInstance("MD5"))
       result <- IO(new DigestInputStream(new FileInputStream(file), md5))
-        .bracket(dis =>
-          IO {
-            val buffer = new Array[Byte](8192)
-            while (dis.read(buffer) != -1) {}
-        })(dis => IO(dis.close()))
+        .bracket(
+          dis =>
+            IO {
+              val buffer = new Array[Byte](8192)
+              while (dis.read(buffer) != -1) {}
+            }
+        )(dis => IO(dis.close()))
         .map(_ => md5.digest.map("%02x".format(_)).mkString)
     } yield result
 

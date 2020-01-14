@@ -55,20 +55,18 @@ object FileMetaData {
               length <- c.downField("length").as[Long]
               width  <- c.downField("width").as[Int]
               height <- c.downField("height").as[Int]
-            } yield
-              ImageMetaData(
-                length = length,
-                width = width,
-                height = height
-              )
+            } yield ImageMetaData(
+              length = length,
+              width = width,
+              height = height
+            )
           case fileType =>
             for {
               length <- c.downField("length").as[Long]
-            } yield
-              GenericMetaData(
-                fileType = fileType,
-                length = length
-              )
+            } yield GenericMetaData(
+              fileType = fileType,
+              length = length
+            )
         })
   }
 

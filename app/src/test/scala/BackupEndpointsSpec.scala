@@ -23,9 +23,14 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
       FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0L)
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List(fileEntity))
 
-    val routing = new Routing(testAlgebras.copy(
-      receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(
+        receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
+        fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))
+      ),
+      testConfig,
+      global
+    )
 
     val accessToken = new PathToken(authSecret).generatePathToken(s"/user/$defaultUserId/backup/download")
 
@@ -35,8 +40,8 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync()
-    val content = response.map(res => res.body.compile.toList.run.unsafeRunSync._2.toArray)
-    val contentType = response.flatMap(_.headers.get(`Content-Type`).map(_.value))
+    val content       = response.map(res => res.body.compile.toList.run.unsafeRunSync._2.toArray)
+    val contentType   = response.flatMap(_.headers.get(`Content-Type`).map(_.value))
 
     contentType shouldBe Some("application/zip")
     content.map(toZipEntries).map(_.size) shouldBe Some(2)

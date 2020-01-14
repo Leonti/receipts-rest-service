@@ -48,9 +48,12 @@ class ImageInt extends ImageAlg[IO] {
       decode[List[ImageResult]](output) match {
         case Right(imageResults) =>
           IO(
-            ImageMetaData(length = file.length,
-                          width = imageResults.head.image.geometry.width,
-                          height = imageResults.head.image.geometry.height))
+            ImageMetaData(
+              length = file.length,
+              width = imageResults.head.image.geometry.width,
+              height = imageResults.head.image.geometry.height
+            )
+          )
         case Left(e) => IO.raiseError(e.fillInStackTrace())
       }
     }

@@ -12,10 +12,12 @@ import processing.{FileProcessor, OcrProcessor}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class QueueProcessor[F[_]: Effect: ContextShift: Timer](queueAlg: QueueAlg[F],
-                                                        fileProcessor: FileProcessor[F],
-                                                        ocrProcessor: OcrProcessor[F],
-                                                        bec: ExecutionContext) {
+class QueueProcessor[F[_]: Effect: ContextShift: Timer](
+    queueAlg: QueueAlg[F],
+    fileProcessor: FileProcessor[F],
+    ocrProcessor: OcrProcessor[F],
+    bec: ExecutionContext
+) {
 
   def reserveNextJob(): F[Unit] = {
     queueAlg

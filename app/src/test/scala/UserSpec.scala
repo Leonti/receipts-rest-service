@@ -14,7 +14,7 @@ class UserSpec extends FlatSpec with Matchers {
   private implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
   val accessToken = "token"
-  val authHeader = Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
+  val authHeader  = Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
 
   it should "should show user info" in {
     val routing = new Routing(testAlgebras, testConfig, global)
@@ -40,15 +40,19 @@ class UserSpec extends FlatSpec with Matchers {
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
-    val status = response.map(_.status)
+    val status        = response.map(_.status)
 
     status shouldBe Some(Status.Unauthorized)
   }
 
   it should "fail when user doesn't exist" in {
-    val routing = new Routing(testAlgebras.copy(
-      userAlg = new UserIntTest(users = List())
-    ), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(
+        userAlg = new UserIntTest(users = List())
+      ),
+      testConfig,
+      global
+    )
 
     val request: Request[TestProgram] = Request(
       method = Method.GET,
@@ -57,10 +61,9 @@ class UserSpec extends FlatSpec with Matchers {
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
-    val status = response.map(_.status)
+    val status        = response.map(_.status)
 
     status shouldBe Some(Status.Unauthorized)
   }
 
 }
-

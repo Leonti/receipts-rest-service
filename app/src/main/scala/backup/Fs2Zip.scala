@@ -21,23 +21,26 @@ object Fs2Zip {
 
   private val CHUNK_SIZE = 8192
 
-  private def writeEntry[F[_]](zos: ZipOutputStream)(implicit F: Concurrent[F],
-                                                     blockingEc: ExecutionContext,
-                                                     contextShift: ContextShift[F]): Pipe[F, (String, Stream[F, Byte]), Unit] =
+  private def writeEntry[F[_]](
+      zos: ZipOutputStream
+  )(implicit F: Concurrent[F], blockingEc: ExecutionContext, contextShift: ContextShift[F]): Pipe[F, (String, Stream[F, Byte]), Unit] =
     _.flatMap {
       case (name, data) =>
         val createEntry = Stream.eval(F.delay {
           zos.putNextEntry(new ZipEntry(name))
         })
         val writeEntry = data.through(
-          io.writeOutputStream(F.delay(zos.asInstanceOf[OutputStream]), Blocker.liftExecutionContext(blockingEc), closeAfterUse = false))
+          io.writeOutputStream(F.delay(zos.asInstanceOf[OutputStream]), Blocker.liftExecutionContext(blockingEc), closeAfterUse = false)
+        )
         val closeEntry = Stream.eval(F.delay(zos.closeEntry()))
         createEntry ++ writeEntry ++ closeEntry
     }
 
-  private def zipP1[F[_]](implicit F: ConcurrentEffect[F],
-                          blockingEc: ExecutionContext,
-                          contextShift: ContextShift[F]): Pipe[F, (String, Stream[F, Byte]), Byte] = entries => {
+  private def zipP1[F[_]](
+      implicit F: ConcurrentEffect[F],
+      blockingEc: ExecutionContext,
+      contextShift: ContextShift[F]
+  ): Pipe[F, (String, Stream[F, Byte]), Byte] = entries => {
 
     Stream.eval(Queue.unbounded[F, Option[Chunk[Byte]]]).flatMap { q =>
       Stream.suspend {
@@ -90,7 +93,8 @@ object Fs2Zip {
     }
   }
 
-  def zip[F[_]: ConcurrentEffect: ContextShift](entries: Stream[F, (String, Stream[F, Byte])])(
-      implicit ec: ExecutionContext): Stream[F, Byte] =
+  def zip[F[_]: ConcurrentEffect: ContextShift](
+      entries: Stream[F, (String, Stream[F, Byte])]
+  )(implicit ec: ExecutionContext): Stream[F, Byte] =
     entries.through(zipP1)
 }

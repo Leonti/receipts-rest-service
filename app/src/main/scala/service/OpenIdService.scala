@@ -30,6 +30,7 @@ class OpenIdService(httpClient: Client[IO]) {
         GET(
           Uri.uri("https://leonti.au.auth0.com/userinfo"),
           Authorization(Credentials.Token(AuthScheme.Bearer, accessToken.value))
-        ))
+        )
+      )
       .map(userInfo => ExternalUserInfo(email = userInfo.email, sub = userInfo.sub))
 }

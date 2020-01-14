@@ -15,9 +15,11 @@ import scala.concurrent.ExecutionContext
 
 case class ReceiptsBackup[F[_]](source: Stream[F, Byte], filename: String)
 
-class BackupService[F[_]: Monad: ConcurrentEffect: ContextShift](receiptAlg: ReceiptStoreAlg[F],
-                                                                 remoteFileAlg: RemoteFileAlg[F],
-                                                                 bec: ExecutionContext) {
+class BackupService[F[_]: Monad: ConcurrentEffect: ContextShift](
+    receiptAlg: ReceiptStoreAlg[F],
+    remoteFileAlg: RemoteFileAlg[F],
+    bec: ExecutionContext
+) {
 
   case class FileToZip(path: String, source: Stream[F, Byte])
 
@@ -28,11 +30,10 @@ class BackupService[F[_]: Monad: ConcurrentEffect: ContextShift](receiptAlg: Rec
     def fileToZip(fileEntity: FileEntity): F[FileToZip] =
       for {
         source <- remoteFileAlg.remoteFileStream(RemoteFileId(userId, fileEntity.id))
-      } yield
-        FileToZip(
-          path = fileEntity.id + "." + fileEntity.ext,
-          source = source
-        )
+      } yield FileToZip(
+        path = fileEntity.id + "." + fileEntity.ext,
+        source = source
+      )
 
     val receiptJsonEntry: Seq[ReceiptEntity] => FileToZip = receipts => {
       val receiptsAsJson = receipts.asJson.spaces2

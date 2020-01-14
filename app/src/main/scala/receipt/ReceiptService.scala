@@ -39,15 +39,17 @@ object Patch {
   }
 }
 
-class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
-                                   receiptAlg: ReceiptStoreAlg[F],
-                                   localFileAlg: LocalFileAlg[F],
-                                   remoteFileAlg: RemoteFileAlg[F],
-                                   fileStoreAlg: FileStoreAlg[F],
-                                   pendingFileAlg: PendingFileAlg[F],
-                                   queueAlg: QueueAlg[F],
-                                   randomAlg: RandomAlg[F],
-                                   ocrAlg: OcrAlg[F]) {
+class ReceiptPrograms[F[_]: Monad](
+    uploadsLocation: String,
+    receiptAlg: ReceiptStoreAlg[F],
+    localFileAlg: LocalFileAlg[F],
+    remoteFileAlg: RemoteFileAlg[F],
+    fileStoreAlg: FileStoreAlg[F],
+    pendingFileAlg: PendingFileAlg[F],
+    queueAlg: QueueAlg[F],
+    randomAlg: RandomAlg[F],
+    ocrAlg: OcrAlg[F]
+) {
   import receiptAlg._, randomAlg._, ocrAlg._
   import ReceiptErrors._
 
@@ -86,7 +88,8 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
           remoteFileId = remoteFileId,
           fileExt = ext,
           pendingFileId = pendingFileId
-        ))
+        )
+      )
     } yield pendingFile
 
   private def validateExistingFile(haveExisting: Boolean): EitherT[F, Error, Unit] =
@@ -112,8 +115,10 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
           StoredFile(
             userId = userId.value,
             id = receiptId,
-            md5 = md5,
-          )))
+            md5 = md5
+          )
+        )
+      )
       receipt = ReceiptEntity(
         id = receiptId,
         userId = userId.value,
@@ -150,11 +155,13 @@ class ReceiptPrograms[F[_]: Monad](uploadsLocation: String,
 
   private def removeReceiptFiles(userId: UserId, files: List[FileEntity]): F[List[Unit]] =
     files
-      .map(file =>
-        for {
-          _ <- remoteFileAlg.deleteRemoteFile(RemoteFileId(userId, file.id))
-          r <- fileStoreAlg.deleteStoredFile(userId, file.id)
-        } yield r)
+      .map(
+        file =>
+          for {
+            _ <- remoteFileAlg.deleteRemoteFile(RemoteFileId(userId, file.id))
+            r <- fileStoreAlg.deleteStoredFile(userId, file.id)
+          } yield r
+      )
       .sequence
 
   def removeReceipt(userId: UserId, receiptId: String): F[Option[Unit]] =

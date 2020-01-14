@@ -53,9 +53,14 @@ class GoogleOcrService(credentialsFile: File, imageResizeAlg: ImageAlg[IO]) exte
     requests.add(
       new AnnotateImageRequest()
         .setImage(new Image().encodeContent(Files.readAllBytes(file.toPath)))
-        .setFeatures(ImmutableList.of(new Feature()
-          .setType("TEXT_DETECTION")
-          .setMaxResults(10000))))
+        .setFeatures(
+          ImmutableList.of(
+            new Feature()
+              .setType("TEXT_DETECTION")
+              .setMaxResults(10000)
+          )
+        )
+    )
 
     val annotate =
       vision

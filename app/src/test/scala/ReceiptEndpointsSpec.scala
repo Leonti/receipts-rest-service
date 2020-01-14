@@ -17,7 +17,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   private implicit val cs: ContextShift[IO] = IO.contextShift(global)
 
   val accessToken = "Bearer token"
-  val authHeader = Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
+  val authHeader  = Authorization(Credentials.Token(AuthScheme.Bearer, accessToken))
 
   it should "create receipt from file upload" in {
     val routing = new Routing(testAlgebras, testConfig, global)
@@ -43,25 +43,30 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
 
     val receipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
-    receipt shouldBe Some(ReceiptEntity(
-      id = defaultRandomId,
-      userId = defaultUserId,
-      total = Some(BigDecimal(12.38)),
-      description = "some description",
-      timestamp = 0,
-      lastModified = 0,
-      transactionTime = 1480130712396L,
-      tags = List("veggies", "food"),
-      files = List()
-    ))
+    receipt shouldBe Some(
+      ReceiptEntity(
+        id = defaultRandomId,
+        userId = defaultUserId,
+        total = Some(BigDecimal(12.38)),
+        description = "some description",
+        timestamp = 0,
+        lastModified = 0,
+        transactionTime = 1480130712396L,
+        tags = List("veggies", "food"),
+        files = List()
+      )
+    )
 
     sideEffects should contain(TestInterpreters.PendingFileSaved)
     sideEffects should contain(TestInterpreters.PendingFileSubmitted)
   }
 
   it should "reject receipt if file already exists" in {
-    val routing = new Routing(testAlgebras.copy(
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))),
+      testConfig,
+      global
+    )
 
     val textContent: EntityBody[TestProgram] = EntityEncoder[TestProgram, String].toEntity("file content").body
     val formBody = Multipart[TestProgram](
@@ -118,9 +123,14 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       FileEntity(id = "1", parentId = None, ext = "txt", metaData = GenericMetaData(fileType = "TXT", length = 11), timestamp = 0L)
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List(fileEntity))
 
-    val routing = new Routing(testAlgebras.copy(
-      receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(
+        receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
+        fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))
+      ),
+      testConfig,
+      global
+    )
 
     val request: Request[TestProgram] = Request(
       method = Method.GET,
@@ -129,8 +139,8 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
-    val content = response.map(res => StreamToString.streamToString(res.body))
-    val contentType = response.flatMap(_.headers.get(`Content-Type`).map(_.value))
+    val content       = response.map(res => StreamToString.streamToString(res.body))
+    val contentType   = response.flatMap(_.headers.get(`Content-Type`).map(_.value))
 
     content shouldBe Some("some text")
     contentType shouldBe Some("text/plain")
@@ -139,9 +149,14 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "read receipt by id" in {
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List())
 
-    val routing = new Routing(testAlgebras.copy(
-      receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(
+        receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
+        fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))
+      ),
+      testConfig,
+      global
+    )
 
     val request: Request[TestProgram] = Request(
       method = Method.GET,
@@ -149,7 +164,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       headers = Headers.of(authHeader)
     )
 
-    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val (_, response)   = routing.routes.run(request).value.run.unsafeRunSync
     val responseReceipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
     responseReceipt shouldBe Some(receipt)
@@ -158,19 +173,24 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "patch a receipt" in {
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List())
 
-    val routing = new Routing(testAlgebras.copy(
-      receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(
+        receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
+        fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))
+      ),
+      testConfig,
+      global
+    )
 
     val patchJson = Json.arr(
       Json.obj(
-        "op" -> Json.fromString("replace"),
-        "path" -> Json.fromString("/description"),
+        "op"    -> Json.fromString("replace"),
+        "path"  -> Json.fromString("/description"),
         "value" -> Json.fromString("some new description")
       ),
       Json.obj(
-        "op" -> Json.fromString("replace"),
-        "path" -> Json.fromString("/total"),
+        "op"    -> Json.fromString("replace"),
+        "path"  -> Json.fromString("/total"),
         "value" -> Json.fromString("12.38")
       )
     )
@@ -182,7 +202,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       headers = Headers.of(authHeader)
     )
 
-    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val (_, response)   = routing.routes.run(request).value.run.unsafeRunSync
     val responseReceipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
     responseReceipt.map(_.description) shouldBe Some("some new description")
@@ -192,14 +212,19 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "unset total after patch with null" in {
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List())
 
-    val routing = new Routing(testAlgebras.copy(
-      receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(
+        receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
+        fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))
+      ),
+      testConfig,
+      global
+    )
 
     val patchJson = Json.arr(
       Json.obj(
-        "op" -> Json.fromString("replace"),
-        "path" -> Json.fromString("/total"),
+        "op"    -> Json.fromString("replace"),
+        "path"  -> Json.fromString("/total"),
         "value" -> Json.Null
       )
     )
@@ -211,7 +236,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       headers = Headers.of(authHeader)
     )
 
-    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val (_, response)   = routing.routes.run(request).value.run.unsafeRunSync
     val responseReceipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
     responseReceipt.flatMap(_.total) shouldBe None
@@ -220,13 +245,18 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "unset total after patch with remove" in {
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List())
 
-    val routing = new Routing(testAlgebras.copy(
-      receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(
+        receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
+        fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))
+      ),
+      testConfig,
+      global
+    )
 
     val patchJson = Json.arr(
       Json.obj(
-        "op" -> Json.fromString("remove"),
+        "op"   -> Json.fromString("remove"),
         "path" -> Json.fromString("/total")
       )
     )
@@ -238,7 +268,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       headers = Headers.of(authHeader)
     )
 
-    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val (_, response)   = routing.routes.run(request).value.run.unsafeRunSync
     val responseReceipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
     responseReceipt.flatMap(_.total) shouldBe None
@@ -247,14 +277,19 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "set tags with a patch" in {
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List())
 
-    val routing = new Routing(testAlgebras.copy(
-      receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(
+        receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
+        fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))
+      ),
+      testConfig,
+      global
+    )
 
     val patchJson = Json.arr(
       Json.obj(
-        "op" -> Json.fromString("replace"),
-        "path" -> Json.fromString("/tags"),
+        "op"    -> Json.fromString("replace"),
+        "path"  -> Json.fromString("/tags"),
         "value" -> Json.arr(Json.fromString("vegetables"), Json.fromString("food"))
       )
     )
@@ -266,7 +301,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       headers = Headers.of(authHeader)
     )
 
-    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val (_, response)   = routing.routes.run(request).value.run.unsafeRunSync
     val responseReceipt = response.map(_.as[ReceiptEntity].run.unsafeRunSync._2)
 
     responseReceipt.map(_.tags) shouldBe Some(List("vegetables", "food"))
@@ -276,9 +311,14 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "delete a receipt" in {
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List())
 
-    val routing = new Routing(testAlgebras.copy(
-      receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(
+        receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
+        fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))
+      ),
+      testConfig,
+      global
+    )
 
     val request: Request[TestProgram] = Request(
       method = Method.DELETE,
@@ -287,7 +327,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
     )
 
     val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
-    val status = response.map(_.status)
+    val status        = response.map(_.status)
 
     status shouldBe Some(Status.NoContent)
   }
@@ -295,9 +335,14 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
   it should "return list of receipts" in {
     val receipt = ReceiptEntity(id = "2", userId = defaultUserId, files = List())
 
-    val routing = new Routing(testAlgebras.copy(
-      receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
-      fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))), testConfig, global)
+    val routing = new Routing(
+      testAlgebras.copy(
+        receiptStoreAlg = new ReceiptStoreIntTest(List(receipt)),
+        fileStoreAlg = new FileStoreIntTest(md5Response = List(StoredFile(defaultUserId, "fileId", "md5")))
+      ),
+      testConfig,
+      global
+    )
 
     val request: Request[TestProgram] = Request(
       method = Method.GET,
@@ -305,7 +350,7 @@ class ReceiptEndpointsSpec extends FlatSpec with Matchers {
       headers = Headers.of(authHeader)
     )
 
-    val (_, response) = routing.routes.run(request).value.run.unsafeRunSync
+    val (_, response)    = routing.routes.run(request).value.run.unsafeRunSync
     val responseReceipts = response.map(_.as[List[ReceiptEntity]].run.unsafeRunSync._2)
 
     responseReceipts shouldBe Some(List(receipt))

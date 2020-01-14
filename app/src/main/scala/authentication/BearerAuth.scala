@@ -32,7 +32,8 @@ class BearerAuth[F[_]: Effect](verificationAlg: JwtVerificationAlg[Id], fromBear
     })
 
   private val onFailure: AuthedRoutes[String, F] = Kleisli(
-    req => OptionT.liftF(Monad[F].pure(Response(status = Status.Unauthorized).withEntity(req.authInfo))))
+    req => OptionT.liftF(Monad[F].pure(Response(status = Status.Unauthorized).withEntity(req.authInfo)))
+  )
 
   val authMiddleware: AuthMiddleware[F, UserIds] = AuthMiddleware(authUser, onFailure)
 

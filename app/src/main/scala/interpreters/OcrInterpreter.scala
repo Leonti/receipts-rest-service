@@ -22,12 +22,13 @@ object OcrIntepreter {
   case class OcrConfig(ocrHost: String, apiKey: String)
 }
 
-class OcrInterpreterTagless(httpClient: Client[IO],
-                            config: S3Config,
-                            amazonS3Client: AmazonS3,
-                            ocrService: OcrService,
-                            ocrConfig: OcrIntepreter.OcrConfig)
-    extends OcrAlg[IO] {
+class OcrInterpreterTagless(
+    httpClient: Client[IO],
+    config: S3Config,
+    amazonS3Client: AmazonS3,
+    ocrService: OcrService,
+    ocrConfig: OcrIntepreter.OcrConfig
+) extends OcrAlg[IO] {
 
   private implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
@@ -45,7 +46,8 @@ class OcrInterpreterTagless(httpClient: Client[IO],
         IO(amazonS3Client.getObject(config.bucket, s"user/$userId/ocr/$receiptId").getObjectContent.asInstanceOf[InputStream]),
         1024,
         Blocker.liftExecutionContext(ExecutionContext.global)
-      ))
+      )
+    )
   }
 
   override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): IO[Unit] =
@@ -55,7 +57,8 @@ class OcrInterpreterTagless(httpClient: Client[IO],
           OcrContent(ocrText.text).asJson,
           Uri.unsafeFromString(s"${ocrConfig.ocrHost}/api/search/$userId/$receiptId"),
           Authorization(Credentials.Token(CaseInsensitiveString("ApiKey"), ocrConfig.apiKey))
-        ))
+        )
+      )
       .map(_ => ())
 
   override def findIdsByText(userId: String, query: String): IO[List[String]] =
@@ -64,6 +67,7 @@ class OcrInterpreterTagless(httpClient: Client[IO],
         GET(
           Uri.unsafeFromString(s"${ocrConfig.ocrHost}/api/search/$userId").withQueryParam("q", query),
           Authorization(Credentials.Token(CaseInsensitiveString("ApiKey"), ocrConfig.apiKey))
-        ))
+        )
+      )
       .map(_.ids)
 }

@@ -73,19 +73,19 @@ class FileProcessor[F[_]: Monad](
         } yield ()
       _              <- localFileAlg.removeFile(tmpFile)
       updatedReceipt <- receiptAlg.getReceipt(UserId(receiptFileJob.userId), receiptFileJob.receiptId)
-    } yield
-      updatedReceipt
-        .map { receipt =>
-          if (isImage)
-            List(
-              OcrJob(
-                userId = receiptFileJob.userId,
-                receiptId = receiptFileJob.receiptId,
-                fileId = receipt.files.filter(_.parentId.isEmpty).head.id,
-                pendingFileId = receiptFileJob.pendingFileId
-              ))
-          else List()
-        }
-        .getOrElse(List())
+    } yield updatedReceipt
+      .map { receipt =>
+        if (isImage)
+          List(
+            OcrJob(
+              userId = receiptFileJob.userId,
+              receiptId = receiptFileJob.receiptId,
+              fileId = receipt.files.filter(_.parentId.isEmpty).head.id,
+              pendingFileId = receiptFileJob.pendingFileId
+            )
+          )
+        else List()
+      }
+      .getOrElse(List())
 
 }

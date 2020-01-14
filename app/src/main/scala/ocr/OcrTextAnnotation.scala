@@ -47,9 +47,11 @@ object OcrTextAnnotation {
     }
 
     def toWord(word: com.google.api.services.vision.v1.model.Word): Word = {
-      Word(boundingBox = toBoundingPoly(word.getBoundingBox),
-           property = toTextProperty(word.getProperty),
-           symbols = word.getSymbols.asScala.map(toSymbol).toSeq)
+      Word(
+        boundingBox = toBoundingPoly(word.getBoundingBox),
+        property = toTextProperty(word.getProperty),
+        symbols = word.getSymbols.asScala.map(toSymbol).toSeq
+      )
     }
 
     def toParagraph(paragraph: com.google.api.services.vision.v1.model.Paragraph): Paragraph = {
@@ -70,10 +72,12 @@ object OcrTextAnnotation {
     }
 
     def toPage(page: com.google.api.services.vision.v1.model.Page): Page = {
-      Page(height = page.getHeight,
-           width = page.getWidth,
-           property = toTextProperty(page.getProperty),
-           blocks = page.getBlocks.asScala.map(toBlock).toSeq)
+      Page(
+        height = page.getHeight,
+        width = page.getWidth,
+        property = toTextProperty(page.getProperty),
+        blocks = page.getBlocks.asScala.map(toBlock).toSeq
+      )
     }
 
     OcrTextAnnotation(text = textAnnotation.getText, pages = textAnnotation.getPages.asScala.map(toPage).toSeq)

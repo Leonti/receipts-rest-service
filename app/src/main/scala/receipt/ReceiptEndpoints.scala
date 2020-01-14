@@ -107,27 +107,26 @@ class ReceiptEndpoints[F[_]: Monad](
       transactionTimeV <- transactionTimeF
       totalV           <- totalF
       tagsV            <- tagsF
-    } yield
-      Apply[ValidatedNel[String, ?]]
-        .map5(
-          validatedReceipt,
-          totalV,
-          validated("description"),
-          transactionTimeV,
-          tagsV
-        ) {
-          case (receiptField, total, descriptionF, transactionTime, tags) =>
-            descriptionF.map { description =>
-              ReceiptForm(
-                receiptField,
-                total,
-                description,
-                transactionTime,
-                tags
-              )
-            }
-        }
-        .sequence
+    } yield Apply[ValidatedNel[String, ?]]
+      .map5(
+        validatedReceipt,
+        totalV,
+        validated("description"),
+        transactionTimeV,
+        tagsV
+      ) {
+        case (receiptField, total, descriptionF, transactionTime, tags) =>
+          descriptionF.map { description =>
+            ReceiptForm(
+              receiptField,
+              total,
+              description,
+              transactionTime,
+              tags
+            )
+          }
+      }
+      .sequence
 
     nested.flatMap(identity)
   }

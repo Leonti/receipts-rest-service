@@ -10,22 +10,24 @@ class FileProcessorSpec extends FlatSpec with Matchers {
 
   it should "process image file" in {
 
-    val receiptId = "receiptId"
+    val receiptId     = "receiptId"
     val imageMetaData = ImageMetaData(width = 1, height = 2, length = 3)
-    val fileExt = "jpg"
+    val fileExt       = "jpg"
     val pendingFileId = "pending-file"
 
     val expectedFileEntity1 = FileEntity(receiptId, None, fileExt, imageMetaData, defaultTime)
     val expectedFileEntity2 = FileEntity(defaultRandomId, Some(expectedFileEntity1.id), fileExt, imageMetaData, defaultTime)
 
     val fileProcessor = new FileProcessor(
-      new ReceiptStoreIntTest(List(
-        ReceiptEntity(
-          id = receiptId,
-          userId = defaultUserId,
-          files = List(expectedFileEntity1, expectedFileEntity2)
+      new ReceiptStoreIntTest(
+        List(
+          ReceiptEntity(
+            id = receiptId,
+            userId = defaultUserId,
+            files = List(expectedFileEntity1, expectedFileEntity2)
+          )
         )
-      )),
+      ),
       testAlgebras.pendingFileAlg,
       testAlgebras.localFileAlg,
       testAlgebras.remoteFileAlg,
@@ -33,13 +35,18 @@ class FileProcessorSpec extends FlatSpec with Matchers {
       testAlgebras.randomAlg
     )
 
-    val (sideEffects, jobs) = fileProcessor.processJob(ReceiptFileJob(
-      userId = defaultUserId,
-      receiptId = receiptId,
-      remoteFileId = RemoteFileId(UserId(defaultUserId), receiptId),
-      fileExt = fileExt,
-      pendingFileId = pendingFileId
-    )).run.unsafeRunSync()
+    val (sideEffects, jobs) = fileProcessor
+      .processJob(
+        ReceiptFileJob(
+          userId = defaultUserId,
+          receiptId = receiptId,
+          remoteFileId = RemoteFileId(UserId(defaultUserId), receiptId),
+          fileExt = fileExt,
+          pendingFileId = pendingFileId
+        )
+      )
+      .run
+      .unsafeRunSync()
 
     jobs shouldBe List(
       OcrJob(
@@ -47,7 +54,8 @@ class FileProcessorSpec extends FlatSpec with Matchers {
         receiptId = receiptId,
         fileId = receiptId,
         pendingFileId = pendingFileId
-      ))
+      )
+    )
 
     sideEffects should contain(FileEntityAdded(expectedFileEntity1))
     sideEffects should contain(FileEntityAdded(expectedFileEntity2))
@@ -56,21 +64,23 @@ class FileProcessorSpec extends FlatSpec with Matchers {
   }
 
   it should "process non-image file" in {
-    val receiptId = "receiptId"
+    val receiptId       = "receiptId"
     val genericMetaData = GenericMetaData(length = 3)
-    val fileExt = "txt"
-    val pendingFileId = "pending-file"
+    val fileExt         = "txt"
+    val pendingFileId   = "pending-file"
 
     val expectedFileEntity = FileEntity(receiptId, None, fileExt, genericMetaData, defaultTime)
 
     val fileProcessor = new FileProcessor(
-      new ReceiptStoreIntTest(List(
-        ReceiptEntity(
-          id = receiptId,
-          userId = defaultUserId,
-          files = List(expectedFileEntity)
+      new ReceiptStoreIntTest(
+        List(
+          ReceiptEntity(
+            id = receiptId,
+            userId = defaultUserId,
+            files = List(expectedFileEntity)
+          )
         )
-      )),
+      ),
       testAlgebras.pendingFileAlg,
       new LocalFileIntTest(genericMetaData = genericMetaData),
       testAlgebras.remoteFileAlg,
@@ -78,13 +88,18 @@ class FileProcessorSpec extends FlatSpec with Matchers {
       testAlgebras.randomAlg
     )
 
-    val (sideEffects, jobs) = fileProcessor.processJob(ReceiptFileJob(
-      userId = defaultUserId,
-      receiptId = receiptId,
-      remoteFileId = RemoteFileId(UserId(defaultUserId), receiptId),
-      fileExt = fileExt,
-      pendingFileId = pendingFileId
-    )).run.unsafeRunSync()
+    val (sideEffects, jobs) = fileProcessor
+      .processJob(
+        ReceiptFileJob(
+          userId = defaultUserId,
+          receiptId = receiptId,
+          remoteFileId = RemoteFileId(UserId(defaultUserId), receiptId),
+          fileExt = fileExt,
+          pendingFileId = pendingFileId
+        )
+      )
+      .run
+      .unsafeRunSync()
 
     jobs shouldBe List()
 

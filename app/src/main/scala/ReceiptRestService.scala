@@ -75,11 +75,13 @@ object ReceiptRestService extends IOApp {
   val receiptInterpreter = new ReceiptsStoreDynamo(dynamoDbClient, s"receipts-$env")
 
   val ocrInterpreter =
-    new OcrInterpreterTagless(httpClient,
-                              awsConfig,
-                              amazonS3Client,
-                              ocrService,
-                              OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY")))
+    new OcrInterpreterTagless(
+      httpClient,
+      awsConfig,
+      amazonS3Client,
+      ocrService,
+      OcrIntepreter.OcrConfig(sys.env("OCR_SEARCH_HOST"), sys.env("OCR_SEARCH_API_KEY"))
+    )
 
   val userPrograms = new UserPrograms(userInterpreter, randomInterpreter)
 

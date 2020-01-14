@@ -33,3 +33,6 @@ run.sh
 app/src/main/scala/OcrOld.scala
 app/src/main/scala/OcrTest.scala
 app/src/main/scala/Rotation.scala
+
+.bloop
+.metals

@@ -8,11 +8,13 @@ import ocr.OcrText
 import receipt.RemoteFileId
 import user.UserId
 
-class OcrProcessor[F[_]: Monad](remoteFileAlg: RemoteFileAlg[F],
-                                localFileAlg: LocalFileAlg[F],
-                                ocrAlg: OcrAlg[F],
-                                randomAlg: RandomAlg[F],
-                                pendingFileAlg: PendingFileAlg[F]) {
+class OcrProcessor[F[_]: Monad](
+    remoteFileAlg: RemoteFileAlg[F],
+    localFileAlg: LocalFileAlg[F],
+    ocrAlg: OcrAlg[F],
+    randomAlg: RandomAlg[F],
+    pendingFileAlg: PendingFileAlg[F]
+) {
   import ocrAlg._, randomAlg._, pendingFileAlg._
 
   def processJob(ocrJob: OcrJob): F[List[QueueJob]] =

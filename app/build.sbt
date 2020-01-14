@@ -1,13 +1,18 @@
 import sbt.Defaults.testSettings
 import sbt.librarymanagement.Configuration
 import sbt.librarymanagement.Configurations.Runtime
-//enablePlugins(JavaAppPackaging)
 
 name := "receipts-rest-service"
 organization := "rocks.leonti"
 version := "1.0"
 scalaVersion := "2.13.1"
-test in assembly := {}
+
+addCompilerPlugin(scalafixSemanticdb)
+addCommandAlias("fix", "; all compile:scalafix test:scalafix ; scalafmtAll")
+addCommandAlias(
+    "check",
+    "; compile:scalafix --check ; test:scalafix --check ; scalafmtCheckAll"
+)
 
 scalacOptions := Seq("-unchecked",
                      "-deprecation",
@@ -18,6 +23,7 @@ scalacOptions := Seq("-unchecked",
                      "-Xlint:inaccessible",
                      "-Xlint:unused",
                      "-Wunused:imports",
+                     "-Ywarn-unused",
                      "-encoding",
                      "utf8")
 
@@ -101,7 +107,7 @@ resolvers += "Typesafe" at "https://repo.typesafe.com/typesafe/releases/"
 updateOptions := updateOptions.value.withLatestSnapshots(false)
 
 mainClass in assembly := Some("ReceiptRestService")
-
+test in assembly := {}
 assemblyMergeStrategy in assembly := {
   case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.first
   case x =>

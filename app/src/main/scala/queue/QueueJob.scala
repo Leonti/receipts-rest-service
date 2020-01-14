@@ -17,13 +17,14 @@ object ContextHolder {
   implicit val contextHolderEncoder: Encoder[ContextHolder] = deriveEncoder
 }
 
-case class ReceiptFileJob(userId: String,
-                          receiptId: String,
-                          remoteFileId: RemoteFileId,
-                          fileExt: String,
-                          pendingFileId: String,
-                          context: String = "RECEIPT_FILE")
-    extends QueueJob
+case class ReceiptFileJob(
+    userId: String,
+    receiptId: String,
+    remoteFileId: RemoteFileId,
+    fileExt: String,
+    pendingFileId: String,
+    context: String = "RECEIPT_FILE"
+) extends QueueJob
 
 object ReceiptFileJob {
   implicit val receiptFileJobDecoder: Decoder[ReceiptFileJob] = deriveDecoder
