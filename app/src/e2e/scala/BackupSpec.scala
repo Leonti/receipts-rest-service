@@ -26,9 +26,11 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
   val (httpClient, _) = BlazeClientBuilder[IO](global)
     .withResponseHeaderTimeout(60.seconds)
     .withRequestTimeout(60.seconds)
-    .resource.allocated.unsafeRunSync()
+    .resource
+    .allocated
+    .unsafeRunSync()
 
-  val userTestUtils = new UserTestUtils(httpClient)
+  val userTestUtils    = new UserTestUtils(httpClient)
   val receiptTestUtils = new ReceiptTestUtils(httpClient)
 
   private def getBackupToken(accessToken: String): IO[OAuth2AccessTokenResponse] = {
@@ -60,12 +62,12 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
   it should "download a backup" in {
 
     val zipEntriesIO: IO[List[ZipEntry]] = for {
-      r      <- userTestUtils.createUser
+      r <- userTestUtils.createUser
       (userInfo, accessToken) = r
       firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContent, accessToken.value)
-      _ <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
-      backupToken <- getBackupToken(accessToken.value)
-      backupBytes <- getBackup(userInfo.id, backupToken.accessToken)
+      _                  <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
+      backupToken        <- getBackupToken(accessToken.value)
+      backupBytes        <- getBackup(userInfo.id, backupToken.accessToken)
     } yield toZipEntries(backupBytes)
 
     whenReady(zipEntriesIO.unsafeToFuture()) { zipEntries: List[ZipEntry] =>
@@ -75,7 +77,7 @@ class BackupSpec extends FlatSpec with Matchers with ScalaFutures {
 
   def toZipEntries(bytes: Array[Byte]): List[ZipEntry] = {
     val zipStream  = new ZipInputStream(new ByteArrayInputStream(bytes))
-    val zipEntries = Stream.continually(zipStream.getNextEntry).takeWhile(_ != null).toList
+    val zipEntries = LazyList.continually(zipStream.getNextEntry).takeWhile(_ != null).toList
     zipStream.close()
 
     zipEntries

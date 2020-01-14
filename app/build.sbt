@@ -1,6 +1,8 @@
 import sbt.Defaults.testSettings
 import sbt.librarymanagement.Configuration
 import sbt.librarymanagement.Configurations.Runtime
+import bloop.integrations.sbt.BloopDefaults
+import org.scalafmt.sbt.ScalafmtPlugin
 
 name := "receipts-rest-service"
 organization := "rocks.leonti"
@@ -8,10 +10,10 @@ version := "1.0"
 scalaVersion := "2.13.1"
 
 addCompilerPlugin(scalafixSemanticdb)
-addCommandAlias("fix", "; all compile:scalafix test:scalafix ; scalafmtAll")
+addCommandAlias("fix", "; all compile:scalafix test:scalafix ; scalafmtAll ; e2e:scalafmt ; it:scalafmt ; ")
 addCommandAlias(
     "check",
-    "; compile:scalafix --check ; test:scalafix --check ; scalafmtCheckAll"
+    "; compile:scalafix --check ; test:scalafix --check ; it:scalafix ; e2e:scalafix ; scalafmtCheckAll ; e2e:scalafmtCheck ; it:scalafmtCheck ; "
 )
 
 scalacOptions := Seq("-unchecked",
@@ -49,12 +51,18 @@ val logging = Seq(
   "net.logstash.logback"       % "logstash-logback-encoder" % "4.8"
 )
 
+inConfig(IntegrationTest)(ScalafmtPlugin.scalafmtConfigSettings)
+inConfig(IntegrationTest)(scalafixConfigSettings(IntegrationTest))
+
 lazy val End2EndTest = Configuration.of("End2EndTest", "e2e") extend Runtime
 lazy val root = (project in file("."))
   .configs(IntegrationTest, End2EndTest)
   .settings(
     Defaults.itSettings,
-    inConfig(End2EndTest)(testSettings)
+    inConfig(End2EndTest)(testSettings),
+    inConfig(End2EndTest)(BloopDefaults.configSettings),
+    inConfig(End2EndTest)(ScalafmtPlugin.scalafmtConfigSettings),
+    inConfig(End2EndTest)(scalafixConfigSettings(End2EndTest))
   )
 
 libraryDependencies ++= {

@@ -9,6 +9,7 @@ import org.http4s.headers._
 import org.http4s.multipart.Part
 import pending.PendingFile
 import receipt.ReceiptEntity
+import cats.effect.{Blocker, ContextShift, IO}
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -16,7 +17,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object ReceiptTestUtils {
   val total           = Some(BigDecimal(12.38))
   val description     = "some description"
-  val transactionTime = 1480130712396l
+  val transactionTime = 1480130712396L
   val tags            = List("veggies", "food")
   val tagsAsString    = tags.reduce((acc, tag) => s"$acc,$tag")
 }
@@ -38,7 +39,12 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
     )
   }
 
-  private def pendingFilesToReceipt(receiptId: String, pendingFilesIO: IO[List[PendingFile]], accessToken: String, retry: Int): IO[ReceiptEntity] = {
+  private def pendingFilesToReceipt(
+      receiptId: String,
+      pendingFilesIO: IO[List[PendingFile]],
+      accessToken: String,
+      retry: Int
+  ): IO[ReceiptEntity] = {
     implicit val timer: Timer[IO] = IO.timer(global)
 
     val checkInterval = 1.second
@@ -56,10 +62,11 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
     }
   }
 
-  def createReceipt(formBody: org.http4s.multipart.Multipart[IO], accessToken: String): IO[ReceiptEntity] = createReceiptEither(formBody, accessToken).flatMap({
-    case Left(error) => IO.raiseError(new Exception(s"Creating receipt failed, response code: $error"))
-    case Right(receipt) => IO.pure(receipt)
-  })
+  def createReceipt(formBody: org.http4s.multipart.Multipart[IO], accessToken: String): IO[ReceiptEntity] =
+    createReceiptEither(formBody, accessToken).flatMap({
+      case Left(error)    => IO.raiseError(new Exception(s"Creating receipt failed, response code: $error"))
+      case Right(receipt) => IO.pure(receipt)
+    })
 
   def createReceiptEither(formBody: org.http4s.multipart.Multipart[IO], accessToken: String): IO[Either[String, ReceiptEntity]] = {
     import org.http4s.circe.CirceEntityCodec._
@@ -71,7 +78,8 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
         org.http4s.Uri.unsafeFromString(s"$appHostPort/receipt")
       ).map(_.withHeaders(headers))
     )({
-      case Status.Successful(r) => r.attemptAs[ReceiptEntity].leftMap(decodeFailure => s"Failed to decode $decodeFailure, status code: ${r.status.code}").value
+      case Status.Successful(r) =>
+        r.attemptAs[ReceiptEntity].leftMap(decodeFailure => s"Failed to decode $decodeFailure, status code: ${r.status.code}").value
       case r => IO.pure(Left(s"Failed to create, status code ${r.status.code}"))
     })
   }
@@ -144,11 +152,11 @@ class ReceiptTestUtils(httpClient: Client[IO]) {
 
   def createImageFileContent: org.http4s.multipart.Multipart[IO] = {
     implicit val cs: ContextShift[IO] = IO.contextShift(global)
-    val receipt = getClass.getResource("/receipt.png")
+    val receipt                       = getClass.getResource("/receipt.png")
 
     org.http4s.multipart.Multipart[IO](
       Vector(
-        Part.fileData("receipt", receipt, global, `Content-Type`(org.http4s.MediaType.image.png)),
+        Part.fileData("receipt", receipt, Blocker.liftExecutionContext(global), `Content-Type`(org.http4s.MediaType.image.png)),
         Part.formData("total", s"${ReceiptTestUtils.total.get}"),
         Part.formData("description", ReceiptTestUtils.description),
         Part.formData("transactionTime", s"${ReceiptTestUtils.transactionTime}"),

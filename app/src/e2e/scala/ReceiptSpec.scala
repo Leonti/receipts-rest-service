@@ -18,17 +18,19 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
   val (httpClient, _) = BlazeClientBuilder[IO](global)
     .withResponseHeaderTimeout(60.seconds)
     .withRequestTimeout(60.seconds)
-    .resource.allocated.unsafeRunSync()
+    .resource
+    .allocated
+    .unsafeRunSync()
 
-  val userTestUtils = new UserTestUtils(httpClient)
+  val userTestUtils    = new UserTestUtils(httpClient)
   val receiptTestUtils = new ReceiptTestUtils(httpClient)
 
   it should "create a receipt from an image" in {
 
     val receiptAction = for {
-      accessToken      <- userTestUtils.createUser.map(_._2)
+      accessToken        <- userTestUtils.createUser.map(_._2)
       firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContent, accessToken.value)
-      receiptEntity <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
+      receiptEntity      <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
     } yield receiptEntity
 
     whenReady(receiptAction.unsafeToFuture()) { receiptEntity =>
@@ -57,10 +59,10 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
   it should "reject receipt with the same file" in {
 
     val rejectedReceiptAction = for {
-      accessToken      <- userTestUtils.createUser.map(_._2)
+      accessToken        <- userTestUtils.createUser.map(_._2)
       firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContent, accessToken.value)
-      _ <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
-      secondReceipt <- receiptTestUtils.createReceiptEither(receiptTestUtils.createImageFileContent, accessToken.value)
+      _                  <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
+      secondReceipt      <- receiptTestUtils.createReceiptEither(receiptTestUtils.createImageFileContent, accessToken.value)
     } yield secondReceipt
 
     whenReady(rejectedReceiptAction.unsafeToFuture()) { errorResponse =>
@@ -71,10 +73,10 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
   it should "list receipts for a user" in {
 
     val receiptListAction = for {
-      accessToken      <- userTestUtils.createUser.map(_._2)
+      accessToken        <- userTestUtils.createUser.map(_._2)
       firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContent, accessToken.value)
-      _ <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
-      receiptList <- receiptTestUtils.fetchReceiptList(accessToken.value)
+      _                  <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
+      receiptList        <- receiptTestUtils.fetchReceiptList(accessToken.value)
     } yield receiptList
 
     whenReady(receiptListAction.unsafeToFuture()) { receipts =>
@@ -85,9 +87,9 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
   it should "patch a receipt" in {
 
     val patchedReceiptAction = for {
-      accessToken      <- userTestUtils.createUser.map(_._2)
+      accessToken        <- userTestUtils.createUser.map(_._2)
       firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContent, accessToken.value)
-      receipt <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
+      receipt            <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
       _ <- {
         val patch = """[
                       |  {
@@ -109,10 +111,10 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
   it should "serve a file for a receipt" in {
 
     val receiptFileAction = for {
-      accessToken      <- userTestUtils.createUser.map(_._2)
+      accessToken        <- userTestUtils.createUser.map(_._2)
       firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createTextFileContent("receipt content"), accessToken.value)
-      receipt <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
-      fileResponse <- receiptTestUtils.fetchReceiptFile(receipt.id, receipt.files.head.id, accessToken.value)
+      receipt            <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
+      fileResponse       <- receiptTestUtils.fetchReceiptFile(receipt.id, receipt.files.head.id, accessToken.value)
     } yield fileResponse
 
     whenReady(receiptFileAction.unsafeToFuture()) { bytes =>
@@ -123,12 +125,12 @@ class ReceiptSpec extends FlatSpec with Matchers with ScalaFutures {
   it should "delete a receipt" in {
 
     val receiptDeleteAction = for {
-      accessToken      <- userTestUtils.createUser.map(_._2)
+      accessToken        <- userTestUtils.createUser.map(_._2)
       firstReceiptEntity <- receiptTestUtils.createReceipt(receiptTestUtils.createImageFileContent, accessToken.value)
-      receipt <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
-      receiptListBefore <- receiptTestUtils.fetchReceiptList(accessToken.value)
-      _ <- receiptTestUtils.deleteReceipt(receipt.id, accessToken.value)
-      receiptListAfter <- receiptTestUtils.fetchReceiptList(accessToken.value)
+      receipt            <- receiptTestUtils.getProcessedReceipt(firstReceiptEntity.id, accessToken.value)
+      receiptListBefore  <- receiptTestUtils.fetchReceiptList(accessToken.value)
+      _                  <- receiptTestUtils.deleteReceipt(receipt.id, accessToken.value)
+      receiptListAfter   <- receiptTestUtils.fetchReceiptList(accessToken.value)
     } yield (receiptListBefore, receiptListAfter)
 
     whenReady(receiptDeleteAction.unsafeToFuture()) {

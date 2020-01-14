@@ -11,14 +11,15 @@ import user.UserInfo
 
 class UserTestUtils(httpClient: Client[IO]) {
 
-  def createUser: IO[(UserInfo, AccessToken)] = for {
-    accessToken  <- new Auth0Api(httpClient).createUserAndGetAccessToken()
-    userInfo <- httpClient.expect[UserInfo](
-      POST(
-        OpenIdToken(accessToken),
-        Uri.unsafeFromString(s"$appHostPort/oauth/openid")
+  def createUser: IO[(UserInfo, AccessToken)] =
+    for {
+      accessToken <- new Auth0Api(httpClient).createUserAndGetAccessToken()
+      userInfo <- httpClient.expect[UserInfo](
+        POST(
+          OpenIdToken(accessToken),
+          Uri.unsafeFromString(s"$appHostPort/oauth/openid")
+        )
       )
-    )
-  } yield (userInfo, AccessToken(accessToken))
+    } yield (userInfo, AccessToken(accessToken))
 
 }
