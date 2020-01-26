@@ -11,9 +11,6 @@ rm -rf /tmp/receipts-target-tests
 mkdir -p /tmp/receipts-target
 mkdir -p /tmp/receipts-target-tests
 
-export AUTH_TOKEN_SECRET="anything"
-export USE_OCR_STUB=true
-
 docker-compose down
 
 echo "==== Unit tests ===="

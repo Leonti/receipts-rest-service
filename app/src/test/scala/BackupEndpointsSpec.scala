@@ -32,7 +32,7 @@ class BackupEndpointsSpec extends FlatSpec with Matchers {
       global
     )
 
-    val accessToken = new PathToken(authSecret).generatePathToken(s"/user/$defaultUserId/backup/download")
+    val accessToken = new PathToken(authSecret.getBytes).generatePathToken(s"/user/$defaultUserId/backup/download")
 
     val request: Request[TestProgram] = Request(
       method = Method.GET,

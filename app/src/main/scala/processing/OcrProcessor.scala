@@ -13,9 +13,10 @@ class OcrProcessor[F[_]: Monad](
     localFileAlg: LocalFileAlg[F],
     ocrAlg: OcrAlg[F],
     randomAlg: RandomAlg[F],
-    pendingFileAlg: PendingFileAlg[F]
+    pendingFileAlg: PendingFileAlg[F],
+    receiptSearchAlg: ReceiptSearchAlg[F]
 ) {
-  import ocrAlg._, randomAlg._, pendingFileAlg._
+  import ocrAlg._, randomAlg._, pendingFileAlg._, receiptSearchAlg._
 
   def processJob(ocrJob: OcrJob): F[List[QueueJob]] =
     for {

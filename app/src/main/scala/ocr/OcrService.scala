@@ -1,6 +1,6 @@
 package ocr
 
-import java.io.{File, FileInputStream}
+import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.Executors
 
@@ -14,12 +14,13 @@ import com.google.api.services.vision.v1.{Vision, VisionScopes}
 import com.google.common.collect.ImmutableList
 
 import scala.concurrent.{ExecutionContext, Future}
+import java.io.ByteArrayInputStream
 
 trait OcrService {
   def ocrImage(file: File): Future[OcrTextAnnotation]
 }
 
-class GoogleOcrService(credentialsFile: File, imageResizeAlg: ImageAlg[IO]) extends OcrService {
+class GoogleOcrService(apiCredentials: String, imageResizeAlg: ImageAlg[IO]) extends OcrService {
 
   private implicit val ec                   = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
   private implicit val cs: ContextShift[IO] = IO.contextShift(ec)
@@ -40,7 +41,7 @@ class GoogleOcrService(credentialsFile: File, imageResizeAlg: ImageAlg[IO]) exte
   def ocrResizedImage(file: File): IO[OcrTextAnnotation] = {
     val credential =
       GoogleCredential
-        .fromStream(new FileInputStream(credentialsFile))
+        .fromStream(new ByteArrayInputStream(apiCredentials.getBytes(java.nio.charset.StandardCharsets.UTF_8.name)))
         .createScoped(VisionScopes.all())
 
     val jsonFactory = JacksonFactory.getDefaultInstance

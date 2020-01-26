@@ -11,22 +11,10 @@ services:
     ports:
       - "9000:9000"
     environment:
-      - MONGODB_DB
-      - MONGODB_USER
-      - MONGODB_PASSWORD
-      - MONGODB_SERVER
       - S3_BUCKET
       - S3_ACCESS_KEY
       - S3_SECRET_ACCESS_KEY
-      - S3_CUSTOM_ENDPOINT
       - S3_REGION
-      - GOOGLE_CLIENT_ID
-      - UPLOADS_FOLDER
-      - AUTH_TOKEN_SECRET
-      - GOOGLE_API_CREDENTIALS
-      - USE_OCR_STUB
-      - OCR_SEARCH_HOST
-      - OCR_SEARCH_API_KEY
       - ENV
 
   assembly:

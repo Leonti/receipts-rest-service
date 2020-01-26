@@ -48,14 +48,14 @@ class ReceiptPrograms[F[_]: Monad](
     pendingFileAlg: PendingFileAlg[F],
     queueAlg: QueueAlg[F],
     randomAlg: RandomAlg[F],
-    ocrAlg: OcrAlg[F]
+    receiptSearchAlg: ReceiptSearchAlg[F]
 ) {
-  import receiptAlg._, randomAlg._, ocrAlg._
+  import receiptAlg._, randomAlg._
   import ReceiptErrors._
 
   private def receiptsForQuery(userId: UserId, query: String): F[List[ReceiptEntity]] = {
     for {
-      receiptIds <- findIdsByText(userId.value, query)
+      receiptIds <- receiptSearchAlg.findIdsByText(userId.value, query)
       receipts   <- getReceipts(userId, receiptIds)
     } yield receipts
   }

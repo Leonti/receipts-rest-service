@@ -7,10 +7,9 @@ import fs2.Stream
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.PutObjectRequest
 import receipt.RemoteFileId
+import config.S3Config
 
 import scala.concurrent.ExecutionContext
-
-case class S3Config(region: String, bucket: String, accessKey: String, secretKey: String)
 
 class RemoteFileS3(config: S3Config, amazonS3Client: AmazonS3, bec: ExecutionContext) extends RemoteFileAlg[IO] {
   private implicit val cs: ContextShift[IO] = IO.contextShift(bec)

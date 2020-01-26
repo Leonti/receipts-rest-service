@@ -24,6 +24,9 @@ trait ReceiptStoreAlg[F[_]] {
 trait OcrAlg[F[_]] {
   def ocrImage(file: File): F[OcrTextAnnotation]
   def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): F[Unit]
+}
+
+trait ReceiptSearchAlg[F[_]] {
   def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): F[Unit]
   def findIdsByText(userId: String, query: String): F[List[String]]
 }

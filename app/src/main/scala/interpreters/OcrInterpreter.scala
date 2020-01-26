@@ -6,15 +6,9 @@ import algebras.OcrAlg
 import cats.effect.{Blocker, ContextShift, IO}
 import com.amazonaws.services.s3.AmazonS3
 import fs2.Stream
-import org.http4s._
-import org.http4s.headers._
-import org.http4s.client.Client
-import org.http4s.dsl.io._
-import org.http4s.client.dsl.io._
-import org.http4s.circe._
 import io.circe.syntax._
 import ocr._
-import org.http4s.util.CaseInsensitiveString
+import config.S3Config
 
 import scala.concurrent.ExecutionContext
 
@@ -23,16 +17,12 @@ object OcrIntepreter {
 }
 
 class OcrInterpreterTagless(
-    httpClient: Client[IO],
     config: S3Config,
     amazonS3Client: AmazonS3,
-    ocrService: OcrService,
-    ocrConfig: OcrIntepreter.OcrConfig
+    ocrService: OcrService
 ) extends OcrAlg[IO] {
 
   private implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
-
-  private implicit val ocrSearchResultDecoder: EntityDecoder[IO, OcrSearchResult] = jsonOf[IO, OcrSearchResult]
 
   override def ocrImage(file: File): IO[OcrTextAnnotation] = IO.fromFuture(IO(ocrService.ocrImage(file)))
 
@@ -50,24 +40,4 @@ class OcrInterpreterTagless(
     )
   }
 
-  override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): IO[Unit] =
-    httpClient
-      .expect[String](
-        POST(
-          OcrContent(ocrText.text).asJson,
-          Uri.unsafeFromString(s"${ocrConfig.ocrHost}/api/search/$userId/$receiptId"),
-          Authorization(Credentials.Token(CaseInsensitiveString("ApiKey"), ocrConfig.apiKey))
-        )
-      )
-      .map(_ => ())
-
-  override def findIdsByText(userId: String, query: String): IO[List[String]] =
-    httpClient
-      .expect[OcrSearchResult](
-        GET(
-          Uri.unsafeFromString(s"${ocrConfig.ocrHost}/api/search/$userId").withQueryParam("q", query),
-          Authorization(Credentials.Token(CaseInsensitiveString("ApiKey"), ocrConfig.apiKey))
-        )
-      )
-      .map(_.ids)
 }

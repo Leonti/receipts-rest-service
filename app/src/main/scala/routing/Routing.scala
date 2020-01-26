@@ -12,6 +12,7 @@ import receipt.{ReceiptEndpoints, ReceiptPrograms}
 import user.{UserEndpoints, UserPrograms}
 
 import scala.concurrent.ExecutionContext
+import config.RoutingConfig
 
 case class RoutingAlgebras[F[_]](
     jwtVerificationAlg: JwtVerificationAlg[Id],
@@ -23,13 +24,7 @@ case class RoutingAlgebras[F[_]](
     fileStoreAlg: FileStoreAlg[F],
     pendingFileAlg: PendingFileAlg[F],
     queueAlg: QueueAlg[F],
-    ocrAlg: OcrAlg[F]
-)
-
-case class RoutingConfig(
-    uploadsFolder: String,
-    googleClientId: String,
-    authTokenSecret: Array[Byte]
+    receiptSearchAlg: ReceiptSearchAlg[F]
 )
 
 class Routing[F[_]: ConcurrentEffect: ContextShift](algebras: RoutingAlgebras[F], config: RoutingConfig, bec: ExecutionContext) {
@@ -51,7 +46,7 @@ class Routing[F[_]: ConcurrentEffect: ContextShift](algebras: RoutingAlgebras[F]
     pendingFileAlg,
     queueAlg,
     randomAlg,
-    ocrAlg
+    receiptSearchAlg
   )
 
   private val receiptEndpoints =
@@ -64,7 +59,7 @@ class Routing[F[_]: ConcurrentEffect: ContextShift](algebras: RoutingAlgebras[F]
   private val oauthEndpoints     = new OauthEndpoints[F](userPrograms)
 
   private val backupEndpoints =
-    new BackupEndpoints[F](new BackupService[F](receiptStoreAlg, remoteFileAlg, bec), new PathToken(config.authTokenSecret))
+    new BackupEndpoints[F](new BackupService[F](receiptStoreAlg, remoteFileAlg, bec), new PathToken(config.authTokenSecret.getBytes))
 
   private val versionEndpoint =
     new VersionEndpoint[F]("latest")

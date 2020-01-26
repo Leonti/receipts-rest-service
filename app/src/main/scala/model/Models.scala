@@ -2,11 +2,11 @@ package model
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
-case class AppConfig(googleClientId: String)
+case class PublicAppConfig(googleClientId: String)
 
-object AppConfig {
-  implicit val appConfigDecoder: Decoder[AppConfig] = deriveDecoder
-  implicit val appConfigEncoder: Encoder[AppConfig] = deriveEncoder
+object PublicAppConfig {
+  implicit val appConfigDecoder: Decoder[PublicAppConfig] = deriveDecoder
+  implicit val appConfigEncoder: Encoder[PublicAppConfig] = deriveEncoder
 }
 
 case class ExternalUserInfo(email: String, sub: String)

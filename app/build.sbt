@@ -31,7 +31,7 @@ scalacOptions := Seq("-unchecked",
 
 addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
 
-val awsV       = "1.11.241"
+val awsV       = "1.11.713"
 val scalaTestV      = "3.0.8"
 val visionApiV      = "v1-rev346-1.22.0"
 val googleApiClient = "1.22.0"
@@ -68,7 +68,8 @@ lazy val root = (project in file("."))
 libraryDependencies ++= {
   Seq(
     "com.amazonaws"         % "aws-java-sdk-s3"            % awsV,
-    "com.amazonaws"         % "aws-java-sdk-sqs"            % awsV,
+    "com.amazonaws"         % "aws-java-sdk-sqs"           % awsV,
+    "com.amazonaws"         % "aws-java-sdk-ssm"           % awsV,
     "com.google.apis"       % "google-api-services-vision" % visionApiV excludeAll (
       ExclusionRule(organization="com.google.guava", name="guava-jdk5")
       ),

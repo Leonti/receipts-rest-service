@@ -12,7 +12,7 @@ import ocr.{OcrText, OcrTextAnnotation}
 import pending.PendingFile
 import queue.{QueueJob, ReservedJob}
 import receipt._
-import routing.{RoutingAlgebras, RoutingConfig}
+import routing.RoutingAlgebras
 import user.{UserId, UserIds}
 
 object TestInterpreters {
@@ -116,7 +116,10 @@ object TestInterpreters {
 
     override def ocrImage(file: File): TestProgram[OcrTextAnnotation]                                              = wrapped(testAnnotation)
     override def saveOcrResult(userId: String, receiptId: String, ocrResult: OcrTextAnnotation): TestProgram[Unit] = wrapped(())
-    override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): TestProgram[Unit]             = wrapped(())
+  }
+
+  class ReceiptSearchTest() extends ReceiptSearchAlg[TestProgram] {
+    override def addOcrToIndex(userId: String, receiptId: String, ocrText: OcrText): TestProgram[Unit] = wrapped(())
     override def findIdsByText(userId: String, query: String): TestProgram[List[String]] =
       wrapped(List[String]())
   }
@@ -147,10 +150,10 @@ object TestInterpreters {
     fileStoreAlg = new FileStoreIntTest(),
     pendingFileAlg = new PendingFileIntTest(),
     queueAlg = new QueueIntTest(),
-    ocrAlg = new OcrIntTest()
+    receiptSearchAlg = new ReceiptSearchTest()
   )
 
-  val authSecret = "secret".getBytes
+  val authSecret = "secret"
 
-  val testConfig = RoutingConfig("", "", authSecret)
+  val testConfig = config.RoutingConfig("", "", authSecret)
 }
