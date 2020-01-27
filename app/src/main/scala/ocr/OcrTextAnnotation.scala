@@ -28,7 +28,12 @@ object OcrTextAnnotation {
     }
 
     def toTextProperty(p: com.google.api.services.vision.v1.model.TextProperty): TextProperty = {
-      TextProperty(detectedLanguages = p.getDetectedLanguages.asScala.map(toDetectedLanguage).toSeq)
+      val detectedLanguages = for {
+        property          <- Option(p)
+        detectedLanguages <- Option(property.getDetectedLanguages).map(_.asScala)
+      } yield detectedLanguages
+
+      TextProperty(detectedLanguages = detectedLanguages.map(_.map(toDetectedLanguage).toSeq).getOrElse(Seq()))
     }
 
     def toVertex(vertex: com.google.api.services.vision.v1.model.Vertex): Vertex = {

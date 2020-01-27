@@ -19,6 +19,7 @@ class QueueSqs(client: AmazonSQS, queueName: String) extends QueueAlg[IO] {
     val receiveMessageRequest = new ReceiveMessageRequest()
       .withQueueUrl(queueUrl)
       .withMaxNumberOfMessages(1)
+
     client
       .receiveMessage(receiveMessageRequest)
       .getMessages

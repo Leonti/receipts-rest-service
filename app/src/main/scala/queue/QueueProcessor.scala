@@ -29,7 +29,11 @@ class QueueProcessor[F[_]: Effect: ContextShift: Timer](
       })
       .handleError(e => {
         // FIXME - log error
-        println(s"Exception on reserving next job $e")
+        val sw = new StringWriter
+        e.printStackTrace(new PrintWriter(sw))
+
+        println(s"Exception on reserving next job $e ${sw.toString}")
+
         Timer[F].sleep(10.seconds) *> reserveNextJob()
       })
   }
@@ -50,8 +54,6 @@ class QueueProcessor[F[_]: Effect: ContextShift: Timer](
       println(s"Job failed to complete $job ${sw.toString}")
       queueAlg.bury(job.id)
     })
-
-    result
   }
 
   private def process(job: ReservedJob): F[Unit] = {
